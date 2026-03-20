@@ -1805,8 +1805,6 @@ function updateDocPreview(){
   const clientAdr=document.getElementById('d_client_adresse')?.value||'';
   const clientEmail=document.getElementById('d_client_email')?.value||'';
   const clientTel=document.getElementById('d_client_tel')?.value||'';
-  const clientEmail=document.getElementById('d_client_email')?.value||'';
-  const clientTel=document.getElementById('d_client_tel')?.value||'';
   const tva=parseFloat(document.getElementById('d_tva')?.value||'5.5');
   const mentions=document.getElementById('d_mentions')?.value||'';
   const sousTotal=lignes.reduce((s,l)=>s+(l.qte||1)*(l.pu||0),0);
