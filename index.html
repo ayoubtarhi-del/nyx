@@ -807,8 +807,23 @@ body::after{
       <div class="card">
         <div class="card-title">🏢 Votre entreprise</div>
         <div class="form-grid" style="grid-template-columns:1fr;">
+          <!-- Logo upload -->
+          <div class="form-group" style="grid-column:span 2;">
+            <label class="form-label">Logo entreprise (JPG / JPEG)</label>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <label for="d_logo" style="background:var(--bg3);border:1px dashed rgba(16,185,129,0.3);border-radius:8px;padding:10px 18px;cursor:pointer;font-size:13px;color:#666;transition:border-color 0.2s;flex:1;text-align:center;" id="d_logo_label">
+                📁 Cliquez pour uploader votre logo
+              </label>
+              <input type="file" id="d_logo" accept=".jpg,.jpeg" style="display:none;" onchange="handleLogoUpload(this)">
+              <div id="d_logo_preview" style="display:none;width:60px;height:60px;border-radius:8px;overflow:hidden;border:1px solid var(--border);">
+                <img id="d_logo_img" src="" style="width:100%;height:100%;object-fit:contain;">
+              </div>
+              <button id="d_logo_remove" onclick="removeLogo()" style="display:none;background:none;border:1px solid rgba(255,23,68,0.3);border-radius:6px;color:#FF1744;font-size:11px;padding:6px 10px;cursor:pointer;">✕</button>
+            </div>
+          </div>
           <div class="form-group"><input class="form-input" id="d_entreprise" placeholder="Nom de votre entreprise" value="NYX Énergie" oninput="updateDocPreview()"></div>
           <div class="form-group"><input class="form-input" id="d_entreprise_adresse" placeholder="Adresse entreprise" oninput="updateDocPreview()"></div>
+          <div class="form-group"><input class="form-input" id="d_entreprise_complement" placeholder="Complément d'adresse (bât, étage, lieu-dit...)" oninput="updateDocPreview()"></div>
           <div class="form-group"><input class="form-input" id="d_siret" placeholder="SIRET" oninput="updateDocPreview()"></div>
           <div class="form-group"><input class="form-input" id="d_rge" placeholder="Numéro RGE (optionnel)" oninput="updateDocPreview()"></div>
         </div>
@@ -816,13 +831,32 @@ body::after{
 
       <div class="card">
         <div class="card-title">👤 Client</div>
-        <div class="form-grid" style="grid-template-columns:1fr;">
-          <div class="form-group"><input class="form-input" id="d_client_nom" placeholder="Nom / Prénom du client" oninput="updateDocPreview()"></div>
-          <div class="form-group"><input class="form-input" id="d_client_adresse" placeholder="Adresse du client" oninput="updateDocPreview()"></div>
+        <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+          <div class="form-group" style="grid-column:span 2;"><input class="form-input" id="d_client_nom" placeholder="Nom / Prénom du client" oninput="updateDocPreview()"></div>
+          <div class="form-group" style="grid-column:span 2;"><input class="form-input" id="d_client_adresse" placeholder="Adresse du client" oninput="updateDocPreview()"></div>
+          <div class="form-group"><input class="form-input" type="email" id="d_client_email" placeholder="Email du client" oninput="updateDocPreview()"></div>
+          <div class="form-group"><input class="form-input" type="tel" id="d_client_tel" placeholder="Téléphone du client" oninput="updateDocPreview()"></div>
         </div>
       </div>
 
       <div class="card">
+        <div class="card-title">📋 Audit énergétique (PDF)</div>
+        <div style="background:rgba(16,185,129,0.05);border:1px dashed rgba(16,185,129,0.3);border-radius:10px;padding:18px;display:flex;align-items:center;gap:16px;" id="auditUploadZone">
+          <div style="font-size:32px;">📄</div>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;" id="auditFileName">Aucun audit chargé</div>
+            <div style="font-size:12px;color:var(--muted);">Glissez ou cliquez pour uploader l'audit énergétique PDF. Les lignes de travaux seront déverrouillées.</div>
+          </div>
+          <label for="d_audit" style="cursor:pointer;">
+            <div class="btn btn-sm" style="pointer-events:none;">📎 Charger l'audit</div>
+          </label>
+          <input type="file" id="d_audit" accept=".pdf" style="display:none;" onchange="handleAuditUpload(this)">
+          <button id="d_audit_remove" onclick="removeAudit()" style="display:none;background:none;border:1px solid rgba(255,23,68,0.3);border-radius:6px;color:#FF1744;font-size:11px;padding:6px 10px;cursor:pointer;">✕ Supprimer</button>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:#555;">⚠️ L'audit énergétique est requis pour accéder aux lignes de travaux et générer un devis.</div>
+      </div>
+
+      <div class="card" id="lignesCard">
         <div class="card-title">📦 Lignes de travaux</div>
         <div id="lignes-container"></div>
         <button class="btn btn-sm btn-ghost" onclick="addLigne()" style="margin-top:10px;">+ Ajouter une ligne</button>
@@ -1198,7 +1232,8 @@ function extraireNumeriques(text){
 function extraireBeneficiaire(text){
   const r={nom:'',prenom:'',adresse:'',cp:'',ville:'',surface:'',typeBien:''};
   const m=re=>{const x=text.match(re);return x?x[1].trim():'';};
-  r.nom=m(/nom\s*[:\-]\s*([A-Za-zÀ-ÿ\-\s]{2,30})/i);
+  r.nom=m(/nom\s*[:\-]\s*([A-Za-zÀ-ÿ\-]{2,25})/i);
+  if(r.nom) r.nom = r.nom.replace(/\s*(pr[eé]nom|adresse|t[eé]l[eé]phone|email|code|ville|surface).*$/i,'').trim();
   r.prenom=m(/pr[eé]nom\s*[:\-]\s*([A-Za-zÀ-ÿ\-]{2,25})/i);
   r.adresse=m(/adresse\s*[:\-]\s*([^\n]{5,60})/i)||m(/(\d{1,4}[,\s]+(?:rue|avenue|boulevard|impasse|all[eé]e|chemin|place|route|lieu\s*dit)[^\n]{3,50})/i);
   r.cp=m(/code\s*postal\s*[:\-]\s*(\d{5})/i)||m(/\b((?:0[1-9]|[1-8]\d|9[0-5])\d{3})\b/);
@@ -1634,25 +1669,116 @@ function analyserManuel(){
 /* ══════════════════════════════════════════════════════
    DEVIS / FACTURE
 ══════════════════════════════════════════════════════ */
-let lignes=[{desc:'',qte:1,pu:0}];
+let lignes=[{desc:'',complement:'',qte:1,pu:0}];
+let auditLoaded = false;
 
-function addLigne(desc='',qte=1,pu=0){
-  lignes.push({desc,qte,pu});
+/* ── AUDIT PDF ── */
+function initAuditZone(){
+  const zone = document.getElementById('auditUploadZone');
+  if(!zone) return;
+  zone.addEventListener('dragover', e=>{e.preventDefault();zone.style.borderColor='rgba(16,185,129,0.8)';zone.style.background='rgba(16,185,129,0.1)';});
+  zone.addEventListener('dragleave', ()=>{zone.style.borderColor='rgba(16,185,129,0.3)';zone.style.background='rgba(16,185,129,0.05)';});
+  zone.addEventListener('drop', e=>{
+    e.preventDefault();
+    zone.style.borderColor='rgba(16,185,129,0.3)';
+    zone.style.background='rgba(16,185,129,0.05)';
+    const file = e.dataTransfer.files[0];
+    if(file && file.type==='application/pdf') activateAudit(file.name);
+    else alert('Veuillez glisser un fichier PDF.');
+  });
+  zone.addEventListener('click', ()=>document.getElementById('d_audit').click());
+  // Griser les lignes au départ
+  lockLignes();
+}
+function handleAuditUpload(input){
+  const file = input.files[0];
+  if(!file) return;
+  activateAudit(file.name);
+}
+function activateAudit(name){
+  auditLoaded = true;
+  document.getElementById('auditFileName').textContent = '✅ ' + name;
+  document.getElementById('auditFileName').style.color = '#10B981';
+  document.getElementById('d_audit_remove').style.display = 'block';
+  const zone = document.getElementById('auditUploadZone');
+  zone.style.borderColor = 'rgba(16,185,129,0.7)';
+  zone.style.background  = 'rgba(16,185,129,0.08)';
+  unlockLignes();
+}
+function removeAudit(){
+  auditLoaded = false;
+  document.getElementById('d_audit').value = '';
+  document.getElementById('auditFileName').textContent = 'Aucun audit chargé';
+  document.getElementById('auditFileName').style.color = 'var(--muted)';
+  document.getElementById('d_audit_remove').style.display = 'none';
+  const zone = document.getElementById('auditUploadZone');
+  zone.style.borderColor = 'rgba(16,185,129,0.3)';
+  zone.style.background  = 'rgba(16,185,129,0.05)';
+  lockLignes();
+}
+function lockLignes(){
+  const lc = document.getElementById('lignesCard');
+  if(lc){lc.style.opacity='0.38';lc.style.pointerEvents='none';lc.style.filter='grayscale(0.4)';}
+}
+function unlockLignes(){
+  const lc = document.getElementById('lignesCard');
+  if(lc){lc.style.opacity='1';lc.style.pointerEvents='auto';lc.style.filter='none';}
+}
+
+function addLigne(desc='',qte=1,pu=0,complement=''){
+  lignes.push({desc,complement,qte,pu});
   renderLignes();
 }
 function removeLigne(i){lignes.splice(i,1);renderLignes();}
 function renderLignes(){
   const container=document.getElementById('lignes-container');
   container.innerHTML=lignes.map((l,i)=>`
-    <div style="display:grid;grid-template-columns:1fr 60px 80px 80px 30px;gap:8px;margin-bottom:8px;align-items:center;">
-      <input class="form-input" style="font-size:13px;" placeholder="Description des travaux" value="${l.desc||''}" oninput="lignes[${i}].desc=this.value;updateDocPreview()">
-      <input class="form-input" style="font-size:13px;text-align:center;" type="number" value="${l.qte}" min="1" oninput="lignes[${i}].qte=parseFloat(this.value)||1;updateDocPreview()">
-      <input class="form-input" style="font-size:13px;text-align:right;" type="number" value="${l.pu}" min="0" oninput="lignes[${i}].pu=parseFloat(this.value)||0;updateDocPreview()">
-      <div style="font-size:13px;color:var(--green2);text-align:right;font-family:'Space Mono',monospace;">${((l.qte||1)*(l.pu||0)).toLocaleString('fr-FR',{minimumFractionDigits:2})} €</div>
-      <button onclick="removeLigne(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;">✕</button>
+    <div style="margin-bottom:10px;background:var(--bg3);border-radius:8px;padding:10px;border:1px solid var(--border);">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">
+        <input class="form-input" style="font-size:13px;" placeholder="Description des travaux" value="${l.desc||''}" oninput="lignes[${i}].desc=this.value;updateDocPreview()">
+        <input class="form-input" style="font-size:13px;" placeholder="Complément (marque, référence...)" value="${l.complement||''}" oninput="lignes[${i}].complement=this.value;updateDocPreview()">
+      </div>
+      <div style="display:grid;grid-template-columns:70px 110px 110px 30px;gap:8px;align-items:center;">
+        <input class="form-input" style="font-size:13px;text-align:center;" type="number" value="${l.qte}" min="1" placeholder="Qté" oninput="lignes[${i}].qte=parseFloat(this.value)||1;updateDocPreview()">
+        <input class="form-input" style="font-size:13px;text-align:right;" type="number" value="${l.pu}" min="0" placeholder="Prix unitaire HT" oninput="lignes[${i}].pu=parseFloat(this.value)||0;updateDocPreview()">
+        <div style="font-size:13px;color:var(--green2);text-align:right;font-family:'Space Mono',monospace;">${((l.qte||1)*(l.pu||0)).toLocaleString('fr-FR',{minimumFractionDigits:2})} €</div>
+        <button onclick="removeLigne(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;">✕</button>
+      </div>
     </div>`).join('');
   updateDocPreview();
 }
+let logoDataUrl = '';
+
+function handleLogoUpload(input){
+  const file = input.files[0];
+  if(!file) return;
+  if(!file.type.match(/image\/jpe?g/i)){alert('Format accepté : JPG ou JPEG uniquement.');return;}
+  const reader = new FileReader();
+  reader.onload = e => {
+    logoDataUrl = e.target.result;
+    document.getElementById('d_logo_img').src = logoDataUrl;
+    document.getElementById('d_logo_preview').style.display = 'block';
+    document.getElementById('d_logo_remove').style.display = 'block';
+    document.getElementById('d_logo_label').textContent = '✅ ' + file.name;
+    document.getElementById('d_logo_label').style.borderColor = 'rgba(16,185,129,0.5)';
+    document.getElementById('d_logo_label').style.color = '#10B981';
+    updateDocPreview();
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeLogo(){
+  logoDataUrl = '';
+  document.getElementById('d_logo').value = '';
+  document.getElementById('d_logo_img').src = '';
+  document.getElementById('d_logo_preview').style.display = 'none';
+  document.getElementById('d_logo_remove').style.display = 'none';
+  document.getElementById('d_logo_label').textContent = '📁 Cliquez pour uploader votre logo';
+  document.getElementById('d_logo_label').style.borderColor = 'rgba(16,185,129,0.3)';
+  document.getElementById('d_logo_label').style.color = '#666';
+  updateDocPreview();
+}
+
 function updateDocPreview(){
   const type=document.getElementById('d_type')?.value||'DEVIS';
   const num=document.getElementById('d_num')?.value||'2026-001';
@@ -1660,10 +1786,15 @@ function updateDocPreview(){
   const valid=document.getElementById('d_validite')?.value||'30';
   const entrep=document.getElementById('d_entreprise')?.value||'NYX Énergie';
   const entrepAdr=document.getElementById('d_entreprise_adresse')?.value||'';
+  const entrepComp=document.getElementById('d_entreprise_complement')?.value||'';
   const siret=document.getElementById('d_siret')?.value||'';
   const rge=document.getElementById('d_rge')?.value||'';
   const clientNom=document.getElementById('d_client_nom')?.value||'';
   const clientAdr=document.getElementById('d_client_adresse')?.value||'';
+  const clientEmail=document.getElementById('d_client_email')?.value||'';
+  const clientTel=document.getElementById('d_client_tel')?.value||'';
+  const clientEmail=document.getElementById('d_client_email')?.value||'';
+  const clientTel=document.getElementById('d_client_tel')?.value||'';
   const tva=parseFloat(document.getElementById('d_tva')?.value||'5.5');
   const mentions=document.getElementById('d_mentions')?.value||'';
   const sousTotal=lignes.reduce((s,l)=>s+(l.qte||1)*(l.pu||0),0);
@@ -1677,17 +1808,26 @@ function updateDocPreview(){
   if(!preview)return;
   preview.innerHTML=`
     <div class="doc-header-line">
-      <div><div class="doc-company" style="color:#10B981;">${entrep}</div><div style="font-size:12px;color:#666;margin-top:4px;">${entrepAdr}</div><div style="font-size:12px;color:#666;">SIRET : ${siret||'—'}</div>${rge?`<div style="font-size:12px;color:#666;">N° RGE : ${rge}</div>`:''}</div>
+      <div style="display:flex;align-items:flex-start;gap:14px;">
+        ${logoDataUrl?`<img src="${logoDataUrl}" style="width:70px;height:70px;object-fit:contain;border-radius:6px;flex-shrink:0;">`:'' }
+        <div>
+          <div class="doc-company" style="color:#10B981;">${entrep}</div>
+          <div style="font-size:12px;color:#666;margin-top:4px;">${entrepAdr}</div>
+          ${entrepComp?`<div style="font-size:12px;color:#666;">${entrepComp}</div>`:''}
+          <div style="font-size:12px;color:#666;">SIRET : ${siret||'—'}</div>
+          ${rge?`<div style="font-size:12px;color:#666;">N° RGE : ${rge}</div>`:''}
+        </div>
+      </div>
       <div><div class="doc-type">${type}</div><div class="doc-num">N° ${num}</div><div class="doc-num">Date : ${date}</div><div class="doc-num">${type==='DEVIS'?'Valide 30 jours':''}</div></div>
     </div>
     <div class="doc-parties">
-      <div><div class="doc-party-label">Prestataire</div><div class="doc-party-val"><strong>${entrep}</strong><br>${entrepAdr}<br>SIRET : ${siret||'—'}</div></div>
-      <div><div class="doc-party-label">Client</div><div class="doc-party-val"><strong>${clientNom||'—'}</strong><br>${clientAdr||'—'}</div></div>
+      <div><div class="doc-party-label">Prestataire</div><div class="doc-party-val"><strong>${entrep}</strong><br>${entrepAdr}${entrepComp?'<br>'+entrepComp:''}<br>SIRET : ${siret||'—'}</div></div>
+      <div><div class="doc-party-label">Client</div><div class="doc-party-val"><strong>${clientNom||'—'}</strong><br>${clientAdr||'—'}${clientEmail?'<br>✉ '+clientEmail:''}${clientTel?'<br>📞 '+clientTel:''}</div></div>
     </div>
     <table class="doc-table">
       <thead><tr><th>Description</th><th>Qté</th><th>Prix unitaire HT</th><th class="amount">Total HT</th></tr></thead>
       <tbody>
-        ${lignes.map(l=>`<tr><td>${l.desc||'—'}</td><td style="text-align:center;">${l.qte||1}</td><td class="amount">${fmt(l.pu||0)}</td><td class="amount">${fmt((l.qte||1)*(l.pu||0))}</td></tr>`).join('')}
+        ${lignes.map(l=>`<tr><td>${l.desc||'—'}${l.complement?'<br><span style="font-size:11px;color:#999;">'+l.complement+'</span>':''}</td><td style="text-align:center;">${l.qte||1}</td><td class="amount">${fmt(l.pu||0)}</td><td class="amount">${fmt((l.qte||1)*(l.pu||0))}</td></tr>`).join('')}
       </tbody>
     </table>
     <div class="doc-totals">
@@ -1776,9 +1916,15 @@ async function genererPDF(){
 
 /* ── INIT ── */
 document.getElementById('d_date').value=new Date().toISOString().split('T')[0];
-addLigne('Isolation des combles perdus (30-40 cm)',1,2000);
-addLigne('Chauffe-eau thermodynamique CET',1,2500);
+addLigne('Isolation des combles perdus (30-40 cm)',1,2000,'');
+addLigne('Chauffe-eau thermodynamique CET',1,2500,'');
 refreshCRM();
+// Init zone audit drag & drop après chargement DOM
+document.addEventListener('DOMContentLoaded', ()=>{ initAuditZone(); lockLignes(); });
+// Fallback si DOM déjà chargé
+if(document.readyState==='complete'||document.readyState==='interactive'){
+  setTimeout(()=>{ initAuditZone(); lockLignes(); }, 100);
+}
 </script>
 </body>
 </html>
