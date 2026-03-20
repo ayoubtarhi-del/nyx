@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" fill="#0a0a0a"/>
+  <polygon points="50,4 96,50 50,96 4,50" fill="none" stroke="#10B981" stroke-width="3"/>
+  <polygon points="50,0 100,50 50,100 0,50" fill="none" stroke="#10B981" stroke-width="1" opacity="0.3"/>
+  <text x="50" y="62" text-anchor="middle" font-size="28" font-weight="900" fill="#10B981" font-family="Arial,sans-serif">NYX</text>
+</svg>

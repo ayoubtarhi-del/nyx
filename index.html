@@ -15,8 +15,8 @@
   --bg3:     #161616;
   --bg4:     #1e1e1e;
   --border:  rgba(255,255,255,0.07);
-  --orange:  #FF5C00;
-  --orange2: #FF8A3D;
+  --orange:  #10B981;
+  --orange2: #34D399;
   --red:     #C0001A;
   --text:    #F0EDE8;
   --muted:   #666;
@@ -58,7 +58,7 @@ body::after{
 .header{
   position:sticky;top:0;z-index:100;
   background:rgba(7,7,7,0.95);backdrop-filter:blur(20px);
-  border-bottom:1px solid rgba(160,0,0,0.15);
+  border-bottom:1px solid rgba(16,185,129,0.15);
   padding:0 32px;
   display:flex;align-items:center;gap:0;
 }
@@ -71,8 +71,8 @@ body::after{
 .logo-text{
   font-family:'Bebas Neue',cursive;
   font-size:32px;letter-spacing:0.2em;
-  color:var(--orange);
-  text-shadow:0 0 20px rgba(255,92,0,0.4);
+  color:var(--green);
+  text-shadow:0 0 20px rgba(16,185,129,0.4);
 }
 .logo-sub{font-size:9px;color:var(--muted);letter-spacing:0.3em;text-transform:uppercase;margin-top:-4px;}
 
@@ -87,18 +87,18 @@ body::after{
   display:flex;align-items:center;gap:8px;
 }
 .nav-tab:hover{color:var(--text);}
-.nav-tab.active{color:var(--orange);border-bottom-color:var(--orange);}
+.nav-tab.active{color:var(--green);border-bottom-color:var(--green);}
 .nav-tab .tab-icon{font-size:14px;}
 
 .nav-right{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;}
 .btn-crm{
   padding:8px 18px;border-radius:6px;font-size:12px;font-weight:600;
   letter-spacing:0.05em;cursor:pointer;transition:all 0.2s;
-  background:rgba(255,92,0,0.12);border:1px solid rgba(255,92,0,0.3);
-  color:var(--orange);
+  background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);
+  color:var(--green);
 }
-.btn-crm:hover{background:rgba(255,92,0,0.2);}
-.btn-crm.active{background:var(--orange);color:white;}
+.btn-crm:hover{background:rgba(16,185,129,0.2);}
+.btn-crm.active{background:var(--green);color:white;}
 
 /* ── MAIN LAYOUT ── */
 .main{position:relative;z-index:1;padding:32px;max-width:1200px;margin:0 auto;}
@@ -109,7 +109,7 @@ body::after{
 /* ── CRM SIDEBAR ── */
 .crm-overlay{
   position:fixed;top:0;right:-420px;width:420px;height:100vh;
-  background:var(--bg2);border-left:1px solid rgba(160,0,0,0.2);
+  background:var(--bg2);border-left:1px solid rgba(16,185,129,0.2);
   z-index:200;transition:right 0.35s cubic-bezier(0.4,0,0.2,1);
   overflow-y:auto;
 }
@@ -119,7 +119,7 @@ body::after{
   display:flex;justify-content:space-between;align-items:center;
   position:sticky;top:0;background:var(--bg2);z-index:1;
 }
-.crm-title{font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:0.15em;color:var(--orange);}
+.crm-title{font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:0.15em;color:var(--green);}
 .crm-close{font-size:20px;cursor:pointer;color:var(--muted);transition:color 0.2s;}
 .crm-close:hover{color:var(--text);}
 .crm-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);}
@@ -128,7 +128,7 @@ body::after{
   letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;color:var(--muted);
   border-bottom:2px solid transparent;transition:all 0.2s;
 }
-.crm-tab.active{color:var(--orange);border-bottom-color:var(--orange);}
+.crm-tab.active{color:var(--green);border-bottom-color:var(--green);}
 .crm-section{padding:20px;display:none;}
 .crm-section.active{display:block;}
 
@@ -140,32 +140,32 @@ body::after{
 }
 .card-title{
   font-family:'Space Mono',monospace;font-size:10px;
-  letter-spacing:0.25em;color:var(--orange);text-transform:uppercase;
+  letter-spacing:0.25em;color:var(--green);text-transform:uppercase;
   margin-bottom:20px;display:flex;align-items:center;gap:10px;
 }
 .card-title::after{content:'';flex:1;height:1px;background:var(--border);}
 
 /* ── DROP ZONE ── */
 .drop-zone{
-  border:2px dashed rgba(255,92,0,0.3);border-radius:12px;
+  border:2px dashed rgba(16,185,129,0.3);border-radius:12px;
   padding:48px 32px;text-align:center;background:var(--bg3);
   cursor:pointer;transition:all 0.3s;margin-bottom:20px;
 }
 .drop-zone:hover,.drop-zone.dragover{
-  border-color:var(--orange);background:rgba(255,92,0,0.06);
+  border-color:var(--green);background:rgba(16,185,129,0.06);
 }
 
 /* ── BUTTONS ── */
 .btn{
-  background:linear-gradient(135deg,var(--orange),var(--orange2));
+  background:linear-gradient(135deg,var(--green),var(--green2));
   color:white;border:none;padding:12px 28px;border-radius:8px;
   font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;
   cursor:pointer;transition:all 0.2s;display:inline-flex;align-items:center;gap:8px;
 }
-.btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 20px rgba(255,92,0,0.3);}
+.btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 20px rgba(16,185,129,0.3);}
 .btn:disabled{opacity:0.4;cursor:not-allowed;transform:none;}
 .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);}
-.btn-ghost:hover:not(:disabled){border-color:var(--orange);color:var(--orange);box-shadow:none;}
+.btn-ghost:hover:not(:disabled){border-color:var(--green);color:var(--green);box-shadow:none;}
 .btn-danger{background:linear-gradient(135deg,#C0001A,#FF1744);}
 .btn-sm{padding:8px 16px;font-size:12px;}
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.2);border-top-color:white;border-radius:50%;animation:spin 0.8s linear infinite;}
@@ -186,7 +186,7 @@ body::after{
 .dpe-row{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
 .dpe-box{width:32px;height:26px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#111;flex-shrink:0;}
 .dpe-bar{height:22px;border-radius:0 4px 4px 0;display:flex;align-items:center;padding-left:8px;font-size:11px;color:rgba(0,0,0,0.7);font-weight:600;}
-.dpe-row.active .dpe-box{box-shadow:0 0 0 2px var(--orange);}
+.dpe-row.active .dpe-box{box-shadow:0 0 0 2px var(--green);}
 .dpe-row:not(.active) .dpe-bar{opacity:0.28;}
 
 /* ── NIVEAU BADGE ── */
@@ -210,34 +210,34 @@ body::after{
 /* ── NUM PANEL ── */
 .num-panel{display:flex;flex-wrap:wrap;gap:20px;background:var(--bg3);border-radius:10px;padding:14px 18px;margin:12px 0;}
 .num-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;font-family:'Space Mono',monospace;}
-.num-val{font-size:20px;font-weight:700;color:var(--orange2);font-family:'Space Mono',monospace;}
+.num-val{font-size:20px;font-weight:700;color:var(--green2);font-family:'Space Mono',monospace;}
 .num-unit{font-size:11px;color:var(--muted);}
 
 /* ── SCENARIO CARDS ── */
-.travaux-section-title{font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--orange);margin-bottom:12px;display:flex;align-items:center;gap:10px;}
-.travaux-section-title::after{content:'';flex:1;height:1px;background:rgba(255,92,0,0.15);}
+.travaux-section-title{font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--green);margin-bottom:12px;display:flex;align-items:center;gap:10px;}
+.travaux-section-title::after{content:'';flex:1;height:1px;background:rgba(16,185,129,0.15);}
 .travail-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:10px;}
-.travail-card.obligatoire{border-left:3px solid var(--orange);}
+.travail-card.obligatoire{border-left:3px solid var(--green);}
 .travail-card.recommande{border-left:3px solid #FFD740;}
 .travail-card.optionnel{border-left:3px solid var(--muted);}
 .travail-header{display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;}
 .travail-icon{font-size:20px;flex-shrink:0;}
 .travail-title{font-size:14px;font-weight:700;flex:1;}
 .travail-badge{font-size:10px;padding:2px 8px;border-radius:100px;font-weight:700;flex-shrink:0;}
-.badge-oblig{background:rgba(255,92,0,0.15);color:var(--orange);border:1px solid rgba(255,92,0,0.3);}
+.badge-oblig{background:rgba(16,185,129,0.15);color:var(--green);border:1px solid rgba(16,185,129,0.3);}
 .badge-reco{background:rgba(255,215,64,0.12);color:#FFD740;border:1px solid rgba(255,215,64,0.25);}
 .badge-opt{background:rgba(255,255,255,0.05);color:var(--muted);border:1px solid var(--border);}
 .travail-desc{font-size:12px;color:#888;line-height:1.6;margin-bottom:8px;}
 .travail-meta{display:flex;flex-wrap:wrap;gap:8px;}
 .travail-meta-item{font-size:11px;padding:3px 10px;border-radius:6px;background:var(--bg4);}
-.meta-gain{color:#69F0AE;}.meta-cout{color:#FFAB40;}.meta-aide{color:#60A5FA;}.meta-classe{color:var(--orange);font-weight:700;}
+.meta-gain{color:#69F0AE;}.meta-cout{color:#FFAB40;}.meta-aide{color:#60A5FA;}.meta-classe{color:var(--green);font-weight:700;}
 
 /* ── SAUT CARDS ── */
 .saut-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px;}
 .saut-head{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
 .cls-box{width:38px;height:38px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',cursive;font-size:20px;color:#111;}
-.saut-arrow{color:var(--orange);font-size:18px;}
-.saut-cost{margin-left:auto;color:var(--orange2);font-weight:700;font-size:14px;font-family:'Space Mono',monospace;}
+.saut-arrow{color:var(--green);font-size:18px;}
+.saut-cost{margin-left:auto;color:var(--green2);font-weight:700;font-size:14px;font-family:'Space Mono',monospace;}
 .saut-body{padding:12px 16px;display:flex;flex-direction:column;gap:6px;}
 .saut-line{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:#888;}
 .gain-tag{margin-left:auto;flex-shrink:0;font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(0,200,83,0.1);color:#69F0AE;font-weight:700;}
@@ -245,7 +245,7 @@ body::after{
 /* ── INVEST SUMMARY ── */
 .invest-summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:18px;}
 .invest-box{background:var(--bg3);border-radius:10px;padding:14px;text-align:center;}
-.invest-val{font-size:22px;font-weight:700;color:var(--orange2);font-family:'Space Mono',monospace;}
+.invest-val{font-size:22px;font-weight:700;color:var(--green2);font-family:'Space Mono',monospace;}
 .invest-lbl{font-size:11px;color:var(--muted);margin-top:4px;}
 
 /* ── BENE GRID ── */
@@ -263,7 +263,7 @@ body::after{
   color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;
   padding:10px 14px;transition:border-color 0.2s;width:100%;
 }
-.form-input:focus,.form-select:focus,.form-textarea:focus{outline:none;border-color:rgba(255,92,0,0.4);}
+.form-input:focus,.form-select:focus,.form-textarea:focus{outline:none;border-color:rgba(16,185,129,0.4);}
 .form-select option{background:var(--bg3);}
 .form-textarea{resize:vertical;min-height:80px;}
 
@@ -273,16 +273,16 @@ body::after{
   padding:14px 16px;margin-bottom:10px;cursor:pointer;
   transition:border-color 0.2s;
 }
-.client-card:hover,.client-card.selected{border-color:rgba(255,92,0,0.4);}
+.client-card:hover,.client-card.selected{border-color:rgba(16,185,129,0.4);}
 .client-name{font-size:15px;font-weight:600;margin-bottom:2px;}
 .client-meta{font-size:12px;color:var(--muted);}
 .client-badge{
   display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;
-  background:rgba(255,92,0,0.1);color:var(--orange);margin-top:6px;
+  background:rgba(16,185,129,0.1);color:var(--green);margin-top:6px;
 }
 .stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px;}
 .stat-box{background:var(--bg3);border-radius:10px;padding:16px;text-align:center;}
-.stat-val{font-size:28px;font-weight:700;color:var(--orange);font-family:'Space Mono',monospace;}
+.stat-val{font-size:28px;font-weight:700;color:var(--green);font-family:'Space Mono',monospace;}
 .stat-lbl{font-size:11px;color:var(--muted);margin-top:2px;}
 .chip-row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;}
 .chip{font-size:11px;padding:3px 10px;border-radius:100px;border:1px solid var(--border);color:var(--muted);}
@@ -293,7 +293,7 @@ body::after{
   margin-top:20px;font-family:'DM Sans',sans-serif;
 }
 .doc-header-line{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;}
-.doc-company{font-size:22px;font-weight:700;color:var(--orange);}
+.doc-company{font-size:22px;font-weight:700;color:var(--green);}
 .doc-type{font-size:28px;font-weight:700;color:#1a1a1a;text-align:right;}
 .doc-num{font-size:13px;color:#666;text-align:right;}
 .doc-parties{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:28px;}
@@ -315,16 +315,16 @@ body::after{
 .method-name{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;font-family:'Space Mono',monospace;}
 .method-val{font-size:18px;font-weight:700;color:#FFAB40;font-family:'Space Mono',monospace;margin-top:4px;}
 .method-ges{font-size:12px;color:var(--muted);}
-.method-box.croise{background:rgba(255,92,0,0.08);border:1px solid rgba(255,92,0,0.25);}
-.method-box.croise .method-val{color:var(--orange);}
-.method-arrow{display:flex;align-items:center;color:var(--orange);font-size:18px;flex-shrink:0;}
+.method-box.croise{background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);}
+.method-box.croise .method-val{color:var(--green);}
+.method-arrow{display:flex;align-items:center;color:var(--green);font-size:18px;flex-shrink:0;}
 
 /* ── SCENARIO INTRO ── */
 .scenario-intro{
-  background:linear-gradient(135deg,rgba(255,92,0,0.08),rgba(255,92,0,0.03));
-  border:1px solid rgba(255,92,0,0.2);border-radius:12px;padding:18px 22px;margin-bottom:20px;
+  background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(16,185,129,0.03));
+  border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:18px 22px;margin-bottom:20px;
 }
-.scenario-intro h3{color:var(--orange);margin-bottom:6px;font-size:14px;}
+.scenario-intro h3{color:var(--green);margin-bottom:6px;font-size:14px;}
 .scenario-intro p{color:#888;font-size:13px;line-height:1.7;}
 
 /* ── FOOTER ── */
@@ -334,7 +334,7 @@ body::after{
   font-size:11px;color:var(--muted);letter-spacing:0.1em;
   font-family:'Space Mono',monospace;
 }
-.footer span{color:var(--orange);}
+.footer span{color:var(--green);}
 
 /* ── TABS LAYOUT ── */
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;}
@@ -362,7 +362,7 @@ body::after{
 }
 .login-box{
   background:rgba(15,15,15,0.98);
-  border:1px solid rgba(160,0,0,0.2);
+  border:1px solid rgba(16,185,129,0.2);
   border-radius:18px;padding:48px 40px;
   width:100%;max-width:400px;
   box-shadow:0 20px 60px rgba(0,0,0,0.8);
@@ -370,8 +370,8 @@ body::after{
 }
 .login-logo{
   font-family:'Bebas Neue',cursive;font-size:52px;
-  letter-spacing:0.2em;color:#FF5C00;
-  text-shadow:0 0 30px rgba(255,92,0,0.5);
+  letter-spacing:0.2em;color:#10B981;
+  text-shadow:0 0 30px rgba(16,185,129,0.5);
   text-align:center;margin-bottom:4px;
 }
 .login-sub{text-align:center;font-size:11px;color:#555;letter-spacing:0.3em;text-transform:uppercase;margin-bottom:32px;}
@@ -393,10 +393,10 @@ body::after{
   display:grid;grid-template-columns:1fr 1fr 1fr 80px 80px;gap:10px;
 }
 .role-badge{display:inline-block;padding:2px 10px;border-radius:100px;font-size:10px;font-weight:700;}
-.role-admin{background:rgba(255,92,0,0.15);color:#FF5C00;border:1px solid rgba(255,92,0,0.3);}
+.role-admin{background:rgba(16,185,129,0.15);color:#10B981;border:1px solid rgba(16,185,129,0.3);}
 .role-user{background:rgba(96,165,250,0.12);color:#60A5FA;border:1px solid rgba(96,165,250,0.25);}
 .pwd-reveal{font-family:'Space Mono',monospace;font-size:11px;color:#666;cursor:pointer;}
-.pwd-reveal:hover{color:var(--orange);}
+.pwd-reveal:hover{color:var(--green);}
 
 /* Scrollbar */
 ::-webkit-scrollbar{width:5px;}
@@ -491,7 +491,7 @@ body::after{
     <button class="btn btn-sm" onclick="showAddClient()" style="margin-bottom:16px;">+ Nouveau client</button>
     <div id="crm-clients-list"><div style="color:var(--muted);font-size:13px;text-align:center;padding:20px;">Aucun client enregistré</div></div>
     <div id="add-client-form" class="hidden" style="background:var(--bg3);border-radius:10px;padding:16px;margin-top:12px;">
-      <div style="font-size:12px;font-weight:700;margin-bottom:12px;color:var(--orange);">Nouveau client</div>
+      <div style="font-size:12px;font-weight:700;margin-bottom:12px;color:var(--green);">Nouveau client</div>
       <div class="form-group" style="margin-bottom:8px;"><input class="form-input" id="crm-nom" placeholder="Nom"></div>
       <div class="form-group" style="margin-bottom:8px;"><input class="form-input" id="crm-prenom" placeholder="Prénom"></div>
       <div class="form-group" style="margin-bottom:8px;"><input class="form-input" id="crm-tel" placeholder="Téléphone"></div>
@@ -562,8 +562,8 @@ body::after{
           <div><div class="num-lbl">Émissions GES</div><div><span class="num-val" id="numGES">—</span> <span class="num-unit">kg CO₂/m²/an</span></div></div>
         </div>
         <!-- Détail 3CL + Th-CE-Ex -->
-        <div id="detail3CLPanel" class="hidden" style="background:var(--bg3);border:1px solid rgba(255,92,0,0.18);border-radius:10px;padding:14px 16px;margin:12px 0;">
-          <div style="font-size:10px;color:var(--orange);text-transform:uppercase;letter-spacing:0.2em;margin-bottom:12px;font-weight:700;font-family:'Space Mono',monospace;">📐 Croisement 3CL-2021 + Th-CE-Ex</div>
+        <div id="detail3CLPanel" class="hidden" style="background:var(--bg3);border:1px solid rgba(16,185,129,0.18);border-radius:10px;padding:14px 16px;margin:12px 0;">
+          <div style="font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:0.2em;margin-bottom:12px;font-weight:700;font-family:'Space Mono',monospace;">📐 Croisement 3CL-2021 + Th-CE-Ex</div>
           <div class="methods-compare">
             <div class="method-box"><div class="method-name">3CL-2021</div><div class="method-val" id="d3cl_ep3CL">—</div><div class="method-ges" id="d3cl_ges3CL">—</div></div>
             <div class="method-arrow">⟶</div>
@@ -578,8 +578,8 @@ body::after{
             <div style="color:var(--muted);">Ponts thermiques ψ :</div><div id="d3cl_psi" style="color:#FFAB40;font-weight:600;">—</div>
             <div style="color:var(--muted);">Perméabilité n50 :</div><div id="d3cl_n50" style="color:#FFAB40;font-weight:600;">—</div>
             <div style="color:var(--muted);">Rendement saisonnier η :</div><div id="d3cl_eta" style="color:#69F0AE;font-weight:600;">—</div>
-            <div style="color:var(--muted);">EP chauffage :</div><div id="d3cl_Ep_ch" style="color:var(--orange2);font-weight:600;">—</div>
-            <div style="color:var(--muted);">EP eau chaude :</div><div id="d3cl_Ep_ecs" style="color:var(--orange2);font-weight:600;">—</div>
+            <div style="color:var(--muted);">EP chauffage :</div><div id="d3cl_Ep_ch" style="color:var(--green2);font-weight:600;">—</div>
+            <div style="color:var(--muted);">EP eau chaude :</div><div id="d3cl_Ep_ecs" style="color:var(--green2);font-weight:600;">—</div>
           </div>
           <div style="margin-top:10px;font-size:11px;color:#444;line-height:1.6;">Croisement pondéré 3CL-2021 (40%) + Th-CE-Ex (60%). Valeurs indicatives — un DPE certifié RGE reste nécessaire.</div>
         </div>
@@ -607,7 +607,7 @@ body::after{
     <div id="travauxContainer"></div>
     <div class="invest-summary" id="investSummary"></div>
     <div style="margin-top:16px;padding:12px 16px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--muted);line-height:1.7;">
-      ⚠️ Coûts indicatifs avant aides. Aides disponibles : <strong style="color:#60A5FA;">MaPrimeRénov'</strong>, <strong style="color:#60A5FA;">CEE</strong>, <strong style="color:#60A5FA;">éco-PTZ</strong>, <strong style="color:#60A5FA;">TVA 5.5%</strong>. Professionnels <strong style="color:var(--orange2);">RGE</strong> obligatoires.
+      ⚠️ Coûts indicatifs avant aides. Aides disponibles : <strong style="color:#60A5FA;">MaPrimeRénov'</strong>, <strong style="color:#60A5FA;">CEE</strong>, <strong style="color:#60A5FA;">éco-PTZ</strong>, <strong style="color:#60A5FA;">TVA 5.5%</strong>. Professionnels <strong style="color:var(--green2);">RGE</strong> obligatoires.
     </div>
     <div class="mt16 gap-8">
       <button class="btn btn-sm" onclick="exporterDevisDepuisAnalyse()">📋 Générer un devis</button>
@@ -830,7 +830,7 @@ body::after{
             <span id="d_montantTVA" style="font-family:'Space Mono',monospace;">0,00 €</span>
           </div>
           <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;border-top:1px solid var(--border);padding-top:8px;">
-            <span>TOTAL TTC :</span><span id="d_totalTTC" style="color:var(--orange);font-family:'Space Mono',monospace;">0,00 €</span>
+            <span>TOTAL TTC :</span><span id="d_totalTTC" style="color:var(--green);font-family:'Space Mono',monospace;">0,00 €</span>
           </div>
         </div>
         <div class="form-group" style="margin-top:12px;">
@@ -871,8 +871,8 @@ body::after{
     </div>
 
     <!-- Créer utilisateur -->
-    <div style="background:rgba(255,92,0,0.06);border:1px solid rgba(255,92,0,0.15);border-radius:10px;padding:18px;margin-bottom:20px;">
-      <div style="font-size:11px;color:var(--orange);text-transform:uppercase;letter-spacing:0.15em;font-family:'Space Mono',monospace;margin-bottom:14px;">➕ Créer un accès utilisateur</div>
+    <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);border-radius:10px;padding:18px;margin-bottom:20px;">
+      <div style="font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:0.15em;font-family:'Space Mono',monospace;margin-bottom:14px;">➕ Créer un accès utilisateur</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr 120px;gap:10px;align-items:end;">
         <div class="form-group"><label class="form-label">Identifiant</label><input class="form-input" id="nu_login" placeholder="ex: jean.dupont"></div>
         <div class="form-group"><label class="form-label">Mot de passe</label>
@@ -971,7 +971,7 @@ function applyRole(role){
   const navRight = document.querySelector('.nav-right');
   const userBadge = document.createElement('div');
   userBadge.style.cssText='font-size:12px;color:var(--muted);font-family:"Space Mono",monospace;display:flex;align-items:center;gap:8px;';
-  userBadge.innerHTML = `<span style="color:${role==='admin'?'var(--orange)':'#60A5FA'};">●</span> ${currentUser.nom||currentUser.login} <span style="font-size:10px;padding:2px 8px;border-radius:100px;background:${role==='admin'?'rgba(255,92,0,0.12)':'rgba(96,165,250,0.1)'};color:${role==='admin'?'var(--orange)':'#60A5FA'};">${role.toUpperCase()}</span> <button onclick="doLogout()" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:4px 10px;cursor:pointer;margin-left:4px;">⏏ Déconnexion</button>`;
+  userBadge.innerHTML = `<span style="color:${role==='admin'?'var(--green)':'#60A5FA'};">●</span> ${currentUser.nom||currentUser.login} <span style="font-size:10px;padding:2px 8px;border-radius:100px;background:${role==='admin'?'rgba(16,185,129,0.12)':'rgba(96,165,250,0.1)'};color:${role==='admin'?'var(--green)':'#60A5FA'};">${role.toUpperCase()}</span> <button onclick="doLogout()" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:4px 10px;cursor:pointer;margin-left:4px;">⏏ Déconnexion</button>`;
   navRight.insertBefore(userBadge, navRight.firstChild);
 }
 
@@ -1642,7 +1642,7 @@ function renderLignes(){
       <input class="form-input" style="font-size:13px;" placeholder="Description des travaux" value="${l.desc||''}" oninput="lignes[${i}].desc=this.value;updateDocPreview()">
       <input class="form-input" style="font-size:13px;text-align:center;" type="number" value="${l.qte}" min="1" oninput="lignes[${i}].qte=parseFloat(this.value)||1;updateDocPreview()">
       <input class="form-input" style="font-size:13px;text-align:right;" type="number" value="${l.pu}" min="0" oninput="lignes[${i}].pu=parseFloat(this.value)||0;updateDocPreview()">
-      <div style="font-size:13px;color:var(--orange2);text-align:right;font-family:'Space Mono',monospace;">${((l.qte||1)*(l.pu||0)).toLocaleString('fr-FR',{minimumFractionDigits:2})} €</div>
+      <div style="font-size:13px;color:var(--green2);text-align:right;font-family:'Space Mono',monospace;">${((l.qte||1)*(l.pu||0)).toLocaleString('fr-FR',{minimumFractionDigits:2})} €</div>
       <button onclick="removeLigne(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;">✕</button>
     </div>`).join('');
   updateDocPreview();
@@ -1671,7 +1671,7 @@ function updateDocPreview(){
   if(!preview)return;
   preview.innerHTML=`
     <div class="doc-header-line">
-      <div><div class="doc-company" style="color:#FF5C00;">${entrep}</div><div style="font-size:12px;color:#666;margin-top:4px;">${entrepAdr}</div><div style="font-size:12px;color:#666;">SIRET : ${siret||'—'}</div>${rge?`<div style="font-size:12px;color:#666;">N° RGE : ${rge}</div>`:''}</div>
+      <div><div class="doc-company" style="color:#10B981;">${entrep}</div><div style="font-size:12px;color:#666;margin-top:4px;">${entrepAdr}</div><div style="font-size:12px;color:#666;">SIRET : ${siret||'—'}</div>${rge?`<div style="font-size:12px;color:#666;">N° RGE : ${rge}</div>`:''}</div>
       <div><div class="doc-type">${type}</div><div class="doc-num">N° ${num}</div><div class="doc-num">Date : ${date}</div><div class="doc-num">${type==='DEVIS'?'Valide 30 jours':''}</div></div>
     </div>
     <div class="doc-parties">
@@ -1688,7 +1688,7 @@ function updateDocPreview(){
       <div class="doc-totals-box">
         <div class="doc-total-row"><span>Sous-total HT :</span><span>${fmt(sousTotal)}</span></div>
         <div class="doc-total-row"><span>TVA ${tva}% :</span><span>${fmt(montantTVA)}</span></div>
-        <div class="doc-total-final"><span>TOTAL TTC :</span><span style="color:#FF5C00;">${fmt(totalTTC)}</span></div>
+        <div class="doc-total-final"><span>TOTAL TTC :</span><span style="color:#10B981;">${fmt(totalTTC)}</span></div>
       </div>
     </div>
     <div class="doc-footer">${mentions}<br><br>© 2026 — Droits Réservés à AYOUB TARHI · NYX Plateforme Énergétique</div>`;
@@ -1737,7 +1737,7 @@ async function genererPDF(){
   const b=beneficiaireData||{};
   const r=analysisResult;
   el.innerHTML=`<div style="background:#f5f5f5;padding:28px;font-family:sans-serif;color:#1a1a1a;">
-    <h2 style="color:#FF5C00;margin-bottom:4px;">Rapport NYX — Analyse Énergétique</h2>
+    <h2 style="color:#10B981;margin-bottom:4px;">Rapport NYX — Analyse Énergétique</h2>
     <p style="color:#666;font-size:13px;">© 2026 Droits Réservés à AYOUB TARHI · ${new Date().toLocaleDateString('fr-FR')}</p>
     <hr style="margin:16px 0;border-color:#ddd;">
     <table style="font-size:14px;width:100%;border-collapse:collapse;">
