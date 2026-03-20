@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NYX — Plateforme Énergétique</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<style>
+:root {
+  --bg:      #070707;
+  --bg2:     #0f0f0f;
+  --bg3:     #161616;
+  --bg4:     #1e1e1e;
+  --border:  rgba(255,255,255,0.07);
+  --orange:  #FF5C00;
+  --orange2: #FF8A3D;
+  --red:     #C0001A;
+  --text:    #F0EDE8;
+  --muted:   #666;
+  --A:#00C853;--B:#69F0AE;--C:#FFD740;--D:#FFAB40;--E:#FF6D00;--F:#FF1744;--G:#B71C1C;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden;}
+
+/* ── BACKGROUND JOKER ── */
+body::before{
+  content:'WHY SO SERIOUS?';
+  position:fixed;top:15%;left:-2%;
+  font-family:'Bebas Neue',cursive;font-size:clamp(50px,9vw,110px);
+  color:rgba(160,0,0,0.055);transform:rotate(-6deg);
+  white-space:nowrap;pointer-events:none;z-index:0;letter-spacing:4px;user-select:none;
+}
+body::after{
+  content:'WHY SO SERIOUS?';
+  position:fixed;bottom:4%;right:1%;
+  font-family:'Bebas Neue',cursive;font-size:clamp(28px,4.5vw,65px);
+  color:rgba(160,0,0,0.065);transform:rotate(-8deg);
+  white-space:nowrap;pointer-events:none;z-index:0;user-select:none;
+}
+.bg-scar{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.bg-scar::before{
+  content:'';position:absolute;top:-5%;left:44%;width:4px;height:115vh;
+  background:linear-gradient(180deg,transparent 0%,rgba(160,0,0,0.09)15%,rgba(180,0,0,0.17)40%,rgba(150,0,0,0.11)75%,transparent 100%);
+  transform:rotate(3deg);filter:blur(2px);
+}
+.bg-glow{
+  position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 600px 400px at 8% 15%,rgba(140,0,0,0.14) 0%,transparent 60%),
+    radial-gradient(ellipse 500px 600px at 92% 80%,rgba(100,0,0,0.12) 0%,transparent 55%),
+    radial-gradient(ellipse 140% 140% at 50% 50%,transparent 30%,rgba(0,0,0,0.94) 100%);
+}
+
+/* ── HEADER ── */
+.header{
+  position:sticky;top:0;z-index:100;
+  background:rgba(7,7,7,0.95);backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(160,0,0,0.15);
+  padding:0 32px;
+  display:flex;align-items:center;gap:0;
+}
+.logo{
+  display:flex;align-items:center;gap:12px;
+  padding:18px 32px 18px 0;
+  border-right:1px solid var(--border);
+  margin-right:24px;flex-shrink:0;
+}
+.logo-text{
+  font-family:'Bebas Neue',cursive;
+  font-size:32px;letter-spacing:0.2em;
+  color:var(--orange);
+  text-shadow:0 0 20px rgba(255,92,0,0.4);
+}
+.logo-sub{font-size:9px;color:var(--muted);letter-spacing:0.3em;text-transform:uppercase;margin-top:-4px;}
+
+/* ── NAV TABS ── */
+.nav-tabs{display:flex;gap:0;flex:1;}
+.nav-tab{
+  padding:20px 22px;font-size:12px;font-weight:600;
+  letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--muted);cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:all 0.2s;white-space:nowrap;
+  display:flex;align-items:center;gap:8px;
+}
+.nav-tab:hover{color:var(--text);}
+.nav-tab.active{color:var(--orange);border-bottom-color:var(--orange);}
+.nav-tab .tab-icon{font-size:14px;}
+
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.btn-crm{
+  padding:8px 18px;border-radius:6px;font-size:12px;font-weight:600;
+  letter-spacing:0.05em;cursor:pointer;transition:all 0.2s;
+  background:rgba(255,92,0,0.12);border:1px solid rgba(255,92,0,0.3);
+  color:var(--orange);
+}
+.btn-crm:hover{background:rgba(255,92,0,0.2);}
+.btn-crm.active{background:var(--orange);color:white;}
+
+/* ── MAIN LAYOUT ── */
+.main{position:relative;z-index:1;padding:32px;max-width:1200px;margin:0 auto;}
+.tab-content{display:none;animation:fadeIn 0.3s ease;}
+.tab-content.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* ── CRM SIDEBAR ── */
+.crm-overlay{
+  position:fixed;top:0;right:-420px;width:420px;height:100vh;
+  background:var(--bg2);border-left:1px solid rgba(160,0,0,0.2);
+  z-index:200;transition:right 0.35s cubic-bezier(0.4,0,0.2,1);
+  overflow-y:auto;
+}
+.crm-overlay.open{right:0;}
+.crm-header{
+  padding:24px;border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+  position:sticky;top:0;background:var(--bg2);z-index:1;
+}
+.crm-title{font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:0.15em;color:var(--orange);}
+.crm-close{font-size:20px;cursor:pointer;color:var(--muted);transition:color 0.2s;}
+.crm-close:hover{color:var(--text);}
+.crm-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);}
+.crm-tab{
+  flex:1;padding:12px;text-align:center;font-size:11px;font-weight:600;
+  letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;color:var(--muted);
+  border-bottom:2px solid transparent;transition:all 0.2s;
+}
+.crm-tab.active{color:var(--orange);border-bottom-color:var(--orange);}
+.crm-section{padding:20px;display:none;}
+.crm-section.active{display:block;}
+
+/* ── CARDS ── */
+.card{
+  background:rgba(15,15,15,0.95);border:1px solid var(--border);
+  border-radius:14px;padding:26px;margin-bottom:22px;
+  box-shadow:0 4px 24px rgba(0,0,0,0.4);
+}
+.card-title{
+  font-family:'Space Mono',monospace;font-size:10px;
+  letter-spacing:0.25em;color:var(--orange);text-transform:uppercase;
+  margin-bottom:20px;display:flex;align-items:center;gap:10px;
+}
+.card-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* ── DROP ZONE ── */
+.drop-zone{
+  border:2px dashed rgba(255,92,0,0.3);border-radius:12px;
+  padding:48px 32px;text-align:center;background:var(--bg3);
+  cursor:pointer;transition:all 0.3s;margin-bottom:20px;
+}
+.drop-zone:hover,.drop-zone.dragover{
+  border-color:var(--orange);background:rgba(255,92,0,0.06);
+}
+
+/* ── BUTTONS ── */
+.btn{
+  background:linear-gradient(135deg,var(--orange),var(--orange2));
+  color:white;border:none;padding:12px 28px;border-radius:8px;
+  font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;
+  cursor:pointer;transition:all 0.2s;display:inline-flex;align-items:center;gap:8px;
+}
+.btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 20px rgba(255,92,0,0.3);}
+.btn:disabled{opacity:0.4;cursor:not-allowed;transform:none;}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);}
+.btn-ghost:hover:not(:disabled){border-color:var(--orange);color:var(--orange);box-shadow:none;}
+.btn-danger{background:linear-gradient(135deg,#C0001A,#FF1744);}
+.btn-sm{padding:8px 16px;font-size:12px;}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.2);border-top-color:white;border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── CLASSE DISPLAY ── */
+.classe-hero{text-align:center;padding:28px;background:var(--bg3);border-radius:12px;margin-bottom:16px;}
+.classe-letter{font-family:'Bebas Neue',cursive;font-size:96px;line-height:1;letter-spacing:0.05em;}
+.cl-A{color:var(--A);text-shadow:0 0 40px var(--A);}
+.cl-B{color:var(--B);text-shadow:0 0 40px var(--B);}
+.cl-C{color:var(--C);text-shadow:0 0 40px var(--C);}
+.cl-D{color:var(--D);text-shadow:0 0 40px var(--D);}
+.cl-E{color:var(--E);text-shadow:0 0 40px var(--E);}
+.cl-F{color:var(--F);text-shadow:0 0 40px var(--F);}
+.cl-G{color:var(--G);text-shadow:0 0 40px var(--G);}
+
+/* ── DPE METER ── */
+.dpe-row{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.dpe-box{width:32px;height:26px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#111;flex-shrink:0;}
+.dpe-bar{height:22px;border-radius:0 4px 4px 0;display:flex;align-items:center;padding-left:8px;font-size:11px;color:rgba(0,0,0,0.7);font-weight:600;}
+.dpe-row.active .dpe-box{box-shadow:0 0 0 2px var(--orange);}
+.dpe-row:not(.active) .dpe-bar{opacity:0.28;}
+
+/* ── NIVEAU BADGE ── */
+.niveau-panel{background:var(--bg3);border-radius:10px;padding:16px 18px;margin:12px 0;border:1px solid var(--border);}
+.niveau-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border-radius:100px;font-size:13px;font-weight:700;}
+.niveau-or{background:linear-gradient(135deg,#B8860B,#FFD700,#DAA520);color:#1a1a00;box-shadow:0 0 14px rgba(255,215,0,0.25);}
+.niveau-argent{background:linear-gradient(135deg,#888,#C0C0C0,#A8A8A8);color:#1a1a1a;}
+.niveau-bronze{background:linear-gradient(135deg,#8B4513,#CD7F32,#A0522D);color:#fff8f0;}
+
+/* ── DETECTION GRID ── */
+.det-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:12px;}
+.det-item{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.det-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;font-family:'Space Mono',monospace;}
+.det-val{font-size:14px;font-weight:600;}
+.det-st{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:100px;margin-top:4px;}
+.st-good{background:rgba(0,200,83,0.12);color:#00C853;}
+.st-warn{background:rgba(255,215,64,0.12);color:#FFD740;}
+.st-bad{background:rgba(255,23,68,0.12);color:#FF1744;}
+.st-nd{background:rgba(255,255,255,0.04);color:var(--muted);}
+
+/* ── NUM PANEL ── */
+.num-panel{display:flex;flex-wrap:wrap;gap:20px;background:var(--bg3);border-radius:10px;padding:14px 18px;margin:12px 0;}
+.num-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;font-family:'Space Mono',monospace;}
+.num-val{font-size:20px;font-weight:700;color:var(--orange2);font-family:'Space Mono',monospace;}
+.num-unit{font-size:11px;color:var(--muted);}
+
+/* ── SCENARIO CARDS ── */
+.travaux-section-title{font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--orange);margin-bottom:12px;display:flex;align-items:center;gap:10px;}
+.travaux-section-title::after{content:'';flex:1;height:1px;background:rgba(255,92,0,0.15);}
+.travail-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:10px;}
+.travail-card.obligatoire{border-left:3px solid var(--orange);}
+.travail-card.recommande{border-left:3px solid #FFD740;}
+.travail-card.optionnel{border-left:3px solid var(--muted);}
+.travail-header{display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;}
+.travail-icon{font-size:20px;flex-shrink:0;}
+.travail-title{font-size:14px;font-weight:700;flex:1;}
+.travail-badge{font-size:10px;padding:2px 8px;border-radius:100px;font-weight:700;flex-shrink:0;}
+.badge-oblig{background:rgba(255,92,0,0.15);color:var(--orange);border:1px solid rgba(255,92,0,0.3);}
+.badge-reco{background:rgba(255,215,64,0.12);color:#FFD740;border:1px solid rgba(255,215,64,0.25);}
+.badge-opt{background:rgba(255,255,255,0.05);color:var(--muted);border:1px solid var(--border);}
+.travail-desc{font-size:12px;color:#888;line-height:1.6;margin-bottom:8px;}
+.travail-meta{display:flex;flex-wrap:wrap;gap:8px;}
+.travail-meta-item{font-size:11px;padding:3px 10px;border-radius:6px;background:var(--bg4);}
+.meta-gain{color:#69F0AE;}.meta-cout{color:#FFAB40;}.meta-aide{color:#60A5FA;}.meta-classe{color:var(--orange);font-weight:700;}
+
+/* ── SAUT CARDS ── */
+.saut-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px;}
+.saut-head{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.cls-box{width:38px;height:38px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',cursive;font-size:20px;color:#111;}
+.saut-arrow{color:var(--orange);font-size:18px;}
+.saut-cost{margin-left:auto;color:var(--orange2);font-weight:700;font-size:14px;font-family:'Space Mono',monospace;}
+.saut-body{padding:12px 16px;display:flex;flex-direction:column;gap:6px;}
+.saut-line{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:#888;}
+.gain-tag{margin-left:auto;flex-shrink:0;font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(0,200,83,0.1);color:#69F0AE;font-weight:700;}
+
+/* ── INVEST SUMMARY ── */
+.invest-summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:18px;}
+.invest-box{background:var(--bg3);border-radius:10px;padding:14px;text-align:center;}
+.invest-val{font-size:22px;font-weight:700;color:var(--orange2);font-family:'Space Mono',monospace;}
+.invest-lbl{font-size:11px;color:var(--muted);margin-top:4px;}
+
+/* ── BENE GRID ── */
+.bene-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;}
+.bene-item{background:var(--bg3);border-radius:8px;padding:12px 14px;}
+.bene-key{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;font-family:'Space Mono',monospace;margin-bottom:2px;}
+.bene-val{font-size:14px;font-weight:500;}
+
+/* ── FORM INPUTS ── */
+.form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-bottom:20px;}
+.form-group{display:flex;flex-direction:column;gap:5px;}
+.form-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-family:'Space Mono',monospace;}
+.form-input,.form-select,.form-textarea{
+  background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;
+  padding:10px 14px;transition:border-color 0.2s;width:100%;
+}
+.form-input:focus,.form-select:focus,.form-textarea:focus{outline:none;border-color:rgba(255,92,0,0.4);}
+.form-select option{background:var(--bg3);}
+.form-textarea{resize:vertical;min-height:80px;}
+
+/* ── CRM STYLES ── */
+.client-card{
+  background:var(--bg3);border:1px solid var(--border);border-radius:10px;
+  padding:14px 16px;margin-bottom:10px;cursor:pointer;
+  transition:border-color 0.2s;
+}
+.client-card:hover,.client-card.selected{border-color:rgba(255,92,0,0.4);}
+.client-name{font-size:15px;font-weight:600;margin-bottom:2px;}
+.client-meta{font-size:12px;color:var(--muted);}
+.client-badge{
+  display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;
+  background:rgba(255,92,0,0.1);color:var(--orange);margin-top:6px;
+}
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px;}
+.stat-box{background:var(--bg3);border-radius:10px;padding:16px;text-align:center;}
+.stat-val{font-size:28px;font-weight:700;color:var(--orange);font-family:'Space Mono',monospace;}
+.stat-lbl{font-size:11px;color:var(--muted);margin-top:2px;}
+.chip-row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;}
+.chip{font-size:11px;padding:3px 10px;border-radius:100px;border:1px solid var(--border);color:var(--muted);}
+
+/* ── DEVIS/FACTURE ── */
+.doc-preview{
+  background:white;color:#1a1a1a;border-radius:12px;padding:40px;
+  margin-top:20px;font-family:'DM Sans',sans-serif;
+}
+.doc-header-line{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;}
+.doc-company{font-size:22px;font-weight:700;color:var(--orange);}
+.doc-type{font-size:28px;font-weight:700;color:#1a1a1a;text-align:right;}
+.doc-num{font-size:13px;color:#666;text-align:right;}
+.doc-parties{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:28px;}
+.doc-party-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#999;margin-bottom:6px;}
+.doc-party-val{font-size:14px;line-height:1.6;color:#333;}
+.doc-table{width:100%;border-collapse:collapse;margin:20px 0;}
+.doc-table th{background:#f5f5f5;padding:10px 14px;text-align:left;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#666;}
+.doc-table td{padding:10px 14px;border-bottom:1px solid #eee;font-size:14px;}
+.doc-table .amount{text-align:right;font-family:monospace;font-weight:600;}
+.doc-totals{margin-top:16px;display:flex;justify-content:flex-end;}
+.doc-totals-box{width:260px;}
+.doc-total-row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px;border-bottom:1px solid #eee;}
+.doc-total-final{display:flex;justify-content:space-between;padding:10px 0;font-size:17px;font-weight:700;}
+.doc-footer{margin-top:40px;padding-top:20px;border-top:1px solid #eee;font-size:12px;color:#999;text-align:center;}
+
+/* ── DETAIL 3CL PANEL ── */
+.methods-compare{display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap;}
+.method-box{background:var(--bg4);border-radius:8px;padding:10px 14px;flex:1;min-width:110px;}
+.method-name{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;font-family:'Space Mono',monospace;}
+.method-val{font-size:18px;font-weight:700;color:#FFAB40;font-family:'Space Mono',monospace;margin-top:4px;}
+.method-ges{font-size:12px;color:var(--muted);}
+.method-box.croise{background:rgba(255,92,0,0.08);border:1px solid rgba(255,92,0,0.25);}
+.method-box.croise .method-val{color:var(--orange);}
+.method-arrow{display:flex;align-items:center;color:var(--orange);font-size:18px;flex-shrink:0;}
+
+/* ── SCENARIO INTRO ── */
+.scenario-intro{
+  background:linear-gradient(135deg,rgba(255,92,0,0.08),rgba(255,92,0,0.03));
+  border:1px solid rgba(255,92,0,0.2);border-radius:12px;padding:18px 22px;margin-bottom:20px;
+}
+.scenario-intro h3{color:var(--orange);margin-bottom:6px;font-size:14px;}
+.scenario-intro p{color:#888;font-size:13px;line-height:1.7;}
+
+/* ── FOOTER ── */
+.footer{
+  position:relative;z-index:1;text-align:center;padding:24px;
+  border-top:1px solid var(--border);
+  font-size:11px;color:var(--muted);letter-spacing:0.1em;
+  font-family:'Space Mono',monospace;
+}
+.footer span{color:var(--orange);}
+
+/* ── TABS LAYOUT ── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;}
+@media(max-width:768px){.two-col{grid-template-columns:1fr;}.header{padding:0 16px;}.main{padding:16px;}}
+
+.hidden{display:none!important;}
+.mt16{margin-top:16px;}
+.text-center{text-align:center;}
+.gap-8{display:flex;gap:8px;flex-wrap:wrap;}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:var(--bg2);}
+::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px;}
+</style>
+</head>
+<body>
+<div class="bg-glow"></div>
+<div class="bg-scar"></div>
+
+<!-- ══════════════════════════════════════════════════════
+     HEADER + NAV
+══════════════════════════════════════════════════════ -->
+<header class="header">
+  <div class="logo">
+    <div>
+      <div class="logo-text">NYX</div>
+      <div class="logo-sub">Plateforme Énergétique</div>
+    </div>
+  </div>
+  <nav class="nav-tabs">
+    <div class="nav-tab active" onclick="switchTab('dpe')" data-tab="dpe">
+      <span class="tab-icon">🔍</span> DPE Intelligent
+    </div>
+    <div class="nav-tab" onclick="switchTab('manuel')" data-tab="manuel">
+      <span class="tab-icon">✏️</span> Saisie Manuelle
+    </div>
+    <div class="nav-tab" onclick="switchTab('devis')" data-tab="devis">
+      <span class="tab-icon">📋</span> Devis / Facture
+    </div>
+  </nav>
+  <div class="nav-right">
+    <button class="btn-crm" onclick="toggleCRM()" id="btnCRM">👥 CRM</button>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════════════════
+     CRM SIDEBAR
+══════════════════════════════════════════════════════ -->
+<div class="crm-overlay" id="crmOverlay">
+  <div class="crm-header">
+    <div class="crm-title">CRM — NYX</div>
+    <div class="crm-close" onclick="toggleCRM()">✕</div>
+  </div>
+  <div class="crm-tabs">
+    <div class="crm-tab active" onclick="switchCRMTab('dashboard')">📊 Dashboard</div>
+    <div class="crm-tab" onclick="switchCRMTab('clients')">👥 Clients</div>
+    <div class="crm-tab" onclick="switchCRMTab('historique')">📁 Historique</div>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="crm-section active" id="crm-dashboard">
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-val" id="stat-clients">0</div><div class="stat-lbl">Clients</div></div>
+      <div class="stat-box"><div class="stat-val" id="stat-analyses">0</div><div class="stat-lbl">Analyses</div></div>
+      <div class="stat-box"><div class="stat-val" id="stat-devis">0</div><div class="stat-lbl">Devis</div></div>
+      <div class="stat-box"><div class="stat-val" id="stat-ca">0€</div><div class="stat-lbl">CA Devis</div></div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:0.1em;">Dernières analyses</div>
+    <div id="crm-recent-list"><div style="color:var(--muted);font-size:13px;text-align:center;padding:20px;">Aucune analyse pour l'instant</div></div>
+  </div>
+
+  <!-- Clients -->
+  <div class="crm-section" id="crm-clients">
+    <button class="btn btn-sm" onclick="showAddClient()" style="margin-bottom:16px;">+ Nouveau client</button>
+    <div id="crm-clients-list"><div style="color:var(--muted);font-size:13px;text-align:center;padding:20px;">Aucun client enregistré</div></div>
+    <div id="add-client-form" class="hidden" style="background:var(--bg3);border-radius:10px;padding:16px;margin-top:12px;">
+      <div style="font-size:12px;font-weight:700;margin-bottom:12px;color:var(--orange);">Nouveau client</div>
+      <div class="form-group" style="margin-bottom:8px;"><input class="form-input" id="crm-nom" placeholder="Nom"></div>
+      <div class="form-group" style="margin-bottom:8px;"><input class="form-input" id="crm-prenom" placeholder="Prénom"></div>
+      <div class="form-group" style="margin-bottom:8px;"><input class="form-input" id="crm-tel" placeholder="Téléphone"></div>
+      <div class="form-group" style="margin-bottom:8px;"><input class="form-input" id="crm-email" placeholder="Email"></div>
+      <div class="form-group" style="margin-bottom:12px;"><input class="form-input" id="crm-adresse" placeholder="Adresse"></div>
+      <div class="gap-8">
+        <button class="btn btn-sm" onclick="saveClient()">Enregistrer</button>
+        <button class="btn btn-sm btn-ghost" onclick="hideAddClient()">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Historique -->
+  <div class="crm-section" id="crm-historique">
+    <div id="crm-historique-list"><div style="color:var(--muted);font-size:13px;text-align:center;padding:20px;">Aucun historique</div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     MAIN CONTENT
+══════════════════════════════════════════════════════ -->
+<main class="main">
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ONGLET 1 — DPE INTELLIGENT (PDF)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="tab-content active" id="tab-dpe">
+
+  <!-- Upload -->
+  <div class="card">
+    <div class="card-title">📎 Charger la visite technique</div>
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <div style="font-size:44px;margin-bottom:12px;">📄</div>
+      <p style="font-size:17px;font-weight:500;" id="dropText">Glissez-déposez votre PDF ici</p>
+      <p style="color:var(--muted);font-size:13px;margin-top:4px;" id="dropSub">ou cliquez pour sélectionner — PDF, JPG, PNG</p>
+      <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="handleFileSelect(this.files[0])">
+    </div>
+    <div class="text-center">
+      <button class="btn hidden" id="btnAnalyser" onclick="analyserDocument()">
+        <span class="spinner hidden" id="loadingSpinner"></span>
+        <span id="btnText">🔍 Analyser la visite technique</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Bénéficiaire -->
+  <div class="card hidden" id="beneficiaireCard">
+    <div class="card-title">👤 Bénéficiaire</div>
+    <div class="bene-grid" id="beneGrid"></div>
+    <div class="mt16 gap-8">
+      <button class="btn btn-sm btn-ghost" onclick="saveClientFromAnalysis()">💾 Enregistrer dans le CRM</button>
+    </div>
+  </div>
+
+  <!-- Résultat classe -->
+  <div class="card hidden" id="resultCard">
+    <div class="card-title">🎯 Classe Énergétique Initiale</div>
+    <div class="two-col">
+      <div>
+        <div class="classe-hero">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:8px;font-family:'Space Mono',monospace;">Classe initiale estimée</div>
+          <div class="classe-letter" id="classeLetter">?</div>
+          <div style="font-size:18px;color:var(--muted);margin-top:8px;font-family:'Space Mono',monospace;" id="scoreNum">— / 100</div>
+          <div style="font-size:12px;color:#555;margin-top:6px;" id="methodeLabel"></div>
+        </div>
+        <div class="num-panel hidden" id="numPanel">
+          <div><div class="num-lbl">Énergie primaire</div><div><span class="num-val" id="numEP">—</span> <span class="num-unit">kWh EP/m²/an</span></div></div>
+          <div><div class="num-lbl">Émissions GES</div><div><span class="num-val" id="numGES">—</span> <span class="num-unit">kg CO₂/m²/an</span></div></div>
+        </div>
+        <!-- Détail 3CL + Th-CE-Ex -->
+        <div id="detail3CLPanel" class="hidden" style="background:var(--bg3);border:1px solid rgba(255,92,0,0.18);border-radius:10px;padding:14px 16px;margin:12px 0;">
+          <div style="font-size:10px;color:var(--orange);text-transform:uppercase;letter-spacing:0.2em;margin-bottom:12px;font-weight:700;font-family:'Space Mono',monospace;">📐 Croisement 3CL-2021 + Th-CE-Ex</div>
+          <div class="methods-compare">
+            <div class="method-box"><div class="method-name">3CL-2021</div><div class="method-val" id="d3cl_ep3CL">—</div><div class="method-ges" id="d3cl_ges3CL">—</div></div>
+            <div class="method-arrow">⟶</div>
+            <div class="method-box"><div class="method-name">Th-CE-Ex</div><div class="method-val" id="d3cl_epThCEEx">—</div><div class="method-ges" id="d3cl_gesThCEEx">—</div></div>
+            <div class="method-arrow">⟶</div>
+            <div class="method-box croise"><div class="method-name">Résultat</div><div class="method-val" id="d3cl_epCroise">—</div><div class="method-ges" id="d3cl_gesCroise">—</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;margin-top:10px;">
+            <div style="color:var(--muted);">Surface / Occupants :</div><div id="d3cl_surface" style="font-weight:600;">—</div>
+            <div style="color:var(--muted);">Bbio :</div><div id="d3cl_Ubat" style="color:#FFAB40;font-weight:600;">—</div>
+            <div style="color:var(--muted);">Besoins chauffage nets :</div><div id="d3cl_Bch" style="color:#FFAB40;font-weight:600;">—</div>
+            <div style="color:var(--muted);">Ponts thermiques ψ :</div><div id="d3cl_psi" style="color:#FFAB40;font-weight:600;">—</div>
+            <div style="color:var(--muted);">Perméabilité n50 :</div><div id="d3cl_n50" style="color:#FFAB40;font-weight:600;">—</div>
+            <div style="color:var(--muted);">Rendement saisonnier η :</div><div id="d3cl_eta" style="color:#69F0AE;font-weight:600;">—</div>
+            <div style="color:var(--muted);">EP chauffage :</div><div id="d3cl_Ep_ch" style="color:var(--orange2);font-weight:600;">—</div>
+            <div style="color:var(--muted);">EP eau chaude :</div><div id="d3cl_Ep_ecs" style="color:var(--orange2);font-weight:600;">—</div>
+          </div>
+          <div style="margin-top:10px;font-size:11px;color:#444;line-height:1.6;">Croisement pondéré 3CL-2021 (40%) + Th-CE-Ex (60%). Valeurs indicatives — un DPE certifié RGE reste nécessaire.</div>
+        </div>
+        <!-- Niveau d'analyse -->
+        <div class="niveau-panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;font-family:'Space Mono',monospace;">📊 Niveau d'analyse</span>
+            <div class="niveau-badge" id="niveauBadge">—</div>
+          </div>
+          <div style="font-size:12px;color:#666;line-height:1.6;" id="niveauMethode"></div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;" id="niveauEquipements"></div>
+        </div>
+      </div>
+      <div class="dpe-meter" id="dpeMeter"></div>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+    <div class="card-title" style="margin-top:0;">🔍 Diagnostic des équipements</div>
+    <div class="det-grid" id="detGrid"></div>
+  </div>
+
+  <!-- Scénario rénovation -->
+  <div class="card hidden" id="scenarioCard">
+    <div class="card-title">🔨 Scénario Complet de Rénovation</div>
+    <div class="scenario-intro" id="scenarioIntro"></div>
+    <div id="travauxContainer"></div>
+    <div class="invest-summary" id="investSummary"></div>
+    <div style="margin-top:16px;padding:12px 16px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--muted);line-height:1.7;">
+      ⚠️ Coûts indicatifs avant aides. Aides disponibles : <strong style="color:#60A5FA;">MaPrimeRénov'</strong>, <strong style="color:#60A5FA;">CEE</strong>, <strong style="color:#60A5FA;">éco-PTZ</strong>, <strong style="color:#60A5FA;">TVA 5.5%</strong>. Professionnels <strong style="color:var(--orange2);">RGE</strong> obligatoires.
+    </div>
+    <div class="mt16 gap-8">
+      <button class="btn btn-sm" onclick="exporterDevisDepuisAnalyse()">📋 Générer un devis</button>
+      <button class="btn btn-sm btn-ghost" onclick="genererPDF()">📥 Télécharger PDF</button>
+    </div>
+  </div>
+
+  <!-- Sauts de classes -->
+  <div class="card hidden" id="sautsCard">
+    <div class="card-title">📈 Sauts de Classes — Par Étapes</div>
+    <div id="sautsContainer"></div>
+  </div>
+
+</div><!-- /tab-dpe -->
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ONGLET 2 — SAISIE MANUELLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="tab-content" id="tab-manuel">
+  <div class="card">
+    <div class="card-title">👤 Informations du bénéficiaire</div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Nom</label><input class="form-input" id="m_nom" placeholder="NOM"></div>
+      <div class="form-group"><label class="form-label">Prénom</label><input class="form-input" id="m_prenom" placeholder="Prénom"></div>
+      <div class="form-group"><label class="form-label">Téléphone</label><input class="form-input" id="m_tel" placeholder="06 00 00 00 00"></div>
+      <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="m_email" placeholder="email@exemple.fr"></div>
+      <div class="form-group" style="grid-column:span 2;"><label class="form-label">Adresse</label><input class="form-input" id="m_adresse" placeholder="1 rue de la Paix"></div>
+      <div class="form-group"><label class="form-label">Code Postal</label><input class="form-input" id="m_cp" placeholder="75001"></div>
+      <div class="form-group"><label class="form-label">Ville</label><input class="form-input" id="m_ville" placeholder="Paris"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🏠 Caractéristiques du logement</div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Surface habitable (m²)</label><input class="form-input" id="m_surface" type="number" placeholder="100"></div>
+      <div class="form-group"><label class="form-label">Année de construction</label><input class="form-input" id="m_annee" type="number" placeholder="1975"></div>
+      <div class="form-group"><label class="form-label">Type de bien</label>
+        <select class="form-select" id="m_type"><option value="">Sélectionner</option><option>Maison individuelle</option><option>Appartement</option><option>Immeuble</option></select></div>
+      <div class="form-group"><label class="form-label">Nombre de niveaux chauffés</label><input class="form-input" id="m_niveaux" type="number" placeholder="2"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🔥 Systèmes énergétiques</div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Chauffage principal</label>
+        <select class="form-select" id="m_chauffage">
+          <option value="Non détecté">Non renseigné</option>
+          <option value="PAC">Pompe à chaleur (PAC)</option>
+          <option value="Gaz condensation">Gaz condensation</option>
+          <option value="Bois/granulés">Poêle à bois / Granulés</option>
+          <option value="Gaz ancien">Chaudière gaz ancienne</option>
+          <option value="Fioul">Chaudière fioul</option>
+          <option value="Électrique">Radiateurs électriques</option>
+        </select></div>
+      <div class="form-group"><label class="form-label">Eau chaude sanitaire</label>
+        <select class="form-select" id="m_ecs">
+          <option value="Non détecté">Non renseigné</option>
+          <option value="Thermodynamique">Ballon thermodynamique</option>
+          <option value="Solaire">Chauffe-eau solaire</option>
+          <option value="Électrique">Ballon électrique</option>
+          <option value="Gaz">Chauffe-eau gaz</option>
+        </select></div>
+      <div class="form-group"><label class="form-label">Ventilation</label>
+        <select class="form-select" id="m_vmc">
+          <option value="Naturelle">Aucune / Naturelle</option>
+          <option value="VMC simple flux">VMC simple flux</option>
+          <option value="VMC double flux">VMC double flux</option>
+        </select></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🧱 Isolation de l'enveloppe</div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Isolation des murs</label>
+        <select class="form-select" id="m_murs">
+          <option value="Non détecté">Non renseigné</option>
+          <option value="ITE">ITE — Isolation par l'extérieur</option>
+          <option value="ITI">ITI — Isolation par l'intérieur</option>
+          <option value="Isolés">Isolés (autre)</option>
+          <option value="Non isolés">Non isolés</option>
+        </select></div>
+      <div class="form-group"><label class="form-label">Isolation des combles</label>
+        <select class="form-select" id="m_combles">
+          <option value="Non détecté">Non renseigné</option>
+          <option value="Très bien isolés">Très bien isolés (R≥7)</option>
+          <option value="Isolés">Isolés</option>
+          <option value="Non isolés">Non isolés</option>
+        </select></div>
+      <div class="form-group"><label class="form-label">Plancher bas</label>
+        <select class="form-select" id="m_plancher">
+          <option value="Non détecté">Non renseigné</option>
+          <option value="Isolé">Isolé</option>
+          <option value="Non isolé">Non isolé (garage/cave)</option>
+        </select></div>
+      <div class="form-group"><label class="form-label">Type de fenêtres</label>
+        <select class="form-select" id="m_fenetres">
+          <option value="Non détecté">Non renseigné</option>
+          <option value="Triple vitrage">Triple vitrage</option>
+          <option value="Double vitrage récent">Double vitrage récent (-10 ans)</option>
+          <option value="Double vitrage ancien">Double vitrage ancien (+10 ans)</option>
+          <option value="Simple vitrage">Simple vitrage</option>
+        </select></div>
+      <div class="form-group"><label class="form-label">Volets</label>
+        <select class="form-select" id="m_volets">
+          <option value="Non détecté">Non renseigné</option>
+          <option value="Volets roulants">Volets roulants</option>
+          <option value="Volets battants">Volets battants</option>
+          <option value="Aucun">Aucun volet</option>
+        </select></div>
+    </div>
+  </div>
+
+  <div class="text-center" style="margin-bottom:30px;">
+    <button class="btn" onclick="analyserManuel()">⚡ Calculer la classe énergétique</button>
+  </div>
+
+  <!-- Résultats saisie manuelle (mêmes IDs avec préfixe m_) -->
+  <div class="card hidden" id="m_resultCard">
+    <div class="card-title">🎯 Résultat — Saisie Manuelle</div>
+    <div class="two-col">
+      <div>
+        <div class="classe-hero">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:8px;font-family:'Space Mono',monospace;">Classe estimée</div>
+          <div class="classe-letter" id="m_classeLetter">?</div>
+          <div style="font-size:18px;color:var(--muted);margin-top:8px;font-family:'Space Mono',monospace;" id="m_scoreNum">—</div>
+        </div>
+        <div class="num-panel" id="m_numPanel">
+          <div><div class="num-lbl">EP (3CL+Th-CE-Ex)</div><div><span class="num-val" id="m_numEP">—</span> <span class="num-unit">kWh EP/m²/an</span></div></div>
+          <div><div class="num-lbl">GES</div><div><span class="num-val" id="m_numGES">—</span> <span class="num-unit">kg CO₂/m²/an</span></div></div>
+        </div>
+        <div class="niveau-panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;font-family:'Space Mono',monospace;">Niveau d'analyse</span>
+            <div class="niveau-badge" id="m_niveauBadge">—</div>
+          </div>
+          <div style="font-size:12px;color:#666;" id="m_niveauMethode"></div>
+        </div>
+      </div>
+      <div class="dpe-meter" id="m_dpeMeter"></div>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+    <div class="card-title" style="margin-top:0;">🔍 Diagnostic</div>
+    <div class="det-grid" id="m_detGrid"></div>
+  </div>
+
+  <div class="card hidden" id="m_scenarioCard">
+    <div class="card-title">🔨 Plan de Rénovation</div>
+    <div class="scenario-intro" id="m_scenarioIntro"></div>
+    <div id="m_travauxContainer"></div>
+    <div class="invest-summary" id="m_investSummary"></div>
+    <div class="mt16 gap-8">
+      <button class="btn btn-sm" onclick="exporterDevisDepuisManuel()">📋 Générer un devis</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="m_sautsCard">
+    <div class="card-title">📈 Sauts de Classes</div>
+    <div id="m_sautsContainer"></div>
+  </div>
+
+</div><!-- /tab-manuel -->
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ONGLET 3 — DEVIS / FACTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="tab-content" id="tab-devis">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+
+    <!-- Formulaire gauche -->
+    <div>
+      <div class="card">
+        <div class="card-title">⚙️ Paramètres du document</div>
+        <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+          <div class="form-group"><label class="form-label">Type</label>
+            <select class="form-select" id="d_type" onchange="updateDocPreview()">
+              <option value="DEVIS">Devis</option>
+              <option value="FACTURE">Facture</option>
+            </select></div>
+          <div class="form-group"><label class="form-label">Numéro</label>
+            <input class="form-input" id="d_num" value="2026-001" oninput="updateDocPreview()"></div>
+          <div class="form-group"><label class="form-label">Date</label>
+            <input class="form-input" type="date" id="d_date" oninput="updateDocPreview()"></div>
+          <div class="form-group"><label class="form-label">Validité (jours)</label>
+            <input class="form-input" id="d_validite" value="30" oninput="updateDocPreview()"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🏢 Votre entreprise</div>
+        <div class="form-grid" style="grid-template-columns:1fr;">
+          <div class="form-group"><input class="form-input" id="d_entreprise" placeholder="Nom de votre entreprise" value="NYX Énergie" oninput="updateDocPreview()"></div>
+          <div class="form-group"><input class="form-input" id="d_entreprise_adresse" placeholder="Adresse entreprise" oninput="updateDocPreview()"></div>
+          <div class="form-group"><input class="form-input" id="d_siret" placeholder="SIRET" oninput="updateDocPreview()"></div>
+          <div class="form-group"><input class="form-input" id="d_rge" placeholder="Numéro RGE (optionnel)" oninput="updateDocPreview()"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">👤 Client</div>
+        <div class="form-grid" style="grid-template-columns:1fr;">
+          <div class="form-group"><input class="form-input" id="d_client_nom" placeholder="Nom / Prénom du client" oninput="updateDocPreview()"></div>
+          <div class="form-group"><input class="form-input" id="d_client_adresse" placeholder="Adresse du client" oninput="updateDocPreview()"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📦 Lignes de travaux</div>
+        <div id="lignes-container"></div>
+        <button class="btn btn-sm btn-ghost" onclick="addLigne()" style="margin-top:10px;">+ Ajouter une ligne</button>
+        <div style="margin-top:16px;padding:14px;background:var(--bg3);border-radius:8px;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--muted);">Sous-total HT :</span><span id="d_sousTotal" style="font-family:'Space Mono',monospace;">0,00 €</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
+            <span style="color:var(--muted);">TVA : </span>
+            <select class="form-select" style="width:80px;padding:4px 8px;font-size:12px;" id="d_tva" onchange="updateDocPreview()">
+              <option value="0">0%</option><option value="5.5" selected>5.5%</option><option value="10">10%</option><option value="20">20%</option>
+            </select>
+            <span id="d_montantTVA" style="font-family:'Space Mono',monospace;">0,00 €</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;border-top:1px solid var(--border);padding-top:8px;">
+            <span>TOTAL TTC :</span><span id="d_totalTTC" style="color:var(--orange);font-family:'Space Mono',monospace;">0,00 €</span>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:12px;">
+          <label class="form-label">Mentions / Conditions</label>
+          <textarea class="form-textarea" id="d_mentions" oninput="updateDocPreview()">Travaux réalisés par des professionnels certifiés RGE. TVA à 5.5% applicable pour les travaux de rénovation énergétique.</textarea>
+        </div>
+        <div class="gap-8 mt16">
+          <button class="btn" onclick="imprimerDevis()">🖨️ Imprimer / PDF</button>
+          <button class="btn btn-ghost btn-sm" onclick="sauvegarderDevis()">💾 Sauvegarder</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Aperçu droite -->
+    <div>
+      <div style="position:sticky;top:80px;">
+        <div class="card-title" style="padding:0 0 12px 0;">👁️ Aperçu du document</div>
+        <div class="doc-preview" id="docPreview">
+          <!-- Généré dynamiquement -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /tab-devis -->
+
+</main>
+
+<!-- ══════════════════════════════════════════════════════
+     FOOTER
+══════════════════════════════════════════════════════ -->
+<footer class="footer">
+  <span>© 2026 — Droits Réservés à AYOUB TARHI</span> · NYX Plateforme Énergétique · Tous droits réservés
+</footer>
+
+<!-- Rapport caché pour PDF -->
+<div id="reportContainer" style="position:absolute;left:-9999px;top:0;width:800px;"></div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+/* ══════════════════════════════════════════════════════
+   NAVIGATION
+══════════════════════════════════════════════════════ */
+function switchTab(name){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelector(`[data-tab="${name}"]`).classList.add('active');
+  if(name==='devis') updateDocPreview();
+}
+
+/* ══════════════════════════════════════════════════════
+   CRM
+══════════════════════════════════════════════════════ */
+let crmOpen=false;
+let clients=JSON.parse(localStorage.getItem('nyx_clients')||'[]');
+let analyses=JSON.parse(localStorage.getItem('nyx_analyses')||'[]');
+let devisList=JSON.parse(localStorage.getItem('nyx_devis')||'[]');
+
+function toggleCRM(){
+  crmOpen=!crmOpen;
+  document.getElementById('crmOverlay').classList.toggle('open',crmOpen);
+  document.getElementById('btnCRM').classList.toggle('active',crmOpen);
+  refreshCRM();
+}
+function switchCRMTab(name){
+  document.querySelectorAll('.crm-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.crm-section').forEach(s=>s.classList.remove('active'));
+  document.querySelector(`[onclick="switchCRMTab('${name}')"]`).classList.add('active');
+  document.getElementById('crm-'+name).classList.add('active');
+}
+function showAddClient(){document.getElementById('add-client-form').classList.remove('hidden');}
+function hideAddClient(){document.getElementById('add-client-form').classList.add('hidden');}
+function saveClient(){
+  const c={
+    id:Date.now(),
+    nom:document.getElementById('crm-nom').value,
+    prenom:document.getElementById('crm-prenom').value,
+    tel:document.getElementById('crm-tel').value,
+    email:document.getElementById('crm-email').value,
+    adresse:document.getElementById('crm-adresse').value,
+    date:new Date().toLocaleDateString('fr-FR'),
+  };
+  if(!c.nom){alert('Le nom est obligatoire.');return;}
+  clients.push(c);
+  localStorage.setItem('nyx_clients',JSON.stringify(clients));
+  hideAddClient();
+  refreshCRM();
+}
+function saveClientFromAnalysis(){
+  if(!beneficiaireData||!beneficiaireData.nom){alert('Aucun bénéficiaire détecté dans l\'analyse.');return;}
+  const c={id:Date.now(),...beneficiaireData,date:new Date().toLocaleDateString('fr-FR')};
+  clients.push(c);
+  localStorage.setItem('nyx_clients',JSON.stringify(clients));
+  alert('✅ Client enregistré dans le CRM !');
+  refreshCRM();
+}
+function saveAnalyse(data){
+  analyses.push({id:Date.now(),date:new Date().toLocaleDateString('fr-FR'),...data});
+  localStorage.setItem('nyx_analyses',JSON.stringify(analyses));
+  refreshCRM();
+}
+function refreshCRM(){
+  document.getElementById('stat-clients').textContent=clients.length;
+  document.getElementById('stat-analyses').textContent=analyses.length;
+  document.getElementById('stat-devis').textContent=devisList.length;
+  const ca=devisList.reduce((s,d)=>s+(parseFloat(d.total)||0),0);
+  document.getElementById('stat-ca').textContent=Math.round(ca).toLocaleString('fr-FR')+'€';
+  // Liste clients
+  const cl=document.getElementById('crm-clients-list');
+  if(clients.length===0){cl.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px;">Aucun client</div>';}
+  else cl.innerHTML=clients.map(c=>`
+    <div class="client-card" onclick="selectClient(${c.id})">
+      <div class="client-name">${c.nom||''} ${c.prenom||''}</div>
+      <div class="client-meta">${c.adresse||''} ${c.tel?'· '+c.tel:''}</div>
+      <span class="client-badge">Client</span>
+    </div>`).join('');
+  // Historique
+  const hl=document.getElementById('crm-historique-list');
+  if(analyses.length===0){hl.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px;">Aucun historique</div>';}
+  else hl.innerHTML=analyses.map(a=>`
+    <div class="client-card">
+      <div class="client-name">${a.nom||'—'} — Classe <span style="color:${({A:'#00C853',B:'#69F0AE',C:'#FFD740',D:'#FFAB40',E:'#FF6D00',F:'#FF1744',G:'#B71C1C'})[a.classe]||'#888'}">${a.classe||'?'}</span></div>
+      <div class="client-meta">${a.date} · ${a.ep||'—'} kWh EP/m²/an · ${a.ges||'—'} kg CO₂/m²/an</div>
+    </div>`).join('');
+  // Récents dashboard
+  const rl=document.getElementById('crm-recent-list');
+  if(analyses.length===0){rl.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:16px;">Aucune analyse</div>';}
+  else rl.innerHTML=analyses.slice(-5).reverse().map(a=>`
+    <div class="client-card">
+      <div class="client-name">${a.nom||'Inconnu'} — <span style="color:${({A:'#00C853',B:'#69F0AE',C:'#FFD740',D:'#FFAB40',E:'#FF6D00',F:'#FF1744',G:'#B71C1C'})[a.classe]||'#888'}">${a.classe||'?'}</span></div>
+      <div class="client-meta">${a.date}</div>
+    </div>`).join('');
+}
+function selectClient(id){
+  const c=clients.find(x=>x.id===id);
+  if(!c)return;
+  document.getElementById('d_client_nom').value=(c.nom||'')+' '+(c.prenom||'');
+  document.getElementById('d_client_adresse').value=c.adresse||'';
+  updateDocPreview();
+  switchTab('devis');
+  toggleCRM();
+}
+
+/* ══════════════════════════════════════════════════════
+   CONSTANTES & FONCTIONS ÉNERGÉTIQUES (3CL + Th-CE-Ex)
+══════════════════════════════════════════════════════ */
+let currentFile=null,analysisResult=null,beneficiaireData=null,equipGlobal={};
+
+const dropZone=document.getElementById('dropZone');
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('dragover');});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f)handleFileSelect(f);});
+function handleFileSelect(file){
+  if(!file)return;
+  currentFile=file;
+  document.getElementById('dropText').textContent='✅ '+file.name;
+  document.getElementById('dropSub').textContent=(file.size/1024).toFixed(1)+' Ko — Prêt à analyser';
+  dropZone.style.borderColor='#00C853';
+  document.getElementById('btnAnalyser').classList.remove('hidden');
+}
+
+const ORDER=['A','B','C','D','E','F','G'];
+const COLORS={A:'#00C853',B:'#69F0AE',C:'#FFD740',D:'#FFAB40',E:'#FF6D00',F:'#FF1744',G:'#B71C1C'};
+function classeEP(v){for(const c of ORDER){if(v<={A:70,B:110,C:180,D:250,E:330,F:420,G:9999}[c])return c;}return 'G';}
+function classeGES(v){for(const c of ORDER){if(v<={A:6,B:11,C:30,D:50,E:70,F:100,G:9999}[c])return c;}return 'G';}
+function classeMax(a,b){return ORDER.indexOf(a)>=ORDER.indexOf(b)?a:b;}
+function classeToScore(c){return{A:92,B:80,C:65,D:50,E:35,F:20,G:8}[c]||50;}
+
+function extraireNumeriques(text){
+  const r={ep:null,ges:null,classeDirecte:null,annee:null};
+  const epP=[/(\d{2,4})\s*kWh\s*\/?\s*m[²2]\s*\.?\s*an/i,/énergie\s*primaire\s*[:\-=]?\s*(\d{2,4})/i,/EP\s*[:\-=]\s*(\d{2,4})/i];
+  for(const p of epP){const m=text.match(p);if(m){const v=parseInt(m[1]);if(v>0&&v<3000){r.ep=v;break;}}}
+  const gP=[/(\d{1,3})\s*kg\s*(?:CO[²2]|éq\.?\s*CO[²2])\s*\/?\s*m[²2]/i,/GES\s*[:\-=]\s*(\d{1,3})/i];
+  for(const p of gP){const m=text.match(p);if(m){const v=parseInt(m[1]);if(v>=0&&v<500){r.ges=v;break;}}}
+  const cP=[/classe\s*[eé]nerg[eé]tique\s*[:\-]?\s*([A-G])\b/i,/DPE\s*[:\-]?\s*([A-G])\b/i];
+  for(const p of cP){const m=text.match(p);if(m){r.classeDirecte=m[1].toUpperCase();break;}}
+  const am=text.match(/ann[eé]e\s*(?:de\s*)?construction[^:]*:\s*(1[5-9]\d{2}|20[012]\d)/i)||text.match(/\b(1[89]\d{2})\b/);
+  if(am)r.annee=parseInt(am[1]);
+  return r;
+}
+function extraireBeneficiaire(text){
+  const r={nom:'',prenom:'',adresse:'',cp:'',ville:'',surface:'',typeBien:''};
+  const m=re=>{const x=text.match(re);return x?x[1].trim():'';};
+  r.nom=m(/nom\s*[:\-]\s*([A-Za-zÀ-ÿ\-\s]{2,30})/i);
+  r.prenom=m(/pr[eé]nom\s*[:\-]\s*([A-Za-zÀ-ÿ\-]{2,25})/i);
+  r.adresse=m(/adresse\s*[:\-]\s*([^\n]{5,60})/i)||m(/(\d{1,4}[,\s]+(?:rue|avenue|boulevard|impasse|all[eé]e|chemin|place|route|lieu\s*dit)[^\n]{3,50})/i);
+  r.cp=m(/code\s*postal\s*[:\-]\s*(\d{5})/i)||m(/\b((?:0[1-9]|[1-8]\d|9[0-5])\d{3})\b/);
+  r.ville=m(/ville\s*[:\-]\s*([A-Za-zÀ-ÿ\s\-]{2,30})/i);
+  const sm=text.match(/(?:superficie|surface)\s*(?:habitable|utile|au\s*sol)?\s*[:\-]?\s*(\d{2,4}(?:[.,]\d{1,2})?)\s*m[²2]/i);
+  if(sm){const s=parseFloat(sm[1].replace(',','.'));if(s>=15&&s<=1000)r.surface=s+' m²';}
+  if(text.match(/appartement/i))r.typeBien='Appartement';
+  else if(text.match(/maison|villa|pavillon/i))r.typeBien='Maison individuelle';
+  return r;
+}
+function detecterEquipements(text){
+  const t=text.toLowerCase();
+  let ch='Non détecté',murs='Non détecté',combles='Non détecté',fen='Non détecté';
+  let vmc='Non détecté',plancher='Non détecté',ecs='Non détecté',chauffageMixte=false,volets='Non détecté',robinets='Non détecté';
+  const hasPAC=t.match(/pompe\s*[àa]\s*chaleur|pac\b|air[\s\-]eau|géotherm/);
+  const hasCond=t.match(/condensation/);
+  const hasBois=t.match(/po[eê]le\s*(?:a|à)\s*bois|po[eê]le\/insert|insert.*bois|granul[eé]s|pellets?/);
+  const hasGaz=t.match(/chaudi[eè]re\s*(?:à\s*)?gaz(?!\s*condensation)/);
+  const hasFioul=t.match(/fioul|fuel|mazout/);
+  const hasElec=t.match(/radiateur\s*[eé]lectrique|convecteur|panneau\s*rayonnant|chauffage\s*[eé]lectrique/)||text.match(/radiateur\s*[eé]lectrique[^:]*:\s*[1-9]/i);
+  if(hasPAC)ch='PAC';
+  else if(hasCond)ch='Gaz condensation';
+  else if(hasElec&&hasBois){ch='Électrique';chauffageMixte=true;}
+  else if(hasElec)ch='Électrique';
+  else if(hasFioul)ch='Fioul';
+  else if(hasGaz)ch='Gaz ancien';
+  else if(hasBois)ch='Bois/granulés';
+  const mursON=text.match(/les\s*murs\s*sont\s*ils\s*isol[eé]s\s*\?\s*[:\-]?\s*(OUI|NON)/i);
+  const typeIso=text.match(/type\s*d.isolation\s*[:\-]\s*([^\n]{3,40})/i);
+  if(mursON){if(mursON[1].toUpperCase()==='OUI'){if(typeIso&&typeIso[1].match(/ext[eé]rieur|ite/i))murs='ITE';else if(typeIso&&typeIso[1].match(/int[eé]rieur|iti|laine/i))murs='ITI';else murs='Isolés';}else murs='Non isolés';}
+  else{if(t.match(/ite\b|isolation.*ext[eé]rieur/))murs='ITE';else if(t.match(/iti\b|isolation.*int[eé]rieur|laine\s*de\s*verre/))murs='ITI';else if(t.match(/murs?\s*isol[eé]s?/))murs='Isolés';else if(t.match(/murs?\s*non\s*isol[eé]s?/))murs='Non isolés';}
+  const combON=text.match(/isolation\s*existante\s*dans\s*les\s*combles\s*\?\s*[:\-]?\s*(OUI|NON)/i);
+  if(combON){combles=combON[1].toUpperCase()==='OUI'?'Isolés':'Non isolés';}
+  else{if(t.match(/combles?.*tr[eè]s\s*bien\s*isol[eé]s?|r\s*[≥>]\s*7/))combles='Très bien isolés';else if(t.match(/combles?\s*isol[eé]s?|isolation.*combles?/))combles='Isolés';else if(t.match(/combles?\s*non\s*isol[eé]s?/))combles='Non isolés';}
+  if(t.match(/simple\s*vitrage/))fen='Simple vitrage';
+  else if(t.match(/double\s*vitrage\s*[+\-]20\s*ans|double\s*vitrage\s*\+10\s*ans/i))fen='Double vitrage ancien';
+  else if(t.match(/double\s*vitrage\s*-10\s*ans/i))fen='Double vitrage récent';
+  else if(t.match(/triple\s*vitrage/))fen='Triple vitrage';
+  else if(t.match(/double\s*vitrage/))fen='Double vitrage ancien';
+  const vmcON=text.match(/syst[eè]me\s*de\s*ventilation\s*\?\s*[:\-]?\s*(OUI|NON)/i)||text.match(/^VENTILATION\s*[:\-]\s*(OUI|NON)/im);
+  if(vmcON&&vmcON[1].toUpperCase()==='NON')vmc='Naturelle';
+  else if(t.match(/vmc\s*double\s*flux|double\s*flux/))vmc='VMC double flux';
+  else if(t.match(/\bvmc\b|ventilation\s*m[eé]canique/))vmc='VMC simple flux';
+  else if(t.match(/ventilation\s*naturelle/))vmc='Naturelle';
+  const garON=text.match(/garage\s*attenant[^?]*\?\s*[:\-]?\s*(OUI|NON)/i);
+  if(t.match(/plancher.*isol[eé]|isolation.*plancher/))plancher='Isolé';
+  else if(garON&&garON[1].toUpperCase()==='OUI')plancher='Non isolé';
+  else if(t.match(/\bgarage\b|sous[\s\-]sol|cave|vide\s*sanitaire/))plancher='Non isolé';
+  if(t.match(/ballon\s*thermodynamique|chauffe[\s\-]eau\s*thermodynamique/))ecs='Thermodynamique';
+  else if(t.match(/chauffe[\s\-]eau\s*solaire|ecs\s*solaire/))ecs='Solaire';
+  else if(t.match(/ballon\s*d.eau\s*chaude\s*[eé]lectrique|cumulus/))ecs='Électrique';
+  else if(t.match(/chauffe[\s\-]eau\s*(?:à\s*)?gaz/))ecs='Gaz';
+  if(t.match(/volets?\s*roulants?/i))volets='Volets roulants';
+  else if(t.match(/volets?\s*battants?/i))volets='Volets battants';
+  else if(t.match(/aucun\s*volet|volets?\s*:\s*aucun/i))volets='Aucun';
+  if(t.match(/robinets?\s*thermostatiques?/i))robinets='Présents';
+  else if(t.match(/radiateur\s*[eé]lectrique|convecteur/i))robinets='Absents';
+  return{ch,murs,combles,fen,vmc,plancher,ecs,chauffageMixte,volets,robinets};
+}
+
+/* Tables physiques */
+const R_PAROI={
+  murs:{'ITE':3.7,'ITI':2.5,'Isolés':1.5,'Non isolés':0.2,'Non détecté':0.3},
+  combles:{'Très bien isolés':7.0,'Isolés':4.0,'Non isolés':0.2,'Non détecté':0.3},
+  fenetres:{'Triple vitrage':0.8,'Double vitrage récent':1.2,'Double vitrage ancien':2.5,'Simple vitrage':4.5,'Non détecté':3.0},
+  plancher:{'Isolé':3.0,'Non isolé':0.2,'Non détecté':0.5},
+};
+const ETA_CHAUFFAGE={'PAC':3.2,'Gaz condensation':1.05,'Bois/granulés':0.80,'Gaz ancien':0.82,'Fioul':0.80,'Électrique':1.00,'Non détecté':0.85};
+const EP_COEFF={'PAC':2.3,'Gaz condensation':1.0,'Bois/granulés':0.6,'Gaz ancien':1.0,'Fioul':1.0,'Électrique':2.3,'Non détecté':1.0};
+const CO2_COEFF={'PAC':0.064,'Gaz condensation':0.227,'Bois/granulés':0.030,'Gaz ancien':0.227,'Fioul':0.324,'Électrique':0.064,'Non détecté':0.200};
+const ETA_ECS={'Thermodynamique':2.5,'Solaire':3.0,'Électrique':0.90,'Gaz':0.85,'Non détecté':0.85};
+const EP_ECS={'Thermodynamique':2.3,'Solaire':0.5,'Électrique':2.3,'Gaz':1.0,'Non détecté':1.0};
+const CO2_ECS={'Thermodynamique':0.064,'Solaire':0.010,'Électrique':0.064,'Gaz':0.227,'Non détecté':0.200};
+const DJU_REF=2501;
+
+function calculer3CL(equip,surfaceM2){
+  const Sh=surfaceM2||100;
+  const Smurs=Sh*1.4,Sfenetres=Sh*0.15,Scombles=Sh*0.55,Splancher=Sh*0.50;
+  const R_se=0.04,R_si=0.13;
+  const Umurs=1/(R_PAROI.murs[equip.murs]+R_si+R_se);
+  const Ufenetres=R_PAROI.fenetres[equip.fen]||3.0;
+  const Ucombles=1/(R_PAROI.combles[equip.combles]+R_si+R_se);
+  const Uplancher=1/(R_PAROI.plancher[equip.plancher]+R_si+R_se);
+  const n_air={'VMC double flux':0.4,'VMC simple flux':0.6,'Naturelle':0.8,'Non détecté':0.9}[equip.vmc]||0.8;
+  const Hglobal=(Smurs*Umurs)+(Sfenetres*Ufenetres)+(Scombles*Ucombles)+(Splancher*Uplancher)+0.34*n_air*Sh*2.5;
+  const api=10*Sh*1800/1000;
+  const DJU_eff=Math.max(DJU_REF-(api*1000)/(Hglobal*24),DJU_REF*0.6);
+  const Bch=Hglobal*DJU_eff*24/1000;
+  const nOcc=Math.max(1,Math.round(Sh/25));
+  const Ech=Bch/(ETA_CHAUFFAGE[equip.ch]||0.85);
+  const Eecs=(1000*nOcc)/(ETA_ECS[equip.ecs]||0.85);
+  const Eaux=3*Sh,Eecl=3.5*Sh;
+  const Ep_ch=Ech*(EP_COEFF[equip.ch]||1.0)/Sh;
+  const Ep_ecs=Eecs*(EP_ECS[equip.ecs]||1.0)/Sh;
+  const Ep_total=Ep_ch+Ep_ecs+(Eaux+Eecl)*2.3/Sh;
+  const GES_total=Ech*(CO2_COEFF[equip.ch]||0.2)/Sh+Eecs*(CO2_ECS[equip.ecs]||0.2)/Sh+(Eaux+Eecl)*0.064/Sh;
+  return{ep:Math.round(Ep_total),ges:Math.round(GES_total*10)/10,detail:{Ubat:Math.round((Hglobal/Sh)*100)/100,Bch_therm:Math.round(Bch),Ep_ch:Math.round(Ep_ch),Ep_ecs:Math.round(Ep_ecs),Ep_aux:Math.round((Eaux+Eecl)*2.3/Sh),surface:Sh,nOcc}};
+}
+
+const ETA_SAIS_THCEX={'PAC':3.40,'Gaz condensation':1.09,'Bois/granulés':0.78,'Gaz ancien':0.78,'Fioul':0.76,'Électrique':1.00,'Non détecté':0.80};
+const PSI_THCEX={'ITE':0.05,'ITI':0.35,'Isolés':0.50,'Non isolés':0.75,'Non détecté':0.60};
+const N50_THCEX={'VMC double flux':0.6,'VMC simple flux':1.5,'Naturelle':4.0,'Non détecté':3.5};
+
+function calculerThCEEx(equip,surfaceM2,annee){
+  const Sh=surfaceM2||100,per=Math.sqrt(Sh)*4;
+  const Smurs=Sh*1.4,Sfenetres=Sh*0.15,Scombles=Sh*0.55,Splancher=Sh*0.50;
+  const R_se=0.04,R_si=0.13;
+  const Umurs=1/(R_PAROI.murs[equip.murs]+R_si+R_se);
+  const Ufenetres=R_PAROI.fenetres[equip.fen]||3.0;
+  const Ucombles=1/(R_PAROI.combles[equip.combles]+R_si+R_se);
+  const Uplancher=1/(R_PAROI.plancher[equip.plancher]+R_si+R_se);
+  const psi=PSI_THCEX[equip.murs]||0.60;
+  const n50=N50_THCEX[equip.vmc]||3.5;
+  const Senv=Smurs+Sfenetres+Scombles+Splancher;
+  const Hinf=0.34*(n50/20)*(Sh*2.5)/Senv*Senv;
+  const HT_trans=Smurs*Umurs+Sfenetres*Ufenetres+Scombles*Ucombles+Splancher*Uplancher;
+  const Hglobal=HT_trans+psi*per*4+Hinf;
+  const Bbio=Hglobal*2500*24/(1000*Sh);
+  const Gapports=(4.5*Sh*8760/1000+Sfenetres*180)*0.95;
+  const Bch_net=Math.max(0,Hglobal*2500*24/1000-Gapports*0.80);
+  const eta_sais=ETA_SAIS_THCEX[equip.ch]||0.80;
+  const Ech=Bch_net/eta_sais;
+  const nOcc=Math.max(1,Math.round(Sh/25));
+  const Eecs=(35*Sh*(0.7+0.1*nOcc))/(ETA_ECS[equip.ecs]||0.85);
+  const P_vmc=equip.vmc==='VMC double flux'?1.5:equip.vmc==='VMC simple flux'?0.8:0.2;
+  const Eaux=P_vmc*8760/1000+2.5*Sh,Eecl=2.8*Sh;
+  const Ep_ch=Ech*(EP_COEFF[equip.ch]||1.0)/Sh;
+  const Ep_ecs=Eecs*(EP_ECS[equip.ecs]||1.0)/Sh;
+  const Ep_total=Ep_ch+Ep_ecs+(Eaux+Eecl)*2.3/Sh;
+  const GES_total=Ech*(CO2_COEFF[equip.ch]||0.2)/Sh+Eecs*(CO2_ECS[equip.ecs]||0.2)/Sh+(Eaux+Eecl)*0.064/Sh;
+  const k=!annee?1:annee<1948?1.18:annee<1975?1.08:annee>=2021?0.68:annee>=2012?0.88:1;
+  return{ep:Math.round(Ep_total*k),ges:Math.round(GES_total*k*10)/10,detail:{Bbio:Math.round(Bbio*10)/10,Bch_net:Math.round(Bch_net),HT_trans:Math.round(HT_trans),HT_pt:Math.round(psi*per*4),Hinf:Math.round(Hinf),n50,psi,eta_sais,Ep_ch:Math.round(Ep_ch),Ep_ecs:Math.round(Ep_ecs),GES_ch:Math.round(Ech*(CO2_COEFF[equip.ch]||0.2)/Sh*10)/10,GES_ecs:Math.round(Eecs*(CO2_ECS[equip.ecs]||0.2)/Sh*10)/10,surface:Sh,nOcc}};
+}
+
+function scoreEquipements(e){
+  let s=30;
+  s+=({'PAC':30,'Gaz condensation':18,'Bois/granulés':8,'Gaz ancien':2,'Fioul':-8,'Électrique':-15}[e.ch]??0);
+  s+=({'ITE':22,'ITI':14,'Isolés':10,'Non isolés':-15}[e.murs]??0);
+  s+=({'Très bien isolés':20,'Isolés':14,'Non isolés':-20}[e.combles]??0);
+  s+=({'Triple vitrage':16,'Double vitrage récent':12,'Double vitrage ancien':4,'Simple vitrage':-12}[e.fen]??0);
+  s+=({'VMC double flux':10,'VMC simple flux':3,'Naturelle':-8}[e.vmc]??0);
+  s+=({'Isolé':10,'Non isolé':-8}[e.plancher]??0);
+  s+=({'Thermodynamique':8,'Solaire':10,'Électrique':-6,'Gaz':2}[e.ecs]??0);
+  return Math.max(0,Math.min(100,s));
+}
+function scoreToClasse(s){return s>=88?'A':s>=72?'B':s>=56?'C':s>=40?'D':s>=24?'E':s>=10?'F':'G';}
+
+function determinerClasse(num,equip,surfaceM2){
+  if(num.ep!==null&&num.ges!==null){const c=classeMax(classeEP(num.ep),classeGES(num.ges));return{classe:c,ep:num.ep,ges:num.ges,score:classeToScore(c),methode:'Données numériques officielles (EP + GES)',detail3CL:null,detailThCEEx:null,ep3CL:null,epThCEEx:null,ges3CL:null,gesThCEEx:null};}
+  if(num.ep!==null){const c=classeEP(num.ep);return{classe:c,ep:num.ep,ges:null,score:classeToScore(c),methode:'Énergie primaire extraite du PDF',detail3CL:null,detailThCEEx:null,ep3CL:null,epThCEEx:null,ges3CL:null,gesThCEEx:null};}
+  if(num.ges!==null){const c=classeGES(num.ges);return{classe:c,ep:null,ges:num.ges,score:classeToScore(c),methode:'Émissions GES extraites du PDF',detail3CL:null,detailThCEEx:null,ep3CL:null,epThCEEx:null,ges3CL:null,gesThCEEx:null};}
+  if(num.classeDirecte){return{classe:num.classeDirecte,ep:null,ges:null,score:classeToScore(num.classeDirecte),methode:'Classe lue dans le document',detail3CL:null,detailThCEEx:null,ep3CL:null,epThCEEx:null,ges3CL:null,gesThCEEx:null};}
+  const surface=surfaceM2||100;
+  const calc=calculer3CL(equip,surface);
+  let epAdj=calc.ep;
+  if(num.annee){if(num.annee<1948)epAdj=Math.round(epAdj*1.20);else if(num.annee<1975)epAdj=Math.round(epAdj*1.10);else if(num.annee>=2021)epAdj=Math.round(epAdj*0.65);else if(num.annee>=2012)epAdj=Math.round(epAdj*0.85);}
+  const gesAdj=Math.round((calc.ges*epAdj/calc.ep)*10)/10;
+  const thcex=calculerThCEEx(equip,surface,num.annee);
+  const epCroise=Math.round(epAdj*0.40+thcex.ep*0.60);
+  const gesCroise=Math.round((gesAdj*0.40+thcex.ges*0.60)*10)/10;
+  const classeCroise=classeMax(classeEP(epCroise),classeGES(gesCroise));
+  return{classe:classeCroise,ep:epCroise,ges:gesCroise,score:classeToScore(classeCroise),methode:'Croisement 3CL-2021 + Th-CE-Ex',detail3CL:{...calc.detail,epAdj,gesAdj},detailThCEEx:thcex.detail,ep3CL:epAdj,epThCEEx:thcex.ep,ges3CL:gesAdj,gesThCEEx:thcex.ges};
+}
+
+function calculerNiveau(num,equip,classe){
+  const equipsDetectes=[];
+  if(num.ep!==null)equipsDetectes.push('EP: '+num.ep+' kWh/m²/an');
+  if(num.ges!==null)equipsDetectes.push('GES: '+num.ges+' kg CO₂/m²/an');
+  if(num.classeDirecte)equipsDetectes.push('Classe: '+num.classeDirecte);
+  if(num.annee)equipsDetectes.push('Année: '+num.annee);
+  [equip.ch,equip.murs,equip.combles,equip.fen,equip.vmc,equip.plancher,equip.ecs].forEach((v,i)=>{
+    if(v&&v!=='Non détecté')equipsDetectes.push(['Chauffage','Murs','Combles','Fenêtres','VMC','Plancher','ECS'][i]+': '+v);
+  });
+  let niveau,etoiles,cssClass,description,urgence;
+  if(classe==='F'||classe==='G'){niveau='Or';etoiles='★★★';cssClass='niveau-or';urgence='🔴 URGENCE RÉNOVATION';description=`Logement classé <strong>${classe}</strong> — passoire thermique. Audit énergétique complet fortement recommandé. Accès aux aides maximales.`;}
+  else if(classe==='E'||classe==='D'){niveau='Bronze';etoiles='★☆☆';cssClass='niveau-bronze';urgence='🟠 RÉNOVATION CONSEILLÉE';description=`Logement classé <strong>${classe}</strong> — des améliorations significatives sont possibles. Un audit optimiserait votre plan de rénovation.`;}
+  else if(classe==='C'){niveau='Argent';etoiles='★★☆';cssClass='niveau-argent';urgence='🟡 OPTIMISATION POSSIBLE';description=`Logement classé <strong>${classe}</strong> — des optimisations permettraient d'atteindre la classe B ou A.`;}
+  else{niveau='Argent';etoiles='★★☆';cssClass='niveau-argent';urgence='🟢 LOGEMENT PERFORMANT';description=`Logement classé <strong>${classe}</strong> — excellentes performances énergétiques.`;}
+  return{niveau,etoiles,cssClass,description,urgence,equipsDetectes};
+}
+
+/* ── SCENARIO ── */
+function genererScenario(equip,classeActuelle){
+  const travaux=[],idx=ORDER.indexOf(classeActuelle);
+  if(equip.combles==='Non isolés'||equip.combles==='Non détecté')travaux.push({section:'🏠 Isolation',icon:'🏠',titre:'Isolation des combles perdus',priorite:'OBLIGATOIRE',desc:'Installation de 30 à 40 cm d\'isolant soufflé. Représente 25-30% des déperditions. 1er geste d\'isolation obligatoire.',gainClasse:'+2 classes',cout:'1 500 – 2 500 €',aide:'MaPrimeRénov\' + CEE',impact:22});
+  if(equip.murs==='Non isolés')travaux.push({section:'🏠 Isolation',icon:'🧱',titre:'Isolation des murs par l\'extérieur (ITE)',priorite:'OBLIGATOIRE',desc:'Pose de 10 à 16 cm d\'isolant sur les façades. 20-25% des déperditions. 2e geste d\'isolation obligatoire.',gainClasse:'+1 à 2 classes',cout:'100 – 200 €/m² façade',aide:'MaPrimeRénov\' + CEE + TVA 5.5%',impact:18});
+  else if(equip.murs==='ITI')travaux.push({section:'🏠 Isolation',icon:'🧱',titre:'Renforcement isolation murs (ITI existante)',priorite:'RECOMMANDÉ',desc:'L\'ITI existante peut être insuffisante. Envisager ITE complémentaire ou renforcement si épaisseur < 120mm.',gainClasse:'+1 classe',cout:'80 – 150 €/m²',aide:'MaPrimeRénov\' + CEE',impact:10});
+  if(equip.plancher==='Non isolé')travaux.push({section:'🏠 Isolation',icon:'🏚️',titre:'Isolation du plancher bas',priorite:'OBLIGATOIRE',desc:'Isolation sous plancher donnant sur garage/vide sanitaire. 7-10% des déperditions. 3e geste si garage attenant.',gainClasse:'+0.5 à 1 classe',cout:'20 – 50 €/m²',aide:'MaPrimeRénov\' + CEE',impact:10});
+  if(equip.vmc==='Naturelle'||equip.vmc==='Non détecté')travaux.push({section:'💨 Ventilation',icon:'💨',titre:'Installation VMC double flux',priorite:'OBLIGATOIRE',desc:'⚠️ Absence de ventilation détectée. VMC double flux récupère 70-90% de la chaleur. Obligatoire en rénovation globale.',gainClasse:'+1 classe',cout:'3 500 – 5 000 €',aide:'CEE + MaPrimeRénov\'',impact:10});
+  else if(equip.vmc==='VMC simple flux')travaux.push({section:'💨 Ventilation',icon:'💨',titre:'Remplacement VMC simple → double flux',priorite:'RECOMMANDÉ',desc:'Récupération chaleur air extrait, efficacité ≥ 80%.',gainClasse:'+0.5 classe',cout:'2 500 – 4 000 €',aide:'CEE',impact:7});
+  if(['Fioul','Gaz ancien','Électrique'].includes(equip.ch)){const d=equip.ch==='Électrique'?'Chauffage électrique le plus pénalisant (coefficient EP 2.3). PAC air/eau : COP 3-5, soit 3-5x moins d\'énergie primaire.':equip.ch==='Fioul'?'Chaudière fioul très émettrice. Remplacement PAC air/eau : réduction facture 50-70%.':'Chaudière gaz ancienne rendement 80-85%. PAC air/eau : division consommation par 3-4.';travaux.push({section:'🔥 Chauffage',icon:'🔥',titre:'Remplacement chauffage par PAC air/eau',priorite:'OBLIGATOIRE',desc:d,gainClasse:equip.ch==='Électrique'?'+2 à 3 classes':'+1 à 2 classes',cout:'10 000 – 16 000 €',aide:'MaPrimeRénov\' jusqu\'à 10 000 € + CEE + éco-PTZ',impact:25});}
+  if(equip.ecs==='Électrique')travaux.push({section:'💧 Eau chaude',icon:'💧',titre:'Chauffe-eau thermodynamique (CET)',priorite:'OBLIGATOIRE',desc:'Ballon électrique 3-4× plus énergivore qu\'un CET. COP ≈ 2.5-3.5. Économie 60-75% sur l\'ECS.',gainClasse:'+0.5 à 1 classe',cout:'1 500 – 3 500 €',aide:'MaPrimeRénov\' 400€ + CEE + TVA 5.5%',impact:8});
+  if(equip.fen==='Simple vitrage')travaux.push({section:'🪟 Menuiseries',icon:'🪟',titre:'Remplacement fenêtres → double vitrage bas-émissif',priorite:'OBLIGATOIRE',desc:'Simple vitrage Uw ≈ 5 W/m².K. Remplacement par Uw ≤ 1.3 W/m².K. 10-15% des déperditions.',gainClasse:'+1 classe',cout:'400 – 800 €/fenêtre',aide:'MaPrimeRénov\' + CEE + TVA 5.5%',impact:14});
+  else if(equip.fen==='Double vitrage ancien')travaux.push({section:'🪟 Menuiseries',icon:'🪟',titre:'Remplacement double vitrage ancien (+10 ans)',priorite:'RECOMMANDÉ',desc:'Performances dégradées (joints usés, pont thermique). Remplacement par Uw ≤ 1.3 W/m².K.',gainClasse:'+0.5 à 1 classe',cout:'400 – 700 €/fenêtre',aide:'CEE + TVA 5.5%',impact:10});
+  if(equip.volets==='Aucun'||equip.volets==='Non détecté')travaux.push({section:'🪟 Menuiseries',icon:'🚪',titre:'Installation de volets isolants',priorite:'RECOMMANDÉ',desc:'Réduction déperditions nocturnes de 15-25%. Protection solaire été.',gainClasse:'+0.3 classe',cout:'300 – 600 €/volet',aide:'CEE si résistance thermique certifiée',impact:5});
+  if(equip.robinets!=='Présents'&&['Gaz ancien','Gaz condensation','Fioul','Bois/granulés'].includes(equip.ch))travaux.push({section:'🔥 Régulation',icon:'🌡️',titre:'Robinets thermostatiques sur les radiateurs',priorite:'RECOMMANDÉ',desc:'Régulation pièce par pièce. Économie 10-20% sur la facture de chauffage.',gainClasse:'+0.2 classe',cout:'20 – 80 €/robinet',aide:'CEE',impact:4});
+  travaux.push({section:'🔥 Régulation',icon:'📱',titre:'Thermostat programmable / connecté',priorite:'RECOMMANDÉ',desc:'Baisse automatique la nuit et en absence. Économie 15-20%. Obligatoire pour toute PAC neuve.',gainClasse:'+0.2 à 0.5 classe',cout:'50 – 300 €',aide:'CEE',impact:4});
+  travaux.push({section:'☀️ Énergies renouvelables',icon:'☀️',titre:'Panneaux solaires photovoltaïques',priorite:'OPTIONNEL',desc:'Production électricité renouvelable. 3 à 6 kWc. Autoconsommation 40-70%. Revente surplus possible.',gainClasse:'+0.5 à 1 classe',cout:'7 000 – 14 000 € (3-6 kWc)',aide:'Prime autoconsommation + TVA 10%',impact:7});
+  return travaux;
+}
+
+function renderScenario(travaux,classeActuelle,prefix=''){
+  const oblig=travaux.filter(t=>t.priorite==='OBLIGATOIRE');
+  const reco=travaux.filter(t=>t.priorite==='RECOMMANDÉ');
+  const idx=ORDER.indexOf(classeActuelle);
+  const gainTotal=travaux.reduce((s,t)=>s+t.impact,0);
+  const classeVisee=ORDER[Math.max(0,idx-Math.min(4,Math.floor(gainTotal/20)))];
+  const intro=document.getElementById(prefix+'scenarioIntro');
+  if(intro)intro.innerHTML=`<h3>🎯 Objectif : <span style="color:${COLORS[classeActuelle]}">${classeActuelle}</span> → <span style="color:${COLORS[classeVisee]}">${classeVisee}</span> (rénovation complète)</h3><p style="margin-top:8px;">${oblig.length} travaux obligatoires · ${reco.length} recommandés · ${travaux.length} actions au total.${equip&&(equip.vmc==='Naturelle'||equip.vmc==='Non détecté')?'<br>⚠️ <strong style="color:#FF1744">ALERTE VMC</strong> : Aucune ventilation détectée — obligation réglementaire en rénovation globale.':''}</p>`;
+  const sections={};
+  travaux.forEach(t=>{if(!sections[t.section])sections[t.section]=[];sections[t.section].push(t);});
+  const bMap={'OBLIGATOIRE':'badge-oblig oblig','RECOMMANDÉ':'badge-reco recommande','OPTIONNEL':'badge-opt optionnel'};
+  let html='';
+  for(const[sec,items]of Object.entries(sections)){
+    html+=`<div class="travaux-section"><div class="travaux-section-title">${sec}</div>`;
+    items.forEach(t=>{
+      html+=`<div class="travail-card ${t.priorite==='OBLIGATOIRE'?'obligatoire':t.priorite==='RECOMMANDÉ'?'recommande':'optionnel'}">
+        <div class="travail-header"><div class="travail-icon">${t.icon}</div><div class="travail-title">${t.titre}</div><span class="travail-badge ${t.priorite==='OBLIGATOIRE'?'badge-oblig':t.priorite==='RECOMMANDÉ'?'badge-reco':'badge-opt'}">${t.priorite}</span></div>
+        <div class="travail-desc">${t.desc}</div>
+        <div class="travail-meta"><span class="travail-meta-item meta-classe">🎯 ${t.gainClasse}</span><span class="travail-meta-item meta-cout">💰 ${t.cout}</span><span class="travail-meta-item meta-aide">🏦 ${t.aide}</span></div>
+      </div>`;
+    });
+    html+='</div>';
+  }
+  const container=document.getElementById(prefix+'travauxContainer');
+  if(container)container.innerHTML=html;
+  const cMin=oblig.reduce((s,t)=>{const m=t.cout.match(/(\d[\d\s]*)/);return s+(m?parseInt(m[1].replace(/\s/g,''))*0.7:0);},0);
+  const cMax=travaux.reduce((s,t)=>{const m=t.cout.match(/–\s*([\d\s]+)/);return s+(m?parseInt(m[1].replace(/\s/g,'')):0);},0);
+  const inv=document.getElementById(prefix+'investSummary');
+  if(inv)inv.innerHTML=`
+    <div class="invest-box"><div class="invest-val">${oblig.length}</div><div class="invest-lbl">Obligatoires</div></div>
+    <div class="invest-box"><div class="invest-val">${reco.length}</div><div class="invest-lbl">Recommandés</div></div>
+    <div class="invest-box"><div class="invest-val">${classeActuelle}→${classeVisee}</div><div class="invest-lbl">Saut visé</div></div>
+    <div class="invest-box"><div class="invest-val" style="font-size:14px;">${Math.round(cMin/1000)*1000 .toLocaleString('fr-FR')}–${Math.round(cMax/1000)*1000 .toLocaleString('fr-FR')} €</div><div class="invest-lbl">Investissement (avant aides)</div></div>`;
+}
+
+const SAUT_TRAVAUX=[
+  {icon:'🏠',label:'Isolation combles perdus',gain:2,cout:2000,cond:e=>['Non isolés','Non détecté'].includes(e.combles)},
+  {icon:'🔥',label:'PAC air/eau',gain:3,cout:13000,cond:e=>['Fioul','Gaz ancien','Électrique'].includes(e.ch)},
+  {icon:'🧱',label:'ITE murs extérieurs',gain:2,cout:15000,cond:e=>['Non isolés','ITI'].includes(e.murs)},
+  {icon:'💨',label:'VMC double flux',gain:1,cout:4500,cond:e=>e.vmc!=='VMC double flux'},
+  {icon:'💧',label:'Chauffe-eau thermodynamique',gain:1,cout:2500,cond:e=>e.ecs==='Électrique'},
+  {icon:'🪟',label:'Remplacement fenêtres',gain:1,cout:5000,cond:e=>['Simple vitrage','Double vitrage ancien'].includes(e.fen)},
+  {icon:'🏚️',label:'Isolation plancher bas',gain:1,cout:4000,cond:e=>e.plancher==='Non isolé'},
+  {icon:'☀️',label:'Panneaux solaires',gain:1,cout:9000,cond:()=>true},
+];
+function renderSauts(classe,equip,prefix=''){
+  const idx=ORDER.indexOf(classe);
+  const container=document.getElementById(prefix+'sautsContainer');
+  if(!container)return;
+  if(idx<=0){container.innerHTML='<div style="text-align:center;padding:24px;color:var(--A);font-size:17px;">🏆 Classe A — aucune rénovation requise !</div>';return;}
+  const applicable=SAUT_TRAVAUX.filter(t=>t.cond(equip));
+  let html='';
+  for(let target=idx-1;target>=0;target--){
+    const needed=idx-target;
+    let gainAcc=0,cout=0,sel=[];
+    for(const w of applicable){sel.push(w);gainAcc+=w.gain;cout+=w.cout;if(gainAcc>=needed*2.5)break;}
+    html+=`<div class="saut-card">
+      <div class="saut-head">
+        <div class="cls-box" style="background:${COLORS[classe]}">${classe}</div>
+        <div class="saut-arrow">→</div>
+        <div class="cls-box" style="background:${COLORS[ORDER[target]]}">${ORDER[target]}</div>
+        <div style="font-size:12px;color:var(--muted)">+${needed} classe(s)</div>
+        <div class="saut-cost">~${cout.toLocaleString('fr-FR')} €</div>
+      </div>
+      <div class="saut-body">${sel.map(w=>`<div class="saut-line"><span>${w.icon}</span><span>${w.label}</span><span class="gain-tag">+${w.gain} cls</span></div>`).join('')}</div>
+    </div>`;
+  }
+  container.innerHTML=html;
+}
+
+function renderDPE(classe,containerId='dpeMeter'){
+  const labels={A:'≤ 70',B:'71–110',C:'111–180',D:'181–250',E:'251–330',F:'331–420',G:'> 420'};
+  const widths={A:30,B:40,C:52,D:64,E:76,F:88,G:100};
+  const el=document.getElementById(containerId);
+  if(el)el.innerHTML=ORDER.map(c=>`
+    <div class="dpe-row ${c===classe?'active':''}">
+      <div class="dpe-box" style="background:${COLORS[c]}">${c}</div>
+      <div class="dpe-bar" style="width:${widths[c]}%;background:${COLORS[c]}">${labels[c]} kWh/m²/an</div>
+    </div>`).join('');
+}
+function renderDet(equip,containerId='detGrid'){
+  const stCh=v=>v==='PAC'?{c:'st-good',t:'✓ Excellent'}:v==='Gaz condensation'?{c:'st-warn',t:'~ Correct'}:v==='Non détecté'?{c:'st-nd',t:'? Non détecté'}:{c:'st-bad',t:'✗ À remplacer'};
+  const stIso=v=>(v==='ITE'||v==='Très bien isolés')?{c:'st-good',t:'✓ Excellent'}:(v==='ITI'||v==='Isolés')?{c:'st-warn',t:'~ Correct'}:v==='Non détecté'?{c:'st-nd',t:'? Non détecté'}:{c:'st-bad',t:'✗ À isoler'};
+  const stFen=v=>(v==='Triple vitrage'||v==='Double vitrage récent')?{c:'st-good',t:'✓ Bon'}:v==='Double vitrage ancien'?{c:'st-warn',t:'~ À améliorer'}:v==='Non détecté'?{c:'st-nd',t:'? Non détecté'}:{c:'st-bad',t:'✗ À remplacer'};
+  const stVmc=v=>v==='VMC double flux'?{c:'st-good',t:'✓ Optimal'}:v==='VMC simple flux'?{c:'st-warn',t:'~ Correct'}:v==='Non détecté'?{c:'st-nd',t:'? Non détecté'}:{c:'st-bad',t:'✗ À installer'};
+  const stPlan=v=>v==='Isolé'?{c:'st-good',t:'✓ OK'}:v==='Non détecté'?{c:'st-nd',t:'? Non détecté'}:{c:'st-bad',t:'✗ À isoler'};
+  const stEcs=v=>(v==='Thermodynamique'||v==='Solaire')?{c:'st-good',t:'✓ Excellent'}:v==='Gaz'?{c:'st-warn',t:'~ Correct'}:v==='Non détecté'?{c:'st-nd',t:'? Non détecté'}:{c:'st-bad',t:'✗ À remplacer'};
+  const items=[
+    {icon:'🔥',lbl:'Chauffage',val:equip.chauffageMixte?equip.ch+' + bois appoint':equip.ch,st:stCh(equip.ch)},
+    {icon:'🧱',lbl:'Murs',val:equip.murs,st:stIso(equip.murs)},
+    {icon:'🏠',lbl:'Combles',val:equip.combles,st:stIso(equip.combles)},
+    {icon:'🪟',lbl:'Fenêtres',val:equip.fen,st:stFen(equip.fen)},
+    {icon:'💨',lbl:'Ventilation',val:equip.vmc,st:stVmc(equip.vmc)},
+    {icon:'🏚️',lbl:'Plancher bas',val:equip.plancher,st:stPlan(equip.plancher)},
+    {icon:'💧',lbl:'Eau chaude',val:equip.ecs,st:stEcs(equip.ecs)},
+    {icon:'🚪',lbl:'Volets',val:equip.volets||'Non détecté',st:{c:'st-nd',t:'ℹ️ Info'}},
+  ];
+  const el=document.getElementById(containerId);
+  if(el)el.innerHTML=items.map(i=>`<div class="det-item"><div class="det-lbl">${i.icon} ${i.lbl}</div><div class="det-val">${i.val}</div><div class="det-st ${i.st.c}">${i.st.t}</div></div>`).join('');
+}
+function renderNiveau(niv,badgeId='niveauBadge',methodeId='niveauMethode',equipsId='niveauEquipements'){
+  const badge=document.getElementById(badgeId);
+  if(badge){badge.className='niveau-badge '+niv.cssClass;badge.innerHTML=`<span>${niv.etoiles}</span> ${niv.niveau}`;}
+  const meth=document.getElementById(methodeId);
+  if(meth)meth.innerHTML=`<div style="font-weight:700;margin-bottom:4px;">${niv.urgence}</div><strong>Méthode :</strong> Croisement 3CL-2021 + Th-CE-Ex<br>${niv.description}`;
+  const eq=document.getElementById(equipsId);
+  if(eq)eq.innerHTML=niv.equipsDetectes.map(e=>`<span class="chip">✓ ${e}</span>`).join('');
+}
+
+/* ══════════════════════════════════════════════════════
+   ANALYSE PDF
+══════════════════════════════════════════════════════ */
+let equip={};
+async function analyserDocument(){
+  if(!currentFile){alert('Veuillez sélectionner un fichier.');return;}
+  const btn=document.getElementById('btnAnalyser');
+  const sp=document.getElementById('loadingSpinner');
+  const bt=document.getElementById('btnText');
+  btn.disabled=true;sp.classList.remove('hidden');bt.textContent='Analyse en cours…';
+  try{
+    let fullText='';
+    if(currentFile.type.startsWith('image/')){fullText='image uniquement';}
+    else{
+      const ab=await currentFile.arrayBuffer();
+      const pdf=await pdfjsLib.getDocument({data:ab}).promise;
+      for(let i=1;i<=Math.min(pdf.numPages,20);i++){
+        const page=await pdf.getPage(i);
+        const c=await page.getTextContent();
+        fullText+=c.items.map(x=>x.str).join(' ')+'\n';
+      }
+    }
+    beneficiaireData=extraireBeneficiaire(fullText);
+    document.getElementById('beneGrid').innerHTML=[
+      {k:'Nom',v:beneficiaireData.nom||'—'},{k:'Prénom',v:beneficiaireData.prenom||'—'},
+      {k:'Adresse',v:beneficiaireData.adresse||'—'},{k:'CP',v:beneficiaireData.cp||'—'},
+      {k:'Ville',v:beneficiaireData.ville||'—'},{k:'Surface',v:beneficiaireData.surface||'—'},
+      {k:'Type',v:beneficiaireData.typeBien||'—'},
+    ].map(f=>`<div class="bene-item"><div class="bene-key">${f.k}</div><div class="bene-val">${f.v}</div></div>`).join('');
+    document.getElementById('beneficiaireCard').classList.remove('hidden');
+
+    const num=extraireNumeriques(fullText);
+    equip=detecterEquipements(fullText);
+    const surfaceM2=beneficiaireData.surface?parseFloat(beneficiaireData.surface):null;
+    const{classe,ep,ges,score,methode,detail3CL,detailThCEEx,ep3CL,epThCEEx,ges3CL,gesThCEEx}=determinerClasse(num,equip,surfaceM2);
+    analysisResult={classe,ep,ges,score,methode,detail3CL,detailThCEEx,ep3CL,epThCEEx,ges3CL,gesThCEEx,num,equip};
+
+    const niv=calculerNiveau(num,equip,classe);
+    document.getElementById('classeLetter').textContent=classe;
+    document.getElementById('classeLetter').className='classe-letter cl-'+classe;
+    document.getElementById('scoreNum').textContent=score+' / 100';
+    document.getElementById('methodeLabel').textContent='Méthode : '+methode;
+    renderDPE(classe,'dpeMeter');
+    renderNiveau(niv,'niveauBadge','niveauMethode','niveauEquipements');
+
+    const epVal=ep!==null?ep:num.ep!==null?num.ep:null;
+    const gesVal=ges!==null?ges:num.ges!==null?num.ges:null;
+    if(epVal!==null||gesVal!==null){
+      document.getElementById('numPanel').classList.remove('hidden');
+      if(epVal!==null)document.getElementById('numEP').textContent=epVal;
+      if(gesVal!==null)document.getElementById('numGES').textContent=gesVal;
+    }
+    if(detail3CL||detailThCEEx){
+      document.getElementById('detail3CLPanel').classList.remove('hidden');
+      document.getElementById('d3cl_ep3CL').textContent=(ep3CL||'—')+' kWh EP/m²/an';
+      document.getElementById('d3cl_ges3CL').textContent=(ges3CL||'—')+' kg CO₂/m²/an';
+      document.getElementById('d3cl_epThCEEx').textContent=(epThCEEx||'—')+' kWh EP/m²/an';
+      document.getElementById('d3cl_gesThCEEx').textContent=(gesThCEEx||'—')+' kg CO₂/m²/an';
+      document.getElementById('d3cl_epCroise').textContent=(ep||'—')+' kWh EP/m²/an';
+      document.getElementById('d3cl_gesCroise').textContent=(ges||'—')+' kg CO₂/m²/an';
+      if(detailThCEEx){
+        document.getElementById('d3cl_surface').textContent=detailThCEEx.surface+' m² / '+detailThCEEx.nOcc+' occ.';
+        document.getElementById('d3cl_Ubat').textContent=detailThCEEx.Bbio+' kWh/m²/an';
+        document.getElementById('d3cl_Bch').textContent=detailThCEEx.Bch_net+' kWh/an';
+        document.getElementById('d3cl_psi').textContent=detailThCEEx.psi+' W/m.K';
+        document.getElementById('d3cl_n50').textContent=detailThCEEx.n50+' vol/h à 50Pa';
+        document.getElementById('d3cl_eta').textContent=detailThCEEx.eta_sais;
+        document.getElementById('d3cl_Ep_ch').textContent=detailThCEEx.Ep_ch+' kWh EP/m²/an';
+        document.getElementById('d3cl_Ep_ecs').textContent=detailThCEEx.Ep_ecs+' kWh EP/m²/an';
+      }
+    }
+    renderDet(equip,'detGrid');
+    document.getElementById('resultCard').classList.remove('hidden');
+    const travaux=genererScenario(equip,classe);
+    renderScenario(travaux,classe,'');
+    document.getElementById('scenarioCard').classList.remove('hidden');
+    renderSauts(classe,equip,'');
+    document.getElementById('sautsCard').classList.remove('hidden');
+    saveAnalyse({nom:(beneficiaireData.nom||'Inconnu')+' '+(beneficiaireData.prenom||''),classe,ep,ges});
+  }catch(err){console.error(err);alert('Erreur : '+err.message);}
+  finally{btn.disabled=false;sp.classList.add('hidden');bt.textContent='🔄 Relancer l\'analyse';}
+}
+
+/* ══════════════════════════════════════════════════════
+   ANALYSE MANUELLE
+══════════════════════════════════════════════════════ */
+function analyserManuel(){
+  const e={
+    ch:document.getElementById('m_chauffage').value,
+    murs:document.getElementById('m_murs').value,
+    combles:document.getElementById('m_combles').value,
+    fen:document.getElementById('m_fenetres').value,
+    vmc:document.getElementById('m_vmc').value,
+    plancher:document.getElementById('m_plancher').value,
+    ecs:document.getElementById('m_ecs').value,
+    volets:document.getElementById('m_volets').value,
+    robinets:'Non détecté',chauffageMixte:false,
+  };
+  const surface=parseFloat(document.getElementById('m_surface').value)||100;
+  const annee=parseInt(document.getElementById('m_annee').value)||null;
+  const num={ep:null,ges:null,classeDirecte:null,annee};
+  const{classe,ep,ges,score,methode}=determinerClasse(num,e,surface);
+  const niv=calculerNiveau(num,e,classe);
+  document.getElementById('m_classeLetter').textContent=classe;
+  document.getElementById('m_classeLetter').className='classe-letter cl-'+classe;
+  document.getElementById('m_scoreNum').textContent=score+' / 100';
+  document.getElementById('m_numEP').textContent=ep||'—';
+  document.getElementById('m_numGES').textContent=ges||'—';
+  renderDPE(classe,'m_dpeMeter');
+  renderNiveau(niv,'m_niveauBadge','m_niveauMethode','');
+  renderDet(e,'m_detGrid');
+  document.getElementById('m_resultCard').classList.remove('hidden');
+  const travaux=genererScenario(e,classe);
+  const equM=e;
+  renderScenario(travaux,classe,'m_');
+  document.getElementById('m_scenarioCard').classList.remove('hidden');
+  renderSauts(classe,e,'m_');
+  document.getElementById('m_sautsCard').classList.remove('hidden');
+  const nom=(document.getElementById('m_nom').value||'Inconnu')+' '+(document.getElementById('m_prenom').value||'');
+  saveAnalyse({nom,classe,ep,ges});
+}
+
+/* ══════════════════════════════════════════════════════
+   DEVIS / FACTURE
+══════════════════════════════════════════════════════ */
+let lignes=[{desc:'',qte:1,pu:0}];
+
+function addLigne(desc='',qte=1,pu=0){
+  lignes.push({desc,qte,pu});
+  renderLignes();
+}
+function removeLigne(i){lignes.splice(i,1);renderLignes();}
+function renderLignes(){
+  const container=document.getElementById('lignes-container');
+  container.innerHTML=lignes.map((l,i)=>`
+    <div style="display:grid;grid-template-columns:1fr 60px 80px 80px 30px;gap:8px;margin-bottom:8px;align-items:center;">
+      <input class="form-input" style="font-size:13px;" placeholder="Description des travaux" value="${l.desc||''}" oninput="lignes[${i}].desc=this.value;updateDocPreview()">
+      <input class="form-input" style="font-size:13px;text-align:center;" type="number" value="${l.qte}" min="1" oninput="lignes[${i}].qte=parseFloat(this.value)||1;updateDocPreview()">
+      <input class="form-input" style="font-size:13px;text-align:right;" type="number" value="${l.pu}" min="0" oninput="lignes[${i}].pu=parseFloat(this.value)||0;updateDocPreview()">
+      <div style="font-size:13px;color:var(--orange2);text-align:right;font-family:'Space Mono',monospace;">${((l.qte||1)*(l.pu||0)).toLocaleString('fr-FR',{minimumFractionDigits:2})} €</div>
+      <button onclick="removeLigne(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;">✕</button>
+    </div>`).join('');
+  updateDocPreview();
+}
+function updateDocPreview(){
+  const type=document.getElementById('d_type')?.value||'DEVIS';
+  const num=document.getElementById('d_num')?.value||'2026-001';
+  const date=document.getElementById('d_date')?.value||new Date().toISOString().split('T')[0];
+  const valid=document.getElementById('d_validite')?.value||'30';
+  const entrep=document.getElementById('d_entreprise')?.value||'NYX Énergie';
+  const entrepAdr=document.getElementById('d_entreprise_adresse')?.value||'';
+  const siret=document.getElementById('d_siret')?.value||'';
+  const rge=document.getElementById('d_rge')?.value||'';
+  const clientNom=document.getElementById('d_client_nom')?.value||'';
+  const clientAdr=document.getElementById('d_client_adresse')?.value||'';
+  const tva=parseFloat(document.getElementById('d_tva')?.value||'5.5');
+  const mentions=document.getElementById('d_mentions')?.value||'';
+  const sousTotal=lignes.reduce((s,l)=>s+(l.qte||1)*(l.pu||0),0);
+  const montantTVA=sousTotal*tva/100;
+  const totalTTC=sousTotal+montantTVA;
+  const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+  if(document.getElementById('d_sousTotal'))document.getElementById('d_sousTotal').textContent=fmt(sousTotal);
+  if(document.getElementById('d_montantTVA'))document.getElementById('d_montantTVA').textContent=fmt(montantTVA);
+  if(document.getElementById('d_totalTTC'))document.getElementById('d_totalTTC').textContent=fmt(totalTTC);
+  const preview=document.getElementById('docPreview');
+  if(!preview)return;
+  preview.innerHTML=`
+    <div class="doc-header-line">
+      <div><div class="doc-company" style="color:#FF5C00;">${entrep}</div><div style="font-size:12px;color:#666;margin-top:4px;">${entrepAdr}</div><div style="font-size:12px;color:#666;">SIRET : ${siret||'—'}</div>${rge?`<div style="font-size:12px;color:#666;">N° RGE : ${rge}</div>`:''}</div>
+      <div><div class="doc-type">${type}</div><div class="doc-num">N° ${num}</div><div class="doc-num">Date : ${date}</div><div class="doc-num">${type==='DEVIS'?'Valide 30 jours':''}</div></div>
+    </div>
+    <div class="doc-parties">
+      <div><div class="doc-party-label">Prestataire</div><div class="doc-party-val"><strong>${entrep}</strong><br>${entrepAdr}<br>SIRET : ${siret||'—'}</div></div>
+      <div><div class="doc-party-label">Client</div><div class="doc-party-val"><strong>${clientNom||'—'}</strong><br>${clientAdr||'—'}</div></div>
+    </div>
+    <table class="doc-table">
+      <thead><tr><th>Description</th><th>Qté</th><th>Prix unitaire HT</th><th class="amount">Total HT</th></tr></thead>
+      <tbody>
+        ${lignes.map(l=>`<tr><td>${l.desc||'—'}</td><td style="text-align:center;">${l.qte||1}</td><td class="amount">${fmt(l.pu||0)}</td><td class="amount">${fmt((l.qte||1)*(l.pu||0))}</td></tr>`).join('')}
+      </tbody>
+    </table>
+    <div class="doc-totals">
+      <div class="doc-totals-box">
+        <div class="doc-total-row"><span>Sous-total HT :</span><span>${fmt(sousTotal)}</span></div>
+        <div class="doc-total-row"><span>TVA ${tva}% :</span><span>${fmt(montantTVA)}</span></div>
+        <div class="doc-total-final"><span>TOTAL TTC :</span><span style="color:#FF5C00;">${fmt(totalTTC)}</span></div>
+      </div>
+    </div>
+    <div class="doc-footer">${mentions}<br><br>© 2026 — Droits Réservés à AYOUB TARHI · NYX Plateforme Énergétique</div>`;
+}
+
+function imprimerDevis(){window.print();}
+function sauvegarderDevis(){
+  const type=document.getElementById('d_type')?.value;
+  const sousTotal=lignes.reduce((s,l)=>s+(l.qte||1)*(l.pu||0),0);
+  const tva=parseFloat(document.getElementById('d_tva')?.value||'5.5');
+  const total=sousTotal*(1+tva/100);
+  devisList.push({id:Date.now(),type,num:document.getElementById('d_num')?.value,client:document.getElementById('d_client_nom')?.value,total,date:new Date().toLocaleDateString('fr-FR')});
+  localStorage.setItem('nyx_devis',JSON.stringify(devisList));
+  refreshCRM();
+  alert('✅ '+type+' sauvegardé !');
+}
+
+function exporterDevisDepuisAnalyse(){
+  if(!analysisResult)return;
+  switchTab('devis');
+  const travaux=genererScenario(analysisResult.equip,analysisResult.classe).filter(t=>t.priorite==='OBLIGATOIRE');
+  lignes=travaux.map(t=>{
+    const m=t.cout.match(/(\d[\d\s]*)/);
+    const pu=m?parseInt(m[1].replace(/\s/g,''))*0.85:0;
+    return{desc:t.titre,qte:1,pu};
+  });
+  if(beneficiaireData){
+    document.getElementById('d_client_nom').value=(beneficiaireData.nom||'')+' '+(beneficiaireData.prenom||'');
+    document.getElementById('d_client_adresse').value=(beneficiaireData.adresse||'')+' '+(beneficiaireData.cp||'')+' '+(beneficiaireData.ville||'');
+  }
+  renderLignes();
+}
+function exporterDevisDepuisManuel(){
+  const nom=(document.getElementById('m_nom').value||'')+' '+(document.getElementById('m_prenom').value||'');
+  const adresse=(document.getElementById('m_adresse').value||'')+' '+(document.getElementById('m_cp').value||'')+' '+(document.getElementById('m_ville').value||'');
+  switchTab('devis');
+  document.getElementById('d_client_nom').value=nom;
+  document.getElementById('d_client_adresse').value=adresse;
+  updateDocPreview();
+}
+
+async function genererPDF(){
+  if(!analysisResult){alert('Aucune analyse disponible.');return;}
+  const{jsPDF}=window.jspdf;
+  const el=document.getElementById('reportContainer');
+  const b=beneficiaireData||{};
+  const r=analysisResult;
+  el.innerHTML=`<div style="background:#f5f5f5;padding:28px;font-family:sans-serif;color:#1a1a1a;">
+    <h2 style="color:#FF5C00;margin-bottom:4px;">Rapport NYX — Analyse Énergétique</h2>
+    <p style="color:#666;font-size:13px;">© 2026 Droits Réservés à AYOUB TARHI · ${new Date().toLocaleDateString('fr-FR')}</p>
+    <hr style="margin:16px 0;border-color:#ddd;">
+    <table style="font-size:14px;width:100%;border-collapse:collapse;">
+      <tr><td style="color:#666;width:130px;padding:4px 8px;">Bénéficiaire</td><td>${(b.nom||'—')+' '+(b.prenom||'—')}</td></tr>
+      <tr><td style="color:#666;padding:4px 8px;">Adresse</td><td>${b.adresse||'—'} ${b.cp||''} ${b.ville||''}</td></tr>
+      <tr><td style="color:#666;padding:4px 8px;">Surface</td><td>${b.surface||'—'}</td></tr>
+    </table>
+    <hr style="margin:16px 0;border-color:#ddd;">
+    <div style="display:flex;gap:20px;align-items:center;margin:12px 0;">
+      <div style="font-size:80px;font-weight:900;color:${COLORS[r.classe]};line-height:1;">${r.classe}</div>
+      <div>
+        <div><b>Énergie primaire :</b> ${r.ep||'—'} kWh EP/m²/an</div>
+        <div><b>Émissions GES :</b> ${r.ges||'—'} kg CO₂/m²/an</div>
+        <div><b>Méthode :</b> ${r.methode}</div>
+      </div>
+    </div>
+    <p style="font-size:12px;color:#999;margin-top:20px;">Valeurs indicatives. Un DPE certifié par un professionnel accrédité reste nécessaire. © 2026 Droits Réservés à AYOUB TARHI — NYX Plateforme Énergétique.</p>
+  </div>`;
+  try{
+    const canvas=await html2canvas(el,{scale:2,backgroundColor:'#f5f5f5',logging:false});
+    const imgData=canvas.toDataURL('image/png');
+    const pdf=new jsPDF('p','mm','a4');
+    const w=190,ph=277,h=canvas.height*w/canvas.width;
+    let left=h,pos=0;
+    pdf.addImage(imgData,'PNG',10,10,w,h);left-=ph;
+    while(left>0){pos-=ph;pdf.addPage();pdf.addImage(imgData,'PNG',10,pos+10,w,h);left-=ph;}
+    pdf.save(`NYX_DPE_${b.nom||'rapport'}_2026.pdf`);
+  }catch(e){alert('Erreur PDF : '+e.message);}
+}
+
+/* ── INIT ── */
+document.getElementById('d_date').value=new Date().toISOString().split('T')[0];
+addLigne('Isolation des combles perdus (30-40 cm)',1,2000);
+addLigne('Chauffe-eau thermodynamique CET',1,2500);
+refreshCRM();
+</script>
+</body>
+</html>
