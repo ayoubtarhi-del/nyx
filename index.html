@@ -959,10 +959,22 @@ const ADMIN_DEFAULT = {id:'admin-ayoub', login:'AYOUB', pwd:'Nyx@2026!Tarhi', no
 function getUsers(){
   const u = localStorage.getItem('nyx_users');
   if(!u) return [ADMIN_DEFAULT];
-  const arr = JSON.parse(u);
-  // S'assurer que l'admin par défaut est toujours là
-  if(!arr.find(x=>x.login==='AYOUB')) arr.unshift(ADMIN_DEFAULT);
-  return arr;
+  try {
+    const arr = JSON.parse(u);
+    // Forcer la mise à jour du mot de passe admin à chaque chargement
+    const adminIdx = arr.findIndex(x=>x.login==='AYOUB');
+    if(adminIdx >= 0){
+      arr[adminIdx].pwd = 'Nyx@2026!Tarhi';
+      arr[adminIdx].actif = true;
+    } else {
+      arr.unshift(ADMIN_DEFAULT);
+    }
+    localStorage.setItem('nyx_users', JSON.stringify(arr));
+    return arr;
+  } catch(e) {
+    localStorage.removeItem('nyx_users');
+    return [ADMIN_DEFAULT];
+  }
 }
 function saveUsers(arr){ localStorage.setItem('nyx_users', JSON.stringify(arr)); }
 
