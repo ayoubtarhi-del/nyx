@@ -345,6 +345,59 @@ body::after{
 .text-center{text-align:center;}
 .gap-8{display:flex;gap:8px;flex-wrap:wrap;}
 
+
+/* ══ LOGIN SCREEN ══ */
+#loginScreen{
+  position:fixed;inset:0;z-index:9999;
+  background:#070707;
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;
+}
+#loginScreen::before{
+  content:'WHY SO SERIOUS?';
+  position:fixed;top:15%;left:-2%;
+  font-family:'Bebas Neue',cursive;font-size:clamp(50px,9vw,110px);
+  color:rgba(160,0,0,0.055);transform:rotate(-6deg);
+  white-space:nowrap;pointer-events:none;letter-spacing:4px;
+}
+.login-box{
+  background:rgba(15,15,15,0.98);
+  border:1px solid rgba(160,0,0,0.2);
+  border-radius:18px;padding:48px 40px;
+  width:100%;max-width:400px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.8);
+  position:relative;z-index:1;
+}
+.login-logo{
+  font-family:'Bebas Neue',cursive;font-size:52px;
+  letter-spacing:0.2em;color:#FF5C00;
+  text-shadow:0 0 30px rgba(255,92,0,0.5);
+  text-align:center;margin-bottom:4px;
+}
+.login-sub{text-align:center;font-size:11px;color:#555;letter-spacing:0.3em;text-transform:uppercase;margin-bottom:32px;}
+.login-error{background:rgba(192,0,26,0.15);border:1px solid rgba(192,0,26,0.3);border-radius:8px;padding:10px 14px;font-size:13px;color:#FF1744;margin-bottom:16px;display:none;}
+.login-label{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:0.1em;font-family:'Space Mono',monospace;margin-bottom:5px;}
+
+/* ══ USERS TAB ══ */
+.user-row{
+  display:grid;grid-template-columns:1fr 1fr 1fr 80px 80px;
+  gap:10px;align-items:center;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:8px;padding:12px 14px;margin-bottom:8px;
+  font-size:13px;
+}
+.user-row-header{
+  font-size:10px;color:var(--muted);text-transform:uppercase;
+  letter-spacing:0.1em;font-family:'Space Mono',monospace;
+  padding:0 14px 8px 14px;
+  display:grid;grid-template-columns:1fr 1fr 1fr 80px 80px;gap:10px;
+}
+.role-badge{display:inline-block;padding:2px 10px;border-radius:100px;font-size:10px;font-weight:700;}
+.role-admin{background:rgba(255,92,0,0.15);color:#FF5C00;border:1px solid rgba(255,92,0,0.3);}
+.role-user{background:rgba(96,165,250,0.12);color:#60A5FA;border:1px solid rgba(96,165,250,0.25);}
+.pwd-reveal{font-family:'Space Mono',monospace;font-size:11px;color:#666;cursor:pointer;}
+.pwd-reveal:hover{color:var(--orange);}
+
 /* Scrollbar */
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-track{background:var(--bg2);}
@@ -352,6 +405,29 @@ body::after{
 </style>
 </head>
 <body>
+
+<!-- ══ LOGIN SCREEN ══ -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">NYX</div>
+    <div class="login-sub">Plateforme Énergétique Sécurisée</div>
+    <div class="login-error" id="loginError">Identifiants incorrects. Veuillez réessayer.</div>
+    <div class="form-group" style="margin-bottom:14px;">
+      <div class="login-label">Identifiant</div>
+      <input class="form-input" id="loginUser" placeholder="Votre identifiant" autocomplete="username">
+    </div>
+    <div class="form-group" style="margin-bottom:24px;">
+      <div class="login-label">Mot de passe</div>
+      <div style="position:relative;">
+        <input class="form-input" type="password" id="loginPass" placeholder="Votre mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+        <span onclick="togglePwd()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;color:#555;font-size:16px;" id="eyeIcon">👁️</span>
+      </div>
+    </div>
+    <button class="btn" style="width:100%;justify-content:center;" onclick="doLogin()">Se connecter →</button>
+    <div style="margin-top:20px;text-align:center;font-size:11px;color:#333;">© 2026 Droits Réservés à AYOUB TARHI</div>
+  </div>
+</div>
+
 <div class="bg-glow"></div>
 <div class="bg-scar"></div>
 
@@ -374,6 +450,9 @@ body::after{
     </div>
     <div class="nav-tab" onclick="switchTab('devis')" data-tab="devis">
       <span class="tab-icon">📋</span> Devis / Facture
+    </div>
+    <div class="nav-tab admin-only" onclick="switchTab('users')" data-tab="users" style="display:none;">
+      <span class="tab-icon">👥</span> Utilisateurs
     </div>
   </nav>
   <div class="nav-right">
@@ -777,6 +856,45 @@ body::after{
   </div>
 </div><!-- /tab-devis -->
 
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ONGLET 4 — UTILISATEURS (ADMIN ONLY)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="tab-content" id="tab-users">
+  <!-- Stats -->
+  <div class="card">
+    <div class="card-title">👥 Gestion des utilisateurs</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+      <div class="invest-box"><div class="invest-val" id="u_total">0</div><div class="invest-lbl">Utilisateurs total</div></div>
+      <div class="invest-box"><div class="invest-val" id="u_actifs">0</div><div class="invest-lbl">Actifs</div></div>
+      <div class="invest-box"><div class="invest-val" id="u_admins">1</div><div class="invest-lbl">Admins</div></div>
+    </div>
+
+    <!-- Créer utilisateur -->
+    <div style="background:rgba(255,92,0,0.06);border:1px solid rgba(255,92,0,0.15);border-radius:10px;padding:18px;margin-bottom:20px;">
+      <div style="font-size:11px;color:var(--orange);text-transform:uppercase;letter-spacing:0.15em;font-family:'Space Mono',monospace;margin-bottom:14px;">➕ Créer un accès utilisateur</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 120px;gap:10px;align-items:end;">
+        <div class="form-group"><label class="form-label">Identifiant</label><input class="form-input" id="nu_login" placeholder="ex: jean.dupont"></div>
+        <div class="form-group"><label class="form-label">Mot de passe</label>
+          <div style="position:relative;">
+            <input class="form-input" type="password" id="nu_pwd" placeholder="Mot de passe">
+            <span onclick="toggleNewPwd()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:#555;">👁️</span>
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">Nom complet</label><input class="form-input" id="nu_nom" placeholder="Jean Dupont"></div>
+        <button class="btn" onclick="creerUtilisateur()">Créer →</button>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:#555;">L'utilisateur aura accès à : DPE Intelligent, Saisie Manuelle, Devis/Facture. Pas d'accès au CRM complet ni à la gestion des utilisateurs.</div>
+    </div>
+
+    <!-- Liste utilisateurs -->
+    <div class="user-row-header">
+      <div>Identifiant</div><div>Nom</div><div>Mot de passe</div><div>Rôle</div><div>Actions</div>
+    </div>
+    <div id="usersList"></div>
+  </div>
+</div>
+
 </main>
 
 <!-- ══════════════════════════════════════════════════════
@@ -790,6 +908,143 @@ body::after{
 <div id="reportContainer" style="position:absolute;left:-9999px;top:0;width:800px;"></div>
 
 <script>
+
+/* ══════════════════════════════════════════════════════
+   AUTHENTIFICATION & GESTION UTILISATEURS
+══════════════════════════════════════════════════════ */
+
+// Base utilisateurs — stockée en localStorage
+const ADMIN_DEFAULT = {id:'admin-ayoub', login:'AYOUB', pwd:'Nyx@2026!Tarhi', nom:'Ayoub Tarhi', role:'admin', actif:true, created:'2026'};
+
+function getUsers(){
+  const u = localStorage.getItem('nyx_users');
+  if(!u) return [ADMIN_DEFAULT];
+  const arr = JSON.parse(u);
+  // S'assurer que l'admin par défaut est toujours là
+  if(!arr.find(x=>x.login==='AYOUB')) arr.unshift(ADMIN_DEFAULT);
+  return arr;
+}
+function saveUsers(arr){ localStorage.setItem('nyx_users', JSON.stringify(arr)); }
+
+let currentUser = null;
+
+function doLogin(){
+  const login = document.getElementById('loginUser').value.trim();
+  const pwd   = document.getElementById('loginPass').value;
+  const users = getUsers();
+  const found = users.find(u => u.login === login && u.pwd === pwd && u.actif !== false);
+  if(!found){
+    document.getElementById('loginError').style.display='block';
+    document.getElementById('loginPass').value='';
+    return;
+  }
+  currentUser = found;
+  document.getElementById('loginScreen').style.display='none';
+  applyRole(found.role);
+  refreshUsers();
+  refreshCRM();
+}
+
+function togglePwd(){
+  const inp = document.getElementById('loginPass');
+  const eye = document.getElementById('eyeIcon');
+  if(inp.type==='password'){inp.type='text';eye.textContent='🙈';}
+  else{inp.type='password';eye.textContent='👁️';}
+}
+function toggleNewPwd(){
+  const inp = document.getElementById('nu_pwd');
+  if(inp.type==='password')inp.type='text';
+  else inp.type='password';
+}
+
+function applyRole(role){
+  if(role==='admin'){
+    // Admin voit tout
+    document.querySelectorAll('.admin-only').forEach(el=>el.style.display='');
+    document.getElementById('btnCRM').style.display='';
+  } else {
+    // Utilisateur — cache onglet Utilisateurs et CRM complet
+    document.querySelectorAll('.admin-only').forEach(el=>el.style.display='none');
+    document.getElementById('btnCRM').style.display='none';
+  }
+  // Afficher nom utilisateur dans header
+  const navRight = document.querySelector('.nav-right');
+  const userBadge = document.createElement('div');
+  userBadge.style.cssText='font-size:12px;color:var(--muted);font-family:"Space Mono",monospace;display:flex;align-items:center;gap:8px;';
+  userBadge.innerHTML = `<span style="color:${role==='admin'?'var(--orange)':'#60A5FA'};">●</span> ${currentUser.nom||currentUser.login} <span style="font-size:10px;padding:2px 8px;border-radius:100px;background:${role==='admin'?'rgba(255,92,0,0.12)':'rgba(96,165,250,0.1)'};color:${role==='admin'?'var(--orange)':'#60A5FA'};">${role.toUpperCase()}</span> <button onclick="doLogout()" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:4px 10px;cursor:pointer;margin-left:4px;">⏏ Déconnexion</button>`;
+  navRight.insertBefore(userBadge, navRight.firstChild);
+}
+
+function doLogout(){
+  currentUser=null;
+  location.reload();
+}
+
+function creerUtilisateur(){
+  const login = document.getElementById('nu_login').value.trim();
+  const pwd   = document.getElementById('nu_pwd').value.trim();
+  const nom   = document.getElementById('nu_nom').value.trim();
+  if(!login||!pwd){alert('Identifiant et mot de passe obligatoires.');return;}
+  const users = getUsers();
+  if(users.find(u=>u.login===login)){alert('Cet identifiant existe déjà.');return;}
+  users.push({id:'u-'+Date.now(), login, pwd, nom, role:'user', actif:true, created:new Date().toLocaleDateString('fr-FR')});
+  saveUsers(users);
+  document.getElementById('nu_login').value='';
+  document.getElementById('nu_pwd').value='';
+  document.getElementById('nu_nom').value='';
+  refreshUsers();
+  alert('✅ Utilisateur créé avec succès !');
+}
+
+function toggleUserActif(id){
+  const users=getUsers();
+  const u=users.find(x=>x.id===id);
+  if(u&&u.role!=='admin') u.actif=!u.actif;
+  saveUsers(users);
+  refreshUsers();
+}
+
+function deleteUser(id){
+  if(!confirm('Supprimer cet utilisateur ?')) return;
+  let users=getUsers().filter(u=>u.id!==id&&u.login!=='AYOUB');
+  // Toujours garder l'admin
+  const users2=getUsers().filter(u=>u.id!==id);
+  saveUsers(users2);
+  refreshUsers();
+}
+
+function showPwd(id){
+  const el=document.getElementById('pwd-'+id);
+  if(el.dataset.shown==='1'){el.textContent='••••••••';el.dataset.shown='0';}
+  else{const u=getUsers().find(x=>x.id===id);if(u){el.textContent=u.pwd;el.dataset.shown='1';}}
+}
+
+function refreshUsers(){
+  const users=getUsers();
+  const actifs=users.filter(u=>u.actif!==false).length;
+  const admins=users.filter(u=>u.role==='admin').length;
+  document.getElementById('u_total').textContent=users.length;
+  document.getElementById('u_actifs').textContent=actifs;
+  document.getElementById('u_admins').textContent=admins;
+  document.getElementById('usersList').innerHTML=users.map(u=>`
+    <div class="user-row" style="opacity:${u.actif===false?0.45:1}">
+      <div style="font-family:'Space Mono',monospace;font-size:12px;font-weight:600;">${u.login}</div>
+      <div style="font-size:13px;">${u.nom||'—'}</div>
+      <div>
+        <span class="pwd-reveal" id="pwd-${u.id}" data-shown="0" onclick="showPwd('${u.id}')">••••••••</span>
+        <span style="font-size:10px;color:#444;margin-left:4px;">(cliquer pour voir)</span>
+      </div>
+      <div><span class="role-badge ${u.role==='admin'?'role-admin':'role-user'}">${u.role.toUpperCase()}</span></div>
+      <div style="display:flex;gap:6px;">
+        ${u.role!=='admin'?`
+          <button onclick="toggleUserActif('${u.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;font-size:11px;padding:4px 8px;cursor:pointer;color:${u.actif===false?'#69F0AE':'#FFD740'};">${u.actif===false?'✓ Activer':'⏸ Désact.'}</button>
+          <button onclick="deleteUser('${u.id}')" style="background:none;border:1px solid rgba(255,23,68,0.2);border-radius:6px;font-size:11px;padding:4px 8px;cursor:pointer;color:#FF1744;">✕</button>
+        `:'<span style="font-size:11px;color:#444;">— protégé —</span>'}
+      </div>
+    </div>`).join('');
+}
+
+
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
 /* ══════════════════════════════════════════════════════
@@ -801,6 +1056,7 @@ function switchTab(name){
   document.getElementById('tab-'+name).classList.add('active');
   document.querySelector(`[data-tab="${name}"]`).classList.add('active');
   if(name==='devis') updateDocPreview();
+  if(name==='users') refreshUsers();
 }
 
 /* ══════════════════════════════════════════════════════
