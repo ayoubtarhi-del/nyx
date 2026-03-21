@@ -14,6 +14,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <style>
 :root {
   --bg:      #070707;
@@ -249,7 +252,7 @@ body::after{
 .gain-tag{margin-left:auto;flex-shrink:0;font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(0,200,83,0.1);color:#69F0AE;font-weight:700;}
 
 /* ── INVEST SUMMARY ── */
-.invest-summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:18px;}
+.invest-summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:18px;}
 .invest-box{background:var(--bg3);border-radius:10px;padding:14px;text-align:center;}
 .invest-val{font-size:22px;font-weight:700;color:var(--green2);font-family:'Space Mono',monospace;}
 .invest-lbl{font-size:11px;color:var(--muted);margin-top:4px;}
@@ -408,6 +411,36 @@ body::after{
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-track{background:var(--bg2);}
 ::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px;}
+
+/* ══ IMPRESSION — uniquement l'aperçu du document ══ */
+.no-print { display: none !important; }
+@media print {
+  @page {
+    margin: 15mm;
+    size: A4;
+  }
+  .no-print { display: none !important; }
+  /* Masquer absolument tout */
+  body > * { display: none !important; }
+  body::before, body::after { display: none !important; }
+  /* Afficher uniquement la zone d'impression */
+  #printArea {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  #printArea .doc-preview {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 20px !important;
+    background: white !important;
+    color: #1a1a1a !important;
+    font-family: 'DM Sans', sans-serif !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -430,6 +463,23 @@ body::after{
       </div>
     </div>
     <button class="btn" style="width:100%;justify-content:center;" onclick="doLogin()">Se connecter →</button>
+    <div style="text-align:center;margin-top:14px;">
+      <span onclick="showResetForm()" style="font-size:12px;color:#555;cursor:pointer;text-decoration:underline;transition:color 0.2s;" onmouseover="this.style.color='#10B981'" onmouseout="this.style.color='#555'">Mot de passe oublié ?</span>
+    </div>
+    <!-- Formulaire réinitialisation -->
+    <div id="resetForm" style="display:none;margin-top:20px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.06);">
+      <div style="font-size:12px;color:#888;margin-bottom:12px;text-align:center;">Entrez votre identifiant pour envoyer une demande à l'administrateur.</div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <div class="login-label">Votre identifiant</div>
+        <input class="form-input" id="resetLogin" placeholder="Votre identifiant">
+      </div>
+      <button class="btn" style="width:100%;justify-content:center;background:linear-gradient(135deg,#1e1e1e,#2a2a2a);border:1px solid rgba(16,185,129,0.3);" onclick="envoyerDemandeReset()">
+        📧 Envoyer la demande
+      </button>
+      <div style="text-align:center;margin-top:10px;">
+        <span onclick="hideResetForm()" style="font-size:12px;color:#555;cursor:pointer;text-decoration:underline;">Retour à la connexion</span>
+      </div>
+    </div>
     <div style="margin-top:20px;text-align:center;font-size:11px;color:#333;">© 2026 Droits Réservés à AYOUB TARHI</div>
   </div>
 </div>
@@ -455,10 +505,13 @@ body::after{
       <span class="tab-icon">✏️</span> Saisie Manuelle
     </div>
     <div class="nav-tab" onclick="switchTab('devis')" data-tab="devis">
-      <span class="tab-icon">📋</span> Devis / Facture
+      <span class="tab-icon">📁</span> Créer Dossier
     </div>
     <div class="nav-tab admin-only" onclick="switchTab('users')" data-tab="users" style="display:none;">
       <span class="tab-icon">👥</span> Utilisateurs
+    </div>
+    <div class="nav-tab" onclick="switchTab('dashboard360')" data-tab="dashboard360">
+      <span class="tab-icon">📊</span> Tableau de Bord
     </div>
   </nav>
   <div class="nav-right">
@@ -478,6 +531,7 @@ body::after{
     <div class="crm-tab active" onclick="switchCRMTab('dashboard')">📊 Dashboard</div>
     <div class="crm-tab" onclick="switchCRMTab('clients')">👥 Clients</div>
     <div class="crm-tab" onclick="switchCRMTab('historique')">📁 Historique</div>
+    <div class="crm-tab" onclick="switchCRMTab('devis')">📋 Devis</div>
   </div>
 
   <!-- Dashboard -->
@@ -514,6 +568,11 @@ body::after{
   <div class="crm-section" id="crm-historique">
     <div id="crm-historique-list"><div style="color:var(--muted);font-size:13px;text-align:center;padding:20px;">Aucun historique</div></div>
   </div>
+
+  <!-- Devis sauvegardés -->
+  <div class="crm-section" id="crm-devis">
+    <div id="crm-devis-list"><div style="color:var(--muted);font-size:13px;text-align:center;padding:20px;">Aucun devis sauvegardé</div></div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════
@@ -532,8 +591,22 @@ body::after{
     <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
       <div style="font-size:44px;margin-bottom:12px;">📄</div>
       <p style="font-size:17px;font-weight:500;" id="dropText">Glissez-déposez votre PDF ici</p>
-      <p style="color:var(--muted);font-size:13px;margin-top:4px;" id="dropSub">ou cliquez pour sélectionner — PDF, JPG, PNG</p>
+      <p style="color:var(--muted);font-size:13px;margin-top:4px;" id="dropSub">Nommez votre fichier : VISITE-TECHNIQUE-NOM-PRÉNOM.pdf</p>
       <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="handleFileSelect(this.files[0])">
+    </div>
+    <div style="display:flex;justify-content:center;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:12px;">
+      <div class="form-group" style="min-width:220px;">
+        <label class="form-label">Zone climatique (3CL)</label>
+        <select class="form-select" id="dpe_zone">
+          <option value="">-- Sélectionner votre zone --</option>
+          <option value="H1a">H1a — Nord / Est (très froid) ×1.15</option>
+          <option value="H1b">H1b — Île-de-France ×1.10</option>
+          <option value="H1c">H1c — Bourgogne / Centre-Est ×1.05</option>
+          <option value="H2">H2 — Centre / Ouest ×1.00</option>
+          <option value="H2d">H2d — Pyrénées / Corse ×0.95</option>
+          <option value="H3">H3 — Méditerranée (tempéré) ×0.85</option>
+        </select>
+      </div>
     </div>
     <div class="text-center">
       <button class="btn hidden" id="btnAnalyser" onclick="analyserDocument()">
@@ -617,7 +690,6 @@ body::after{
     </div>
     <div class="mt16 gap-8">
       <button class="btn btn-sm" onclick="exporterDevisDepuisAnalyse()">📋 Générer un devis</button>
-      <button class="btn btn-sm btn-ghost" onclick="genererPDF()">📥 Télécharger PDF</button>
     </div>
   </div>
 
@@ -625,6 +697,13 @@ body::after{
   <div class="card hidden" id="sautsCard">
     <div class="card-title">📈 Sauts de Classes — Par Étapes</div>
     <div id="sautsContainer"></div>
+  </div>
+
+  <!-- BOUTON SYNTHÈSE EN BAS -->
+  <div class="hidden text-center" id="synthesesBtnWrap" style="margin:24px 0 8px 0;">
+    <button class="btn" onclick="genererSynthese()" style="padding:16px 48px;font-size:15px;letter-spacing:0.05em;">
+      📄 Générer la Synthèse
+    </button>
   </div>
 
 </div><!-- /tab-dpe -->
@@ -651,6 +730,16 @@ body::after{
     <div class="form-grid">
       <div class="form-group"><label class="form-label">Surface habitable (m²)</label><input class="form-input" id="m_surface" type="number" placeholder="100"></div>
       <div class="form-group"><label class="form-label">Année de construction</label><input class="form-input" id="m_annee" type="number" placeholder="1975"></div>
+      <div class="form-group"><label class="form-label">Zone climatique (3CL)</label>
+        <select class="form-select" id="m_zone">
+          <option value="">-- Sélectionner votre zone --</option>
+          <option value="H1a">H1a — Nord / Est (très froid) ×1.15</option>
+          <option value="H1b">H1b — Île-de-France ×1.10</option>
+          <option value="H1c">H1c — Bourgogne / Centre-Est ×1.05</option>
+          <option value="H2">H2 — Centre / Ouest ×1.00</option>
+          <option value="H2d">H2d — Pyrénées / Corse ×0.95</option>
+          <option value="H3">H3 — Méditerranée (tempéré) ×0.85</option>
+        </select></div>
       <div class="form-group"><label class="form-label">Type de bien</label>
         <select class="form-select" id="m_type"><option value="">Sélectionner</option><option>Maison individuelle</option><option>Appartement</option><option>Immeuble</option></select></div>
       <div class="form-group"><label class="form-label">Nombre de niveaux chauffés</label><input class="form-input" id="m_niveaux" type="number" placeholder="2"></div>
@@ -783,7 +872,7 @@ body::after{
      ONGLET 3 — DEVIS / FACTURE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
 <div class="tab-content" id="tab-devis">
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+  <div style="display:grid;grid-template-columns:1fr;gap:24px;max-width:750px;margin:0 auto;">
 
     <!-- Formulaire gauche -->
     <div>
@@ -821,7 +910,7 @@ body::after{
               <button id="d_logo_remove" onclick="removeLogo()" style="display:none;background:none;border:1px solid rgba(255,23,68,0.3);border-radius:6px;color:#FF1744;font-size:11px;padding:6px 10px;cursor:pointer;">✕</button>
             </div>
           </div>
-          <div class="form-group"><input class="form-input" id="d_entreprise" placeholder="Nom de votre entreprise" value="NYX Énergie" oninput="updateDocPreview()"></div>
+          <div class="form-group"><input class="form-input" id="d_entreprise" placeholder="Nom de votre entreprise" value="" oninput="updateDocPreview()"></div>
           <div class="form-group"><input class="form-input" id="d_entreprise_adresse" placeholder="Adresse entreprise" oninput="updateDocPreview()"></div>
           <div class="form-group"><input class="form-input" id="d_entreprise_complement" placeholder="Complément d'adresse (bât, étage, lieu-dit...)" oninput="updateDocPreview()"></div>
           <div class="form-group"><input class="form-input" id="d_siret" placeholder="SIRET" oninput="updateDocPreview()"></div>
@@ -845,7 +934,7 @@ body::after{
           <div style="font-size:32px;">📄</div>
           <div style="flex:1;">
             <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;" id="auditFileName">Aucun audit chargé</div>
-            <div style="font-size:12px;color:var(--muted);">Glissez ou cliquez pour uploader l'audit énergétique PDF. Les lignes de travaux seront déverrouillées.</div>
+            <div style="font-size:12px;color:var(--muted);">Nommez votre fichier : <strong style="color:var(--green);">AUDIT-ENERGETIQUE-NOM-PRÉNOM.pdf</strong> — Les lignes de travaux seront déverrouillées.</div>
           </div>
           <label for="d_audit" style="cursor:pointer;">
             <div class="btn btn-sm" style="pointer-events:none;">📎 Charger l'audit</div>
@@ -859,9 +948,60 @@ body::after{
       <div class="card" id="lignesCard">
         <div class="card-title">📦 Lignes de travaux</div>
         <div id="lignes-container"></div>
-        <button class="btn btn-sm btn-ghost" onclick="addLigne()" style="margin-top:10px;">+ Ajouter une ligne</button>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+          <button class="btn btn-sm btn-ghost" onclick="addLigne()">+ Ligne manuelle</button>
+          <button class="btn btn-sm" onclick="ouvrirCatalogue()" style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);color:var(--green);">📋 Ajouter opération BAR-TH</button>
+        </div>
+        <!-- Modal catalogue -->
+        <div id="catalogueModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;align-items:center;justify-content:center;">
+          <div style="background:var(--bg2);border:1px solid rgba(16,185,129,0.3);border-radius:14px;padding:24px;width:90%;max-width:600px;max-height:80vh;overflow-y:auto;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <div style="font-family:'Bebas Neue',cursive;font-size:20px;letter-spacing:0.1em;color:var(--green);">Catalogue Opérations BAR-TH / BAR-EN</div>
+              <button onclick="fermerCatalogue()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;">✕</button>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Sélectionnez les opérations à ajouter dans les lignes de travaux. Les CUMAC seront calculés automatiquement.</div>
+            <div id="catalogueList"></div>
+            <div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end;">
+              <button class="btn btn-sm btn-ghost" onclick="fermerCatalogue()">Annuler</button>
+              <button class="btn btn-sm" onclick="ajouterDepuisCatalogue()">✅ Ajouter les opérations sélectionnées</button>
+            </div>
+          </div>
+        </div>
         <div style="margin-top:16px;padding:14px;background:var(--bg3);border-radius:8px;">
-          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--muted);">Sous-total HT :</span><span id="d_sousTotal" style="font-family:'Space Mono',monospace;">0,00 €</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
+            <span style="color:var(--muted);">Sous-total HT :</span>
+            <span id="d_sousTotal" style="font-family:'Space Mono',monospace;">0,00 €</span>
+          </div>
+
+          <!-- Déductions MPR & CEE -->
+          <div style="border:1px dashed rgba(16,185,129,0.25);border-radius:8px;padding:10px;margin-bottom:10px;">
+            <div style="font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:0.1em;font-family:'Space Mono',monospace;margin-bottom:8px;">⚡ Déductions aides (optionnel)</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+              <button onclick="toggleDeduction('mpr')" id="btn_deduc_mpr"
+                style="flex:1;min-width:120px;padding:8px 12px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;background:var(--bg4);border:1px solid var(--border);color:var(--muted);">
+                🏦 Déduire MaPrimeRénov'
+              </button>
+              <button onclick="toggleDeduction('cee')" id="btn_deduc_cee"
+                style="flex:1;min-width:120px;padding:8px 12px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;background:var(--bg4);border:1px solid var(--border);color:var(--muted);">
+                💰 Déduire CEE
+              </button>
+            </div>
+            <div id="deduc_detail" style="display:none;font-size:12px;">
+              <div id="deduc_mpr_row" style="display:none;justify-content:space-between;margin-bottom:4px;">
+                <span style="color:#60A5FA;">— MaPrimeRénov' 2026 :</span>
+                <span id="deduc_mpr_val" style="color:#60A5FA;font-family:'Space Mono',monospace;font-weight:700;">0,00 €</span>
+              </div>
+              <div id="deduc_cee_row" style="display:none;justify-content:space-between;margin-bottom:4px;">
+                <span style="color:var(--green);">— CEE estimé :</span>
+                <span id="deduc_cee_val" style="color:var(--green);font-family:'Space Mono',monospace;font-weight:700;">0,00 €</span>
+              </div>
+              <div id="deduc_total_row" style="display:none;justify-content:space-between;padding-top:6px;border-top:1px solid var(--border);margin-top:4px;">
+                <span style="color:var(--muted);">= Sous-total HT après aides :</span>
+                <span id="deduc_total_val" style="font-family:'Space Mono',monospace;font-weight:700;color:#FFD740;">0,00 €</span>
+              </div>
+            </div>
+          </div>
+
           <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
             <span style="color:var(--muted);">TVA : </span>
             <select class="form-select" style="width:80px;padding:4px 8px;font-size:12px;" id="d_tva" onchange="updateDocPreview()">
@@ -870,29 +1010,89 @@ body::after{
             <span id="d_montantTVA" style="font-family:'Space Mono',monospace;">0,00 €</span>
           </div>
           <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;border-top:1px solid var(--border);padding-top:8px;">
-            <span>TOTAL TTC :</span><span id="d_totalTTC" style="color:var(--green);font-family:'Space Mono',monospace;">0,00 €</span>
+            <span>TOTAL TTC :</span>
+            <span id="d_totalTTC" style="color:var(--green);font-family:'Space Mono',monospace;">0,00 €</span>
+          </div>
+          <div id="d_resteACharge_row" style="display:none;justify-content:space-between;font-size:14px;font-weight:700;margin-top:8px;padding:8px 10px;background:rgba(255,109,0,0.08);border-radius:6px;">
+            <span style="color:#FF6D00;">Reste à charge client :</span>
+            <span id="d_resteACharge" style="color:#FF6D00;font-family:'Space Mono',monospace;">0,00 €</span>
           </div>
         </div>
+        <!-- SECTION CUMAC / CEE -->
+        <div style="margin-top:16px;background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:16px;">
+          <div style="font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:0.15em;font-family:'Space Mono',monospace;margin-bottom:14px;font-weight:700;">⚡ Calcul CUMAC & CEE</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+            <div class="form-group">
+              <label class="form-label">Zone climatique</label>
+              <select class="form-select" id="cee_zone" onchange="calculerCumac()">
+                <option value="H1">H1 — Nord / Est / Île-de-France</option>
+                <option value="H2" selected>H2 — Centre / Ouest / Bordeaux</option>
+                <option value="H3">H3 — Méditerranée / PACA</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Profil du ménage</label>
+              <select class="form-select" id="cee_profil" onchange="calculerCumac()">
+                <option value="tres_modeste">Très modeste (taux max)</option>
+                <option value="modeste">Modeste</option>
+                <option value="intermediaire">Intermédiaire</option>
+                <option value="classique" selected>Classique (taux standard)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Surface habitable (m²)</label>
+              <input class="form-input" type="number" id="cee_surface" value="100" oninput="calculerCumac()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Chauffage actuel</label>
+              <select class="form-select" id="cee_chauffage" onchange="calculerCumac()">
+                <option value="gaz">Gaz naturel</option>
+                <option value="elec" selected>Électrique</option>
+                <option value="fioul">Fioul</option>
+                <option value="bois">Bois / Granulés</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Type de bien</label>
+              <select class="form-select" id="cee_typebien" onchange="calculerCumac()">
+                <option value="maison" selected>Maison individuelle</option>
+                <option value="appartement">Appartement</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Classe DPE avant / après</label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <select class="form-select" id="cee_classe_avant" onchange="calculerCumac()">
+                  <option value="">Avant</option>
+                  <option value="G">G</option><option value="F">F</option><option value="E">E</option>
+                  <option value="D">D</option><option value="C">C</option><option value="B">B</option>
+                </select>
+                <span style="color:var(--green);font-weight:700;">→</span>
+                <select class="form-select" id="cee_classe_apres" onchange="calculerCumac()">
+                  <option value="">Après</option>
+                  <option value="A">A</option><option value="B">B</option><option value="C">C</option>
+                  <option value="D">D</option><option value="E">E</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div id="cumac-results" style="background:var(--bg3);border-radius:8px;padding:12px;">
+            <div style="font-size:12px;color:var(--muted);text-align:center;">Renseignez les paramètres et les lignes de travaux pour calculer les CUMAC</div>
+          </div>
+        </div>
+
         <div class="form-group" style="margin-top:12px;">
           <label class="form-label">Mentions / Conditions</label>
           <textarea class="form-textarea" id="d_mentions" oninput="updateDocPreview()">Travaux réalisés par des professionnels certifiés RGE. TVA à 5.5% applicable pour les travaux de rénovation énergétique.</textarea>
         </div>
         <div class="gap-8 mt16">
-          <button class="btn" onclick="imprimerDevis()">🖨️ Imprimer / PDF</button>
+          <button class="btn" onclick="imprimerDevis()">📄 Générer</button>
           <button class="btn btn-ghost btn-sm" onclick="sauvegarderDevis()">💾 Sauvegarder</button>
         </div>
       </div>
     </div>
 
-    <!-- Aperçu droite -->
-    <div>
-      <div style="position:sticky;top:80px;">
-        <div class="card-title" style="padding:0 0 12px 0;">👁️ Aperçu du document</div>
-        <div class="doc-preview" id="docPreview">
-          <!-- Généré dynamiquement -->
-        </div>
-      </div>
-    </div>
+    <!-- Aperçu supprimé - généré à la demande -->
   </div>
 </div><!-- /tab-devis -->
 
@@ -935,17 +1135,59 @@ body::after{
   </div>
 </div>
 
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ONGLET — TABLEAU DE BORD 360°
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="tab-content" id="tab-dashboard360">
+
+  <!-- Stats globales (admin voit tout, user voit les siennes) -->
+  <div class="card">
+    <div class="card-title">📊 Vue 360° — <span id="db360_scope">Mes statistiques</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px;" id="db360_stats">
+      <div class="stat-box"><div class="stat-val" id="db360_nb_vt">0</div><div class="stat-lbl">VT analysées</div></div>
+      <div class="stat-box"><div class="stat-val" id="db360_nb_dossiers">0</div><div class="stat-lbl">Dossiers créés</div></div>
+      <div class="stat-box"><div class="stat-val" id="db360_ca">0 €</div><div class="stat-lbl">CA total</div></div>
+      <div class="stat-box"><div class="stat-val" id="db360_signes">0</div><div class="stat-lbl">Dossiers signés</div></div>
+    </div>
+
+    <!-- Filtre utilisateur (admin seulement) -->
+    <div class="admin-only" id="db360_filtre" style="display:none;margin-bottom:16px;">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;font-family:'Space Mono',monospace;margin-bottom:8px;">Filtrer par utilisateur</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;" id="db360_user_btns"></div>
+    </div>
+  </div>
+
+  <!-- VT analysées -->
+  <div class="card">
+    <div class="card-title">📄 Historique des Visites Techniques</div>
+    <div id="db360_vt_list">
+      <div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">Aucune VT enregistrée</div>
+    </div>
+  </div>
+
+  <!-- Dossiers créés -->
+  <div class="card">
+    <div class="card-title">📁 Dossiers Créés</div>
+    <div id="db360_dossiers_list">
+      <div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">Aucun dossier créé</div>
+    </div>
+  </div>
+
+</div>
+
 </main>
 
 <!-- ══════════════════════════════════════════════════════
      FOOTER
 ══════════════════════════════════════════════════════ -->
-<footer class="footer">
+<footer class="footer no-print">
   <span>© 2026 — Droits Réservés à AYOUB TARHI</span> · NYX Plateforme Énergétique · Tous droits réservés
 </footer>
 
 <!-- Rapport caché pour PDF -->
 <div id="reportContainer" style="position:absolute;left:-9999px;top:0;width:800px;"></div>
+<div id="docPreview" style="display:none;"></div>
+<div id="printArea" style="display:none;"></div>
 
 <script>
 
@@ -980,9 +1222,11 @@ function saveUsers(arr){ localStorage.setItem('nyx_users', JSON.stringify(arr));
 
 let currentUser = null;
 
-function doLogin(){
+async function doLogin(){
   const login = document.getElementById('loginUser').value.trim();
   const pwd   = document.getElementById('loginPass').value;
+
+  // Récupérer l'utilisateur NYX (pour rôle et nom)
   const users = getUsers();
   const found = users.find(u => u.login === login && u.pwd === pwd && u.actif !== false);
   if(!found){
@@ -990,7 +1234,36 @@ function doLogin(){
     document.getElementById('loginPass').value='';
     return;
   }
+
+  // Construire l'email Firebase depuis le login NYX
+  // Format : login@nyx-plateforme.app
+  const email = found.email || (login.toLowerCase().replace(/[^a-z0-9]/g,'') + '@nyx-plateforme.app');
+
+  try {
+    // Tentative connexion Firebase Auth
+    if(auth){
+      try {
+        await auth.signInWithEmailAndPassword(email, pwd);
+      } catch(authErr){
+        // Si utilisateur n'existe pas encore dans Firebase → le créer
+        if(authErr.code === 'auth/user-not-found' || authErr.code === 'auth/invalid-credential'){
+          try {
+            await auth.createUserWithEmailAndPassword(email, pwd);
+            console.log("Compte Firebase créé pour", login);
+          } catch(createErr){
+            console.warn("Firebase create error:", createErr.message);
+            // Continuer sans Firebase Auth (dégradé)
+          }
+        } else {
+          console.warn("Firebase auth error:", authErr.message);
+        }
+      }
+    }
+  } catch(e){ console.warn("Firebase auth global error:", e); }
+
+  // Connexion NYX locale (toujours)
   currentUser = found;
+  localStorage.setItem('nyx_session', JSON.stringify({login: found.login, role: found.role}));
   document.getElementById('loginScreen').style.display='none';
   applyRole(found.role);
   refreshUsers();
@@ -1021,29 +1294,65 @@ function applyRole(role){
   }
   // Afficher nom utilisateur dans header
   const navRight = document.querySelector('.nav-right');
+  // Supprimer l'ancien badge si existant (évite les doublons)
+  const oldBadge = document.getElementById('userBadgeEl');
+  if(oldBadge) oldBadge.remove();
   const userBadge = document.createElement('div');
+  userBadge.id = 'userBadgeEl';
   userBadge.style.cssText='font-size:12px;color:var(--muted);font-family:"Space Mono",monospace;display:flex;align-items:center;gap:8px;';
   userBadge.innerHTML = `<span style="color:${role==='admin'?'var(--green)':'#60A5FA'};">●</span> ${currentUser.nom||currentUser.login} <span style="font-size:10px;padding:2px 8px;border-radius:100px;background:${role==='admin'?'rgba(16,185,129,0.12)':'rgba(96,165,250,0.1)'};color:${role==='admin'?'var(--green)':'#60A5FA'};">${role.toUpperCase()}</span> <button onclick="doLogout()" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:4px 10px;cursor:pointer;margin-left:4px;">⏏ Déconnexion</button>`;
   navRight.insertBefore(userBadge, navRight.firstChild);
 }
 
 function doLogout(){
-  currentUser=null;
-  location.reload();
+  currentUser = null;
+  // Déconnexion Firebase
+  if(auth) auth.signOut().catch(()=>{});
+  // Supprimer la session sauvegardée
+  localStorage.removeItem('nyx_session');
+  // Réafficher l'écran de login sans recharger la page
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginError').style.display = 'none';
+  // Retirer le badge utilisateur du header
+  const badge = document.getElementById('userBadgeEl');
+  if(badge) badge.remove();
+  // Recacher l'onglet users et le CRM
+  document.querySelectorAll('.admin-only').forEach(el=>el.style.display='none');
+  document.getElementById('btnCRM').style.display='none';
+  // Fermer le CRM si ouvert
+  if(crmOpen){ crmOpen=false; document.getElementById('crmOverlay').classList.remove('open'); }
 }
 
-function creerUtilisateur(){
+async function creerUtilisateur(){
   const login = document.getElementById('nu_login').value.trim();
   const pwd   = document.getElementById('nu_pwd').value.trim();
   const nom   = document.getElementById('nu_nom').value.trim();
+  const email = document.getElementById('nu_email')?.value.trim() || '';
   if(!login||!pwd){alert('Identifiant et mot de passe obligatoires.');return;}
   const users = getUsers();
   if(users.find(u=>u.login===login)){alert('Cet identifiant existe déjà.');return;}
-  users.push({id:'u-'+Date.now(), login, pwd, nom, role:'user', actif:true, created:new Date().toLocaleDateString('fr-FR')});
+
+  // Créer dans Firebase Auth
+  const emailFirebase = email || (login.toLowerCase().replace(/[^a-z0-9]/g,'') + '@nyx-plateforme.app');
+  if(auth){
+    try {
+      await auth.createUserWithEmailAndPassword(emailFirebase, pwd);
+      console.log("Compte Firebase créé:", emailFirebase);
+    } catch(e){
+      if(e.code !== 'auth/email-already-in-use'){
+        console.warn("Firebase user create:", e.message);
+      }
+    }
+  }
+
+  users.push({id:'u-'+Date.now(), login, pwd, nom, email:emailFirebase, role:'user', actif:true, created:new Date().toLocaleDateString('fr-FR')});
   saveUsers(users);
   document.getElementById('nu_login').value='';
   document.getElementById('nu_pwd').value='';
   document.getElementById('nu_nom').value='';
+  if(document.getElementById('nu_email')) document.getElementById('nu_email').value='';
   refreshUsers();
   alert('✅ Utilisateur créé avec succès !');
 }
@@ -1071,6 +1380,59 @@ function showPwd(id){
   else{const u=getUsers().find(x=>x.id===id);if(u){el.textContent=u.pwd;el.dataset.shown='1';}}
 }
 
+/* ══ EMAILJS — Réinitialisation mot de passe ══ */
+function showResetForm(){
+  document.getElementById('resetForm').style.display='block';
+  document.getElementById('resetLogin').focus();
+}
+function hideResetForm(){
+  document.getElementById('resetForm').style.display='none';
+  document.getElementById('resetLogin').value='';
+}
+
+async function envoyerDemandeReset(){
+  const login = document.getElementById('resetLogin').value.trim();
+  if(!login){ alert('Veuillez saisir votre identifiant.'); return; }
+  const users = getUsers();
+  const user  = users.find(u=>u.login===login);
+  if(!user){ alert('Identifiant introuvable. Vérifiez et réessayez.'); return; }
+  try {
+    const res = await fetch('https://formspree.io/f/xwvrjvnq', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      body: JSON.stringify({
+        _subject : 'Demande réinitialisation mot de passe — NYX',
+        identifiant: user.login,
+        nom        : user.nom || '—',
+        date       : new Date().toLocaleString('fr-FR'),
+        message    : "L'utilisateur " + user.login + " (" + (user.nom||'—') + ") demande une réinitialisation de mot de passe. Connectez-vous sur NYX > Onglet Utilisateurs > bouton Reset.",
+        email      : 'kartelinc.gestion@gmail.com',
+      })
+    });
+    if(res.ok){
+      hideResetForm();
+      alert("Demande envoyee ! L administrateur va reinitialiser votre mot de passe.");
+    } else {
+      throw new Error('Formspree error: ' + res.status);
+    }
+  } catch(err){
+    console.error('Formspree error:', err);
+    alert('Erreur envoi. Contactez directement kartelinc.gestion@gmail.com');
+  }
+}
+
+function resetUserPwd(id){
+  const users = getUsers();
+  const u = users.find(x=>x.id===id);
+  if(!u){ alert('Utilisateur introuvable.'); return; }
+  const newPwd = prompt(`Nouveau mot de passe pour "${u.login}" :`);
+  if(!newPwd || newPwd.trim().length < 4){ alert('Mot de passe trop court (4 caractères minimum).'); return; }
+  u.pwd = newPwd.trim();
+  saveUsers(users);
+  refreshUsers();
+  alert(`✅ Mot de passe de "${u.login}" réinitialisé avec succès !`);
+}
+
 function refreshUsers(){
   const users=getUsers();
   const actifs=users.filter(u=>u.actif!==false).length;
@@ -1090,6 +1452,7 @@ function refreshUsers(){
       <div style="display:flex;gap:6px;">
         ${u.role!=='admin'?`
           <button onclick="toggleUserActif('${u.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;font-size:11px;padding:4px 8px;cursor:pointer;color:${u.actif===false?'#69F0AE':'#FFD740'};">${u.actif===false?'✓ Activer':'⏸ Désact.'}</button>
+          <button onclick="resetUserPwd('${u.id}')" style="background:none;border:1px solid rgba(16,185,129,0.25);border-radius:6px;font-size:11px;padding:4px 8px;cursor:pointer;color:#10B981;">🔑 Reset</button>
           <button onclick="deleteUser('${u.id}')" style="background:none;border:1px solid rgba(255,23,68,0.2);border-radius:6px;font-size:11px;padding:4px 8px;cursor:pointer;color:#FF1744;">✕</button>
         `:'<span style="font-size:11px;color:#444;">— protégé —</span>'}
       </div>
@@ -1109,6 +1472,7 @@ function switchTab(name){
   document.querySelector(`[data-tab="${name}"]`).classList.add('active');
   if(name==='devis') updateDocPreview();
   if(name==='users') refreshUsers();
+  if(name==='dashboard360') charger360();
 }
 
 /* ══════════════════════════════════════════════════════
@@ -1130,6 +1494,7 @@ function switchCRMTab(name){
   document.querySelectorAll('.crm-section').forEach(s=>s.classList.remove('active'));
   document.querySelector(`[onclick="switchCRMTab('${name}')"]`).classList.add('active');
   document.getElementById('crm-'+name).classList.add('active');
+  if(name==='devis') refreshCRM();
 }
 function showAddClient(){document.getElementById('add-client-form').classList.remove('hidden');}
 function hideAddClient(){document.getElementById('add-client-form').classList.add('hidden');}
@@ -1193,6 +1558,21 @@ function refreshCRM(){
       <div class="client-name">${a.nom||'Inconnu'} — <span style="color:${({A:'#00C853',B:'#69F0AE',C:'#FFD740',D:'#FFAB40',E:'#FF6D00',F:'#FF1744',G:'#B71C1C'})[a.classe]||'#888'}">${a.classe||'?'}</span></div>
       <div class="client-meta">${a.date}</div>
     </div>`).join('');
+
+  // Devis sauvegardés
+  const dl = document.getElementById('crm-devis-list');
+  if(dl){
+    if(devisList.length===0){ dl.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:16px;">Aucun devis sauvegardé</div>'; }
+    else dl.innerHTML = devisList.slice().reverse().map(d=>`
+      <div class="client-card">
+        <div class="client-name">${d.type||'DEVIS'} N°${d.num||'—'} — ${d.clientNom||'Client inconnu'}</div>
+        <div class="client-meta">${d.savedAt||d.date||'—'} · Total : ${(d.total||0).toLocaleString('fr-FR',{minimumFractionDigits:2})} € TTC</div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button onclick="chargerDevis(${d.id})" style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:6px;color:#10B981;font-size:11px;padding:4px 10px;cursor:pointer;">📂 Reprendre</button>
+          <button onclick="supprimerDevis(${d.id})" style="background:none;border:1px solid rgba(255,23,68,0.2);border-radius:6px;color:#FF1744;font-size:11px;padding:4px 10px;cursor:pointer;">✕ Supprimer</button>
+        </div>
+      </div>`).join('');
+  }
 }
 function selectClient(id){
   const c=clients.find(x=>x.id===id);
@@ -1213,13 +1593,114 @@ const dropZone=document.getElementById('dropZone');
 dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('dragover');});
 dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('dragover'));
 dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f)handleFileSelect(f);});
-function handleFileSelect(file){
-  if(!file)return;
-  currentFile=file;
-  document.getElementById('dropText').textContent='✅ '+file.name;
-  document.getElementById('dropSub').textContent=(file.size/1024).toFixed(1)+' Ko — Prêt à analyser';
-  dropZone.style.borderColor='#00C853';
-  document.getElementById('btnAnalyser').classList.remove('hidden');
+// Mots-clés d'une visite technique de logement
+const VT_KEYWORDS = [
+  'visite technique','diagnostic','logement','habitation','bénéficiaire',
+  'surface','chauffage','isolation','ventilation','combles','fenêtre',
+  'murs','plancher','dpe','classe énergétique','énergie primaire',
+  'kwh','ges','co2','maison','appartement','propriétaire','locataire',
+  'radiateur','chaudière','vmc','ballon','menuiserie','vitrage',
+];
+const VT_REQUIRED = 4; // Minimum 4 mots-clés pour valider
+
+async function handleFileSelect(file){
+  if(!file) return;
+
+  // Accepter images directement (pas de lecture texte possible)
+  if(file.type.startsWith('image/')){
+    currentFile = file;
+    document.getElementById('dropText').textContent = '✅ ' + file.name;
+    document.getElementById('dropSub').textContent = (file.size/1024).toFixed(1) + ' Ko — Image chargée';
+    dropZone.style.borderColor = '#00C853';
+    document.getElementById('btnAnalyser').classList.remove('hidden');
+    return;
+  }
+
+  // Pour les PDF — vérifier le nom ET le contenu
+  if(file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')){
+    // Vérification du nom du fichier
+    const nomFichier = file.name.toUpperCase().replace(/\s/g,'-');
+    const nomValide  = nomFichier.startsWith('VISITE-TECHNIQUE-') || nomFichier.startsWith('AUDIT-ENERGETIQUE-');
+
+    if(!nomValide){
+      dropZone.style.borderColor = '#FF1744';
+      document.getElementById('dropText').textContent = '❌ Nom de fichier non conforme';
+      document.getElementById('dropSub').textContent  = 'Le fichier doit être nommé : VISITE-TECHNIQUE-NOM-PRÉNOM.pdf';
+      document.getElementById('btnAnalyser').classList.add('hidden');
+      document.getElementById('fileInput').value = '';
+      setTimeout(()=>{
+        alert('❌ Nom de fichier non conforme.\n\n' +
+          'Le fichier doit être nommé selon le format :\n' +
+          '• VISITE-TECHNIQUE-NOM-PRÉNOM.pdf\n' +
+          '• AUDIT-ENERGETIQUE-NOM-PRÉNOM.pdf\n\n' +
+          'Fichier reçu : ' + file.name + '\n\n' +
+          'Renommez votre fichier et réessayez.');
+        document.getElementById('dropText').textContent = 'Glissez-déposez votre PDF ici';
+        document.getElementById('dropSub').textContent  = 'ou cliquez pour sélectionner — PDF, JPG, PNG';
+        dropZone.style.borderColor = '';
+      }, 100);
+      return;
+    }
+
+    // Afficher état de vérification du contenu
+    document.getElementById('dropText').textContent = '⏳ Vérification du document...';
+    document.getElementById('dropSub').textContent = 'Nom conforme ✓ — Lecture du contenu...';
+    dropZone.style.borderColor = '#FFD740';
+
+    try {
+      const ab  = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({data: ab}).promise;
+      let fullText = '';
+      const pages = Math.min(pdf.numPages, 8);
+      for(let i=1; i<=pages; i++){
+        const page = await pdf.getPage(i);
+        const c    = await page.getTextContent();
+        fullText  += c.items.map(x=>x.str).join(' ').toLowerCase() + ' ';
+      }
+
+      // Compter les mots-clés trouvés
+      const found = VT_KEYWORDS.filter(kw => fullText.includes(kw));
+
+      if(found.length >= VT_REQUIRED){
+        // ✅ Document valide
+        currentFile = file;
+        document.getElementById('dropText').textContent = '✅ ' + file.name;
+        document.getElementById('dropSub').textContent  = (file.size/1024).toFixed(1) + ' Ko — Document validé (' + found.length + ' indicateurs détectés)';
+        dropZone.style.borderColor = '#00C853';
+        document.getElementById('btnAnalyser').classList.remove('hidden');
+      } else {
+        // ❌ Document non reconnu
+        currentFile = null;
+        document.getElementById('dropText').textContent = '❌ Document non reconnu';
+        document.getElementById('dropSub').textContent  = 'Ce fichier ne semble pas être une visite technique de logement (' + found.length + '/' + VT_REQUIRED + ' indicateurs trouvés)';
+        dropZone.style.borderColor = '#FF1744';
+        document.getElementById('btnAnalyser').classList.add('hidden');
+        document.getElementById('fileInput').value = '';
+
+        // Message détaillé
+        setTimeout(()=>{
+          alert('❌ Document non reconnu comme visite technique de logement.\n\n' +
+            'Indicateurs détectés (' + found.length + '/' + VT_REQUIRED + ' requis) : ' + (found.length > 0 ? found.join(', ') : 'aucun') + '\n\n' +
+            'Veuillez charger une visite technique ou un diagnostic de logement (PDF contenant les informations sur le chauffage, l\'isolation, la ventilation, etc.).');
+          document.getElementById('dropText').textContent = 'Glissez-déposez votre PDF ici';
+          document.getElementById('dropSub').textContent  = 'ou cliquez pour sélectionner — PDF, JPG, PNG';
+          dropZone.style.borderColor = '';
+        }, 100);
+      }
+    } catch(err){
+      // En cas d'erreur de lecture — accepter quand même (PDF protégé ou corrompu)
+      console.warn('PDF read error:', err);
+      currentFile = file;
+      document.getElementById('dropText').textContent = '⚠️ ' + file.name;
+      document.getElementById('dropSub').textContent  = 'Lecture partielle — vérification impossible, analyse lancée';
+      dropZone.style.borderColor = '#FFD740';
+      document.getElementById('btnAnalyser').classList.remove('hidden');
+    }
+    return;
+  }
+
+  // Autres types de fichiers — refuser
+  alert('Format non supporté. Veuillez charger un fichier PDF, JPG ou PNG.');
 }
 
 const ORDER=['A','B','C','D','E','F','G'];
@@ -1244,18 +1725,84 @@ function extraireNumeriques(text){
 function extraireBeneficiaire(text){
   const r={nom:'',prenom:'',adresse:'',cp:'',ville:'',surface:'',typeBien:''};
   const m=re=>{const x=text.match(re);return x?x[1].trim():'';};
-  r.nom=m(/nom\s*[:\-]\s*([A-Za-zÀ-ÿ\-]{2,25})/i);
-  if(r.nom) r.nom = r.nom.replace(/\s*(pr[eé]nom|adresse|t[eé]l[eé]phone|email|code|ville|surface).*$/i,'').trim();
-  r.prenom=m(/pr[eé]nom\s*[:\-]\s*([A-Za-zÀ-ÿ\-]{2,25})/i);
-  r.adresse=m(/adresse\s*[:\-]\s*([^\n]{5,60})/i)||m(/(\d{1,4}[,\s]+(?:rue|avenue|boulevard|impasse|all[eé]e|chemin|place|route|lieu\s*dit)[^\n]{3,50})/i);
-  r.cp=m(/code\s*postal\s*[:\-]\s*(\d{5})/i)||m(/\b((?:0[1-9]|[1-8]\d|9[0-5])\d{3})\b/);
-  r.ville=m(/ville\s*[:\-]\s*([A-Za-zÀ-ÿ\s\-]{2,30})/i);
-  const sm=text.match(/(?:superficie|surface)\s*(?:habitable|utile|au\s*sol)?\s*[:\-]?\s*(\d{2,4}(?:[.,]\d{1,2})?)\s*m[²2]/i);
-  if(sm){const s=parseFloat(sm[1].replace(',','.'));if(s>=15&&s<=1000)r.surface=s+' m²';}
-  if(text.match(/appartement/i))r.typeBien='Appartement';
-  else if(text.match(/maison|villa|pavillon/i))r.typeBien='Maison individuelle';
+
+  // Cherche une paire NOM/PRENOM dans une ligne de texte
+  function splitNomPrenom(str){
+    const parts = str.trim().split(/\s+/);
+    if(parts.length < 2) return {nom: str.trim(), prenom:''};
+    // Convention : tout en majuscules = nom de famille
+    const nomParts    = parts.filter(p => p.length > 1 && p === p.toUpperCase() && /^[A-ZÀ-Ÿ\-]+$/.test(p));
+    const prenomParts = parts.filter(p => !(p.length > 1 && p === p.toUpperCase() && /^[A-ZÀ-Ÿ\-]+$/.test(p)));
+    return {
+      nom:    (nomParts.join(' ')    || parts[0]).trim(),
+      prenom: (prenomParts.join(' ') || parts.slice(1).join(' ')).trim(),
+    };
+  }
+
+  // Format 1 — Bénéficiaire : NOM Prénom
+  const reBenef = /b[eé]n[eé]ficiaire\s*[:\-]\s*([A-Za-zÀ-ÿ\s\-]{3,40})/i;
+  const mBenef  = text.match(reBenef);
+  if(mBenef){
+    const sp = splitNomPrenom(mBenef[1]);
+    r.nom = sp.nom; r.prenom = sp.prenom;
+  }
+
+  // Format 2 — Client : NOM Prénom
+  if(!r.nom){
+    const reClient = /client\s*[:\-]\s*([A-Za-zÀ-ÿ\s\-]{3,40})/i;
+    const mClient  = text.match(reClient);
+    if(mClient){
+      const sp = splitNomPrenom(mClient[1]);
+      r.nom = sp.nom; r.prenom = sp.prenom;
+    }
+  }
+
+  // Format 3 — Propriétaire : NOM Prénom
+  if(!r.nom){
+    const reProprio = /propri[eé]taire\s*[:\-]\s*([A-Za-zÀ-ÿ\s\-]{3,40})/i;
+    const mProprio  = text.match(reProprio);
+    if(mProprio){
+      const sp = splitNomPrenom(mProprio[1]);
+      r.nom = sp.nom; r.prenom = sp.prenom;
+    }
+  }
+
+  // Format 4 — Nom : DUPONT   Prénom : Jean (champs séparés)
+  if(!r.nom){
+    const reNom    = /(?:^|\n)\s*nom\s*[:\-]\s*([A-Za-zÀ-ÿ\-]{2,25})/im;
+    const rePrenom = /pr[eé]nom\s*[:\-]\s*([A-Za-zÀ-ÿ\-]{2,25})/i;
+    const mNom    = text.match(reNom);
+    const mPrenom = text.match(rePrenom);
+    if(mNom)    r.nom    = mNom[1].trim();
+    if(mPrenom) r.prenom = mPrenom[1].trim();
+  }
+
+  // Nettoyage mots parasites (auditeur, technicien...)
+  const parasites = /\b(auditeur|technicien|diagnostiqueur|bureau|agence|expert|cabinet|soci[eé]t[eé]|sarl|sas|eurl|rge|op[eé]rateur)\b/gi;
+  r.nom    = (r.nom    || '').replace(parasites,'').trim();
+  r.prenom = (r.prenom || '').replace(parasites,'').trim();
+
+  // Adresse
+  r.adresse = m(/adresse\s*[:\-]\s*([^\r\n]{5,60})/i) ||
+              m(/(\d{1,4}[\s,]+(?:rue|avenue|boulevard|impasse|all[eé]e|chemin|place|route)[^\r\n]{3,50})/i);
+
+
+
+  // Code postal & ville
+  r.cp    = m(/code\s*postal\s*[:\-]\s*(\d{5})/i) || m(/((?:0[1-9]|[1-8]\d|9[0-5])\d{3})/);
+  r.ville = m(/ville\s*[:\-]\s*([A-Za-zÀ-ÿ\s\-]{2,30})/i);
+
+  // Surface
+  const sm = text.match(/(?:superficie|surface)\s*(?:habitable|utile|au\s*sol)?\s*[:\-]?\s*(\d{2,4}(?:[.,]\d{1,2})?)\s*m[²2]/i);
+  if(sm){ const s=parseFloat(sm[1].replace(',','.'));if(s>=15&&s<=1000)r.surface=s+' m²'; }
+
+  // Type de bien
+  if(text.match(/appartement/i))               r.typeBien='Appartement';
+  else if(text.match(/maison|villa|pavillon/i)) r.typeBien='Maison individuelle';
+
   return r;
 }
+
 function detecterEquipements(text){
   const t=text.toLowerCase();
   let ch='Non détecté',murs='Non détecté',combles='Non détecté',fen='Non détecté';
@@ -1428,22 +1975,136 @@ function calculerNiveau(num,equip,classe){
 }
 
 /* ── SCENARIO ── */
+/* ══ ZONES CLIMATIQUES 3CL ══ */
+const ZONES_CLIM = {
+  'H1a':{label:'H1a — Nord/Est (très froid)',  coeff:1.15},
+  'H1b':{label:'H1b — Île-de-France',          coeff:1.10},
+  'H1c':{label:'H1c — Bourgogne/Centre-Est',   coeff:1.05},
+  'H2': {label:'H2 — Centre/Ouest (référence)',coeff:1.00},
+  'H2d':{label:'H2d — Pyrénées/Corse',         coeff:0.95},
+  'H3': {label:'H3 — Méditerranée (tempéré)',  coeff:0.85},
+};
+/* Gains réels par travaux (% CEP) — Cahier des charges 3CL-2021 */
+const GT = {
+  combles_nus:{moy:30}, combles_partiel:{moy:18},
+  murs_ITE:{moy:18},    murs_ITI:{moy:15},
+  plancher:{moy:7},     vmc_sf:{moy:12},   vmc_df:{moy:25},
+  pac:{moy:40},         fen_sv:{moy:11},   fen_dv:{moy:5},
+  robinets:{moy:5},     cet:{moy:6},
+};
+/* Formule synergie — interaction non-linéaire entre travaux (§6.1) */
+function gainCombine(gains){
+  if(!gains||!gains.length) return 0;
+  let c = gains[0];
+  for(let i=1;i<gains.length;i++) c = c + gains[i] - (0.15*c*gains[i])/100;
+  return Math.round(c*10)/10;
+}
+/* Matrice de décision (§9.1) */
+const MATRICE = {
+  'D→C':{budget:'3 000–5 000 €',  travaux:'Combles R=7'},
+  'D→B':{budget:'8 000–12 000 €', travaux:'Combles + Plancher'},
+  'D→A':{budget:'20 000–40 000 €',travaux:'Combles + Murs ITE + PAC'},
+  'C→B':{budget:'5 000–8 000 €',  travaux:'Combles R=8 + VMC hygro'},
+  'C→A':{budget:'15 000–25 000 €',travaux:'Combles + Murs intérieur 12 cm'},
+  'E→D':{budget:'3 000–5 000 €',  travaux:'Combles minimum'},
+  'E→C':{budget:'6 000–10 000 €', travaux:'Combles + Fenêtres'},
+  'F→D':{budget:'10 000–15 000 €',travaux:'Combles + Murs + VMC'},
+  'G→D':{budget:'12 000–18 000 €',travaux:'Combles + Murs + VMC + PAC'},
+};
+function getZone(){
+  const el=document.getElementById('dpe_zone')||document.getElementById('m_zone');
+  return (el&&el.value)?el.value:'H2';
+}
 function genererScenario(equip,classeActuelle){
-  const travaux=[],idx=ORDER.indexOf(classeActuelle);
-  if(equip.combles==='Non isolés'||equip.combles==='Non détecté')travaux.push({section:'🏠 Isolation',icon:'🏠',titre:'Isolation des combles perdus',priorite:'OBLIGATOIRE',desc:'Installation de 30 à 40 cm d\'isolant soufflé. Représente 25-30% des déperditions. 1er geste d\'isolation obligatoire.',gainClasse:'+2 classes',cout:'1 500 – 2 500 €',aide:'MaPrimeRénov\' + CEE',impact:22});
-  if(equip.murs==='Non isolés')travaux.push({section:'🏠 Isolation',icon:'🧱',titre:'Isolation des murs par l\'extérieur (ITE)',priorite:'OBLIGATOIRE',desc:'Pose de 10 à 16 cm d\'isolant sur les façades. 20-25% des déperditions. 2e geste d\'isolation obligatoire.',gainClasse:'+1 à 2 classes',cout:'100 – 200 €/m² façade',aide:'MaPrimeRénov\' + CEE + TVA 5.5%',impact:18});
-  else if(equip.murs==='ITI')travaux.push({section:'🏠 Isolation',icon:'🧱',titre:'Renforcement isolation murs (ITI existante)',priorite:'RECOMMANDÉ',desc:'L\'ITI existante peut être insuffisante. Envisager ITE complémentaire ou renforcement si épaisseur < 120mm.',gainClasse:'+1 classe',cout:'80 – 150 €/m²',aide:'MaPrimeRénov\' + CEE',impact:10});
-  if(equip.plancher==='Non isolé')travaux.push({section:'🏠 Isolation',icon:'🏚️',titre:'Isolation du plancher bas',priorite:'OBLIGATOIRE',desc:'Isolation sous plancher donnant sur garage/vide sanitaire. 7-10% des déperditions. 3e geste si garage attenant.',gainClasse:'+0.5 à 1 classe',cout:'20 – 50 €/m²',aide:'MaPrimeRénov\' + CEE',impact:10});
-  if(equip.vmc==='Naturelle'||equip.vmc==='Non détecté')travaux.push({section:'💨 Ventilation',icon:'💨',titre:'Installation VMC double flux',priorite:'OBLIGATOIRE',desc:'⚠️ Absence de ventilation détectée. VMC double flux récupère 70-90% de la chaleur. Obligatoire en rénovation globale.',gainClasse:'+1 classe',cout:'3 500 – 5 000 €',aide:'CEE + MaPrimeRénov\'',impact:10});
-  else if(equip.vmc==='VMC simple flux')travaux.push({section:'💨 Ventilation',icon:'💨',titre:'Remplacement VMC simple → double flux',priorite:'RECOMMANDÉ',desc:'Récupération chaleur air extrait, efficacité ≥ 80%.',gainClasse:'+0.5 classe',cout:'2 500 – 4 000 €',aide:'CEE',impact:7});
-  if(['Fioul','Gaz ancien','Électrique'].includes(equip.ch)){const d=equip.ch==='Électrique'?'Chauffage électrique le plus pénalisant (coefficient EP 2.3). PAC air/eau : COP 3-5, soit 3-5x moins d\'énergie primaire.':equip.ch==='Fioul'?'Chaudière fioul très émettrice. Remplacement PAC air/eau : réduction facture 50-70%.':'Chaudière gaz ancienne rendement 80-85%. PAC air/eau : division consommation par 3-4.';travaux.push({section:'🔥 Chauffage',icon:'🔥',titre:'Remplacement chauffage par PAC air/eau',priorite:'OBLIGATOIRE',desc:d,gainClasse:equip.ch==='Électrique'?'+2 à 3 classes':'+1 à 2 classes',cout:'10 000 – 16 000 €',aide:'MaPrimeRénov\' jusqu\'à 10 000 € + CEE + éco-PTZ',impact:25});}
-  if(equip.ecs==='Électrique')travaux.push({section:'💧 Eau chaude',icon:'💧',titre:'Chauffe-eau thermodynamique (CET)',priorite:'OBLIGATOIRE',desc:'Ballon électrique 3-4× plus énergivore qu\'un CET. COP ≈ 2.5-3.5. Économie 60-75% sur l\'ECS.',gainClasse:'+0.5 à 1 classe',cout:'1 500 – 3 500 €',aide:'MaPrimeRénov\' 400€ + CEE + TVA 5.5%',impact:8});
-  if(equip.fen==='Simple vitrage')travaux.push({section:'🪟 Menuiseries',icon:'🪟',titre:'Remplacement fenêtres → double vitrage bas-émissif',priorite:'OBLIGATOIRE',desc:'Simple vitrage Uw ≈ 5 W/m².K. Remplacement par Uw ≤ 1.3 W/m².K. 10-15% des déperditions.',gainClasse:'+1 classe',cout:'400 – 800 €/fenêtre',aide:'MaPrimeRénov\' + CEE + TVA 5.5%',impact:14});
-  else if(equip.fen==='Double vitrage ancien')travaux.push({section:'🪟 Menuiseries',icon:'🪟',titre:'Remplacement double vitrage ancien (+10 ans)',priorite:'RECOMMANDÉ',desc:'Performances dégradées (joints usés, pont thermique). Remplacement par Uw ≤ 1.3 W/m².K.',gainClasse:'+0.5 à 1 classe',cout:'400 – 700 €/fenêtre',aide:'CEE + TVA 5.5%',impact:10});
-  if(equip.volets==='Aucun'||equip.volets==='Non détecté')travaux.push({section:'🪟 Menuiseries',icon:'🚪',titre:'Installation de volets isolants',priorite:'RECOMMANDÉ',desc:'Réduction déperditions nocturnes de 15-25%. Protection solaire été.',gainClasse:'+0.3 classe',cout:'300 – 600 €/volet',aide:'CEE si résistance thermique certifiée',impact:5});
-  if(equip.robinets!=='Présents'&&['Gaz ancien','Gaz condensation','Fioul','Bois/granulés'].includes(equip.ch))travaux.push({section:'🔥 Régulation',icon:'🌡️',titre:'Robinets thermostatiques sur les radiateurs',priorite:'RECOMMANDÉ',desc:'Régulation pièce par pièce. Économie 10-20% sur la facture de chauffage.',gainClasse:'+0.2 classe',cout:'20 – 80 €/robinet',aide:'CEE',impact:4});
-  travaux.push({section:'🔥 Régulation',icon:'📱',titre:'Thermostat programmable / connecté',priorite:'RECOMMANDÉ',desc:'Baisse automatique la nuit et en absence. Économie 15-20%. Obligatoire pour toute PAC neuve.',gainClasse:'+0.2 à 0.5 classe',cout:'50 – 300 €',aide:'CEE',impact:4});
-  travaux.push({section:'☀️ Énergies renouvelables',icon:'☀️',titre:'Panneaux solaires photovoltaïques',priorite:'OPTIONNEL',desc:'Production électricité renouvelable. 3 à 6 kWc. Autoconsommation 40-70%. Revente surplus possible.',gainClasse:'+0.5 à 1 classe',cout:'7 000 – 14 000 € (3-6 kWc)',aide:'Prime autoconsommation + TVA 10%',impact:7});
+  const zone  = getZone();
+  const coeff = (ZONES_CLIM[zone]||ZONES_CLIM['H2']).coeff;
+  const travaux=[], gl=[];
+  function g(base){ return Math.round(base*coeff); }
+
+  if(equip.combles==='Non isolés'||equip.combles==='Non détecté'){
+    const gain=g(GT.combles_nus.moy); gl.push(gain);
+    travaux.push({section:'🏠 Isolation',icon:'🏠',titre:'Isolation combles perdus (R≥7 m².K/W)',priorite:'OBLIGATOIRE',
+      desc:'Gain CEP : '+gain+'% (zone '+zone+'). Priorité absolue — meilleur ROI. 30–32 cm laine minérale. Représente 25–30% des déperditions. Source: 3CL-2021.',
+      gainClasse:'+1 à 2 classes',cout:'2 500 – 3 500 €',aide:"MaPrimeRénov' + CEE + TVA 5.5%",impact:gain});
+  } else if(equip.combles==='Isolés'){
+    const gain=g(GT.combles_partiel.moy); gl.push(gain);
+    travaux.push({section:'🏠 Isolation',icon:'🏠',titre:'Renforcement isolation combles (R≥9 m².K/W)',priorite:'RECOMMANDÉ',
+      desc:'Gain CEP : '+gain+'%. Isolation existante insuffisante. R≥8 pour classe B, R≥9 pour classe A.',
+      gainClasse:'+0.5 à 1 classe',cout:'1 500 – 2 500 €',aide:"MaPrimeRénov' + CEE",impact:gain});
+  }
+  if(equip.murs==='Non isolés'){
+    const gain=g(GT.murs_ITE.moy); gl.push(gain);
+    travaux.push({section:'🏠 Isolation',icon:'🧱',titre:'Isolation murs extérieur ITE — 13 cm (U cible ≤ 0.27)',priorite:'OBLIGATOIRE',
+      desc:'Gain CEP : '+gain+'%. U mur actuel ≈ 2.0–2.5 W/m².K → 0.27 W/m².K. 20–25% des déperditions totales.',
+      gainClasse:'+1 à 2 classes',cout:'100 – 200 €/m² façade',aide:"MaPrimeRénov' + CEE + TVA 5.5%",impact:gain});
+  } else if(equip.murs==='ITI'){
+    const gain=g(GT.murs_ITI.moy*0.7); gl.push(gain);
+    travaux.push({section:'🏠 Isolation',icon:'🧱',titre:'Renforcement isolation murs intérieur (ITI)',priorite:'RECOMMANDÉ',
+      desc:'Gain CEP : '+gain+'%. ITI existante à vérifier. Envisager ITE pour supprimer ponts thermiques.',
+      gainClasse:'+0.5 à 1 classe',cout:'80 – 150 €/m²',aide:"MaPrimeRénov' + CEE",impact:gain});
+  }
+  if(equip.plancher==='Non isolé'){
+    const gain=g(GT.plancher.moy); gl.push(gain);
+    travaux.push({section:'🏠 Isolation',icon:'🏚️',titre:'Isolation plancher bas (R≥3 m².K/W)',priorite:'OBLIGATOIRE',
+      desc:'Gain CEP : '+gain+'%. Vide sanitaire/garage : 7–10% déperditions. Recommandé en bouquet avec combles. 12–15 cm laine minérale.',
+      gainClasse:'+0.5 classe',cout:'30 – 60 €/m²',aide:"MaPrimeRénov' + CEE",impact:gain});
+  }
+  if(equip.vmc==='Naturelle'||equip.vmc==='Non détecté'){
+    const gain=g(GT.vmc_sf.moy); gl.push(gain);
+    travaux.push({section:'💨 Ventilation',icon:'💨',titre:'VMC hygroreglable simple flux (ou double flux si budget)',priorite:'OBLIGATOIRE',
+      desc:'⚠️ Aucune ventilation. Gain VMC SF hygro : '+gain+'% CEP. VMC DF : '+g(GT.vmc_df.moy)+'% CEP. Obligatoire réglementairement.',
+      gainClasse:'+0.5 à 1 classe',cout:'500–1 000 € (SF) / 2 000–4 000 € (DF)',aide:"CEE + MaPrimeRénov'",impact:gain});
+  } else if(equip.vmc==='VMC simple flux'){
+    const gain=g(GT.vmc_df.moy*0.5); gl.push(gain);
+    travaux.push({section:'💨 Ventilation',icon:'💨',titre:'Remplacement VMC simple → double flux',priorite:'RECOMMANDÉ',
+      desc:'Gain net : '+gain+'% CEP. Récupération chaleur ≥ 80%. Recommandé si objectif classe B ou A.',
+      gainClasse:'+0.5 à 1 classe',cout:'2 000 – 4 000 €',aide:'CEE',impact:gain});
+  }
+  if(['Fioul','Gaz ancien','Électrique'].includes(equip.ch)){
+    const gain=g(GT.pac.moy);
+    const d=equip.ch==='Électrique'?'Coeff EP 2.3 (le plus pénalisant). PAC COP 3–5 → gain '+gain+'% CEP.':
+             equip.ch==='Fioul'?'Fioul CO₂ 0.324 kg/kWh. PAC → -50 à 70% facture. Gain '+gain+'% CEP.':
+             'Chaudière gaz rendement 78–82%. PAC → gain '+gain+'% CEP.';
+    travaux.push({section:'🔥 Chauffage',icon:'🔥',titre:'Remplacement chauffage par PAC air/eau',priorite:'OBLIGATOIRE',
+      desc:d,gainClasse:equip.ch==='Électrique'?'+2 à 3 classes':'+1 à 2 classes',
+      cout:'10 000 – 16 000 €',aide:"MaPrimeRénov' jusqu'à 10 000 € + CEE + éco-PTZ",impact:gain});
+  }
+  if(equip.ecs==='Électrique'){
+    const gain=g(GT.cet.moy); gl.push(gain);
+    travaux.push({section:'💧 Eau chaude',icon:'💧',titre:'Chauffe-eau thermodynamique CET (COP 2.5–3.5)',priorite:'OBLIGATOIRE',
+      desc:'Gain : '+gain+'% CEP. Ballon électrique 3–4× plus énergivore. Économie 60–75% sur ECS.',
+      gainClasse:'+0.5 à 1 classe',cout:'1 500 – 3 500 €',aide:"MaPrimeRénov' + CEE + TVA 5.5%",impact:gain});
+  }
+  if(equip.fen==='Simple vitrage'){
+    const gain=g(GT.fen_sv.moy); gl.push(gain);
+    travaux.push({section:'🪟 Menuiseries',icon:'🪟',titre:'Fenêtres double vitrage bas-émissif (Uw ≤ 1.3 W/m².K)',priorite:'OBLIGATOIRE',
+      desc:'Gain : '+gain+'% CEP. SV Uw ≈ 5 → cible ≤ 1.3 W/m².K. 10–15% des déperditions.',
+      gainClasse:'+0.5 à 1 classe',cout:'400 – 800 €/fenêtre',aide:"MaPrimeRénov' + CEE + TVA 5.5%",impact:gain});
+  } else if(equip.fen==='Double vitrage ancien'){
+    const gain=g(GT.fen_dv.moy); gl.push(gain);
+    travaux.push({section:'🪟 Menuiseries',icon:'🪟',titre:'Remplacement double vitrage ancien dégradé',priorite:'RECOMMANDÉ',
+      desc:'Gain : '+gain+'% CEP. Joints usés, ponts thermiques. Uw cible ≤ 1.3 W/m².K.',
+      gainClasse:'+0.2 à 0.5 classe',cout:'400 – 700 €/fenêtre',aide:'CEE + TVA 5.5%',impact:gain});
+  }
+  if(equip.robinets!=='Présents'&&['Gaz ancien','Gaz condensation','Fioul','Bois/granulés'].includes(equip.ch)){
+    const gain=g(GT.robinets.moy); gl.push(gain);
+    travaux.push({section:'🔥 Régulation',icon:'🌡️',titre:'Robinets thermostatiques + thermostat programmable',priorite:'RECOMMANDÉ',
+      desc:'Gain : '+gain+'% CEP (Ademe). Radiateurs fonte : jusqu\'\u00e0 8-12%. Amortissement 2-3 ans. Combiner avec thermostat : gain total 8-15%.',
+      gainClasse:'+0.2 à 0.5 classe',cout:'400 – 1 200 €',aide:'CEE',impact:gain});
+  }
+  if(equip.volets==='Aucun'||equip.volets==='Non détecté'){
+    travaux.push({section:'🪟 Menuiseries',icon:'🚪',titre:'Volets isolants',priorite:'RECOMMANDÉ',
+      desc:'Déperditions nocturnes -15 à 25%. Synergique avec remplacement fenêtres.',
+      gainClasse:'+0.2 classe',cout:'300 – 600 €/volet',aide:'CEE si certifié',impact:3});
+  }
+  travaux.push({section:'☀️ Énergies renouvelables',icon:'☀️',titre:'Panneaux solaires photovoltaïques (3–6 kWc)',priorite:'OPTIONNEL',
+    desc:'Autoconsommation 40–70%. Revente surplus EDF OA. Impact CEP positif.',
+    gainClasse:'+0.5 à 1 classe',cout:'7 000 – 14 000 €',aide:'Prime autoconsommation + TVA 10%',impact:7});
+
+  travaux._gainsListe   = gl;
+  travaux._gainCombine  = gainCombine(gl);
+  travaux._zone         = zone;
+  travaux._coeff        = coeff;
   return travaux;
 }
 
@@ -1451,13 +2112,51 @@ function renderScenario(travaux,classeActuelle,prefix=''){
   const oblig=travaux.filter(t=>t.priorite==='OBLIGATOIRE');
   const reco=travaux.filter(t=>t.priorite==='RECOMMANDÉ');
   const idx=ORDER.indexOf(classeActuelle);
-  const gainTotal=travaux.reduce((s,t)=>s+t.impact,0);
-  const classeVisee=ORDER[Math.max(0,idx-Math.min(4,Math.floor(gainTotal/20)))];
+  const gainTotal=travaux._gainCombine||travaux.reduce((s,t)=>s+t.impact,0);
+  const zone=travaux._zone||'H2';
+  const coeff=travaux._coeff||1.0;
+
+  // Classe visée via gain combiné
+  const epEstime = classeActuelle==='?'?300:
+    ({A:50,B:90,C:145,D:215,E:290,F:375,G:500}[classeActuelle]||300);
+  const epApres = Math.round(epEstime*(1-gainTotal/100));
+  function epToClasse(ep){return ep<70?'A':ep<110?'B':ep<180?'C':ep<250?'D':ep<330?'E':ep<420?'F':'G';}
+  const classeVisee = epToClasse(epApres);
+
+  // Matrice de décision
+  const cleMatrice = classeActuelle+'→'+classeVisee;
+  const mat = MATRICE[cleMatrice]||null;
+
   const intro=document.getElementById(prefix+'scenarioIntro');
-  if(intro)intro.innerHTML=`<h3>🎯 Objectif : <span style="color:${COLORS[classeActuelle]}">${classeActuelle}</span> → <span style="color:${COLORS[classeVisee]}">${classeVisee}</span> (rénovation complète)</h3><p style="margin-top:8px;">${oblig.length} travaux obligatoires · ${reco.length} recommandés · ${travaux.length} actions au total.${equip&&(equip.vmc==='Naturelle'||equip.vmc==='Non détecté')?'<br>⚠️ <strong style="color:#FF1744">ALERTE VMC</strong> : Aucune ventilation détectée — obligation réglementaire en rénovation globale.':''}</p>`;
+  if(intro) intro.innerHTML=`
+    <h3 style="margin-bottom:10px;">🎯 Objectif : <span style="color:${COLORS[classeActuelle]}">${classeActuelle}</span> → <span style="color:${COLORS[classeVisee]||'#10B981'}">${classeVisee}</span></h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:12px 0;">
+      <div style="background:var(--bg4);border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Zone climatique</div>
+        <div style="font-size:14px;font-weight:700;color:var(--green);">${zone} <span style="font-size:11px;color:var(--muted);">(×${coeff})</span></div>
+      </div>
+      <div style="background:var(--bg4);border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Gain combiné (synergie)</div>
+        <div style="font-size:14px;font-weight:700;color:#FFD740;">${gainTotal}%</div>
+      </div>
+      <div style="background:var(--bg4);border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">EP estimé après</div>
+        <div style="font-size:14px;font-weight:700;color:var(--green);">${epApres} kWh/m²/an</div>
+      </div>
+      <div style="background:var(--bg4);border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Travaux</div>
+        <div style="font-size:14px;font-weight:700;">${oblig.length} oblig. · ${reco.length} reco.</div>
+      </div>
+    </div>
+    ${mat?`<div style="background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.2);border-radius:8px;padding:10px 14px;margin-top:8px;font-size:13px;">
+      📋 <strong>Matrice de décision ${cleMatrice}</strong> — Budget indicatif : <strong style="color:var(--green);">${mat.budget}</strong> · Travaux prioritaires : ${mat.travaux}
+    </div>`:''}
+    ${equip&&(equip.vmc==='Naturelle'||equip.vmc==='Non détecté')?'<div style="margin-top:8px;padding:8px 12px;background:rgba(255,23,68,0.08);border-radius:6px;font-size:12px;color:#FF1744;">⚠️ <strong>ALERTE VMC</strong> : Aucune ventilation détectée — obligation réglementaire en rénovation globale.</div>':''}
+  `;
+
+  // Travaux cards
   const sections={};
-  travaux.forEach(t=>{if(!sections[t.section])sections[t.section]=[];sections[t.section].push(t);});
-  const bMap={'OBLIGATOIRE':'badge-oblig oblig','RECOMMANDÉ':'badge-reco recommande','OPTIONNEL':'badge-opt optionnel'};
+  travaux.forEach(t=>{if(t.section){if(!sections[t.section])sections[t.section]=[];sections[t.section].push(t);}});
   let html='';
   for(const[sec,items]of Object.entries(sections)){
     html+=`<div class="travaux-section"><div class="travaux-section-title">${sec}</div>`;
@@ -1472,15 +2171,46 @@ function renderScenario(travaux,classeActuelle,prefix=''){
   }
   const container=document.getElementById(prefix+'travauxContainer');
   if(container)container.innerHTML=html;
-  const cMin=oblig.reduce((s,t)=>{const m=t.cout.match(/(\d[\d\s]*)/);return s+(m?parseInt(m[1].replace(/\s/g,''))*0.7:0);},0);
-  const cMax=travaux.reduce((s,t)=>{const m=t.cout.match(/–\s*([\d\s]+)/);return s+(m?parseInt(m[1].replace(/\s/g,'')):0);},0);
+
+  // ── 2 SCÉNARIOS BUDGÉTISÉS (source: Cahier des charges §9.3) ──
+  const obligCouts=oblig.map(t=>{const m=t.cout.match(/(\d[\d\s]*)/);return m?parseInt(m[1].replace(/\s/g,'')):0;});
+  const coutLimite=obligCouts.slice(0,2).reduce((s,c)=>s+c,0);
+  const coutConfort=obligCouts.reduce((s,c)=>s+c,0);
+  const gainScen1=gainCombine(oblig.slice(0,2).map(t=>t.impact));
+  const gainScen2=gainCombine(oblig.map(t=>t.impact));
+  const epScen1=Math.round(epEstime*(1-gainScen1/100));
+  const epScen2=Math.round(epEstime*(1-gainScen2/100));
+  const cls1=epToClasse(epScen1), cls2=epToClasse(epScen2);
+  const aides1=Math.round(coutLimite*0.55), aides2=Math.round(coutConfort*0.55);
+
   const inv=document.getElementById(prefix+'investSummary');
-  if(inv)inv.innerHTML=`
-    <div class="invest-box"><div class="invest-val">${oblig.length}</div><div class="invest-lbl">Obligatoires</div></div>
-    <div class="invest-box"><div class="invest-val">${reco.length}</div><div class="invest-lbl">Recommandés</div></div>
-    <div class="invest-box"><div class="invest-val">${classeActuelle}→${classeVisee}</div><div class="invest-lbl">Saut visé</div></div>
-    <div class="invest-box"><div class="invest-val" style="font-size:14px;">${Math.round(cMin/1000)*1000 .toLocaleString('fr-FR')}–${Math.round(cMax/1000)*1000 .toLocaleString('fr-FR')} €</div><div class="invest-lbl">Investissement (avant aides)</div></div>`;
+  if(inv) inv.innerHTML=`
+    <div style="grid-column:1/-1;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;font-family:'Space Mono',monospace;margin-bottom:4px;">📊 Scénarios budgétisés (§9.3 Cahier des charges 3CL)</div>
+
+    <div style="background:var(--bg3);border:1px solid rgba(255,215,64,0.2);border-radius:10px;padding:16px;">
+      <div style="font-size:11px;color:#FFD740;font-weight:700;text-transform:uppercase;margin-bottom:10px;">💰 Scénario 1 — Budget limité</div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--muted);">Travaux :</span><span>${oblig.slice(0,2).map(t=>t.titre.split('(')[0].trim()).join(' + ')||'—'}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--muted);">Investissement brut :</span><span style="font-weight:700;">${coutLimite.toLocaleString('fr-FR')} €</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--muted);">Après aides (~55%) :</span><span style="color:#69F0AE;font-weight:700;">~${(coutLimite-aides1).toLocaleString('fr-FR')} €</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--muted);">Gain CEP combiné :</span><span style="color:#FFD740;font-weight:700;">${gainScen1}%</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--muted);">Résultat :</span><span><span style="color:${COLORS[classeActuelle]}">${classeActuelle}</span> → <span style="color:${COLORS[cls1]||'#10B981'};font-weight:700;">${cls1}</span> (~${epScen1} kWh/m²/an)</span></div>
+    </div>
+
+    <div style="background:var(--bg3);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:16px;">
+      <div style="font-size:11px;color:var(--green);font-weight:700;text-transform:uppercase;margin-bottom:10px;">🚀 Scénario 2 — Budget confortable</div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--muted);">Travaux :</span><span>Ensemble des travaux obligatoires</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--muted);">Investissement brut :</span><span style="font-weight:700;">${coutConfort.toLocaleString('fr-FR')} €</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--muted);">Après aides (~55%) :</span><span style="color:#69F0AE;font-weight:700;">~${(coutConfort-aides2).toLocaleString('fr-FR')} €</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--muted);">Gain CEP combiné :</span><span style="color:var(--green);font-weight:700;">${gainScen2}%</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--muted);">Résultat :</span><span><span style="color:${COLORS[classeActuelle]}">${classeActuelle}</span> → <span style="color:${COLORS[cls2]||'#10B981'};font-weight:700;">${cls2}</span> (~${epScen2} kWh/m²/an)</span></div>
+    </div>
+
+    <div style="background:var(--bg3);border-radius:10px;padding:14px;font-size:12px;color:var(--muted);line-height:1.7;">
+      <strong style="color:var(--text);">ℹ️ Formule synergie :</strong> Gains calculés selon G_A + G_B − (0.15 × G_A × G_B)/100 (interaction non-linéaire §6.1). Zone ${zone} — coefficient ×${coeff}. Valeurs indicatives.
+    </div>
+  `;
 }
+
 
 const SAUT_TRAVAUX=[
   {icon:'🏠',label:'Isolation combles perdus',gain:2,cout:2000,cond:e=>['Non isolés','Non détecté'].includes(e.combles)},
@@ -1628,13 +2358,17 @@ async function analyserDocument(){
       }
     }
     renderDet(equip,'detGrid');
+    detecterTypeBien();
     document.getElementById('resultCard').classList.remove('hidden');
     const travaux=genererScenario(equip,classe);
     renderScenario(travaux,classe,'');
     document.getElementById('scenarioCard').classList.remove('hidden');
     renderSauts(classe,equip,'');
     document.getElementById('sautsCard').classList.remove('hidden');
+    document.getElementById('synthesesBtnWrap').classList.remove('hidden');
     saveAnalyse({nom:(beneficiaireData.nom||'Inconnu')+' '+(beneficiaireData.prenom||''),classe,ep,ges});
+    // Firebase
+    saveVT_Firebase({nom:(beneficiaireData.nom||'Inconnu')+' '+(beneficiaireData.prenom||''),classe,ep,ges,methode,adresse:beneficiaireData.adresse||'',ville:beneficiaireData.ville||'',surface:beneficiaireData.surface||'',typeBien:beneficiaireData.typeBien||''});
   }catch(err){console.error(err);alert('Erreur : '+err.message);}
   finally{btn.disabled=false;sp.classList.add('hidden');bt.textContent='🔄 Relancer l\'analyse';}
 }
@@ -1684,6 +2418,16 @@ function analyserManuel(){
 let lignes=[{desc:'',complement:'',qte:1,pu:0}];
 let auditLoaded = false;
 
+// Mots-clés obligatoires pour valider un vrai audit énergétique
+const AUDIT_KEYWORDS = [
+  'audit énergétique','dpe','diagnostic de performance',
+  'kwh','classe énergétique','étiquette énergie',
+  'scénario','rénovation par étapes','scénario 1','scénario 2',
+  'bouquet de travaux','gains énergétiques','énergie primaire',
+  'ges','émissions','isolation','chauffage','ventilation'
+];
+const AUDIT_REQUIRED = 3; // nb minimum de mots-clés trouvés
+
 /* ── AUDIT PDF ── */
 function initAuditZone(){
   const zone = document.getElementById('auditUploadZone');
@@ -1695,21 +2439,112 @@ function initAuditZone(){
     zone.style.borderColor='rgba(16,185,129,0.3)';
     zone.style.background='rgba(16,185,129,0.05)';
     const file = e.dataTransfer.files[0];
-    if(file && file.type==='application/pdf') activateAudit(file.name);
-    else alert('Veuillez glisser un fichier PDF.');
+    if(!file){ return; }
+    if(file.type !== 'application/pdf'){ alert('Veuillez glisser un fichier PDF.'); return; }
+    const nomFichier = file.name.toUpperCase().replace(/\s/g,'-');
+    if(!nomFichier.startsWith('AUDIT-ENERGETIQUE-')){
+      zone.style.borderColor = 'rgba(255,23,68,0.5)';
+      setTimeout(()=>{
+        alert('❌ Nom de fichier non conforme.\n\nL\'audit doit être nommé :\n• AUDIT-ENERGETIQUE-NOM-PRÉNOM.pdf\n\nFichier reçu : ' + file.name);
+        zone.style.borderColor = 'rgba(16,185,129,0.3)';
+      }, 100);
+      return;
+    }
+    verifierEtChargerAudit(file);
   });
   zone.addEventListener('click', ()=>document.getElementById('d_audit').click());
-  // Griser les lignes au départ
   lockLignes();
 }
+
 function handleAuditUpload(input){
   const file = input.files[0];
   if(!file) return;
-  activateAudit(file.name);
+  // Vérification du nom
+  const nomFichier = file.name.toUpperCase().replace(/\s/g,'-');
+  if(!nomFichier.startsWith('AUDIT-ENERGETIQUE-')){
+    input.value = '';
+    const zone = document.getElementById('auditUploadZone');
+    if(zone){ zone.style.borderColor='rgba(255,23,68,0.5)'; zone.style.background='rgba(255,23,68,0.05)'; }
+    document.getElementById('auditFileName').textContent = '❌ Nom de fichier non conforme';
+    document.getElementById('auditFileName').style.color = '#FF1744';
+    setTimeout(()=>{
+      alert('❌ Nom de fichier non conforme.\n\n' +
+        'L\'audit doit être nommé :\n' +
+        '• AUDIT-ENERGETIQUE-NOM-PRÉNOM.pdf\n\n' +
+        'Fichier reçu : ' + file.name);
+      document.getElementById('auditFileName').textContent = 'Aucun audit chargé';
+      document.getElementById('auditFileName').style.color = 'var(--muted)';
+      if(zone){ zone.style.borderColor='rgba(16,185,129,0.3)'; zone.style.background='rgba(16,185,129,0.05)'; }
+    }, 100);
+    return;
+  }
+  verifierEtChargerAudit(file);
 }
-function activateAudit(name){
+
+async function verifierEtChargerAudit(file){
+  // Afficher état de vérification
+  const zone = document.getElementById('auditUploadZone');
+  document.getElementById('auditFileName').textContent = '⏳ Vérification du document en cours...';
+  document.getElementById('auditFileName').style.color = '#FFD740';
+
+  try {
+    // Lire le PDF avec PDF.js
+    const ab = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data: ab}).promise;
+    let fullText = '';
+    const pagesToRead = Math.min(pdf.numPages, 10);
+    for(let i = 1; i <= pagesToRead; i++){
+      const page = await pdf.getPage(i);
+      const c = await page.getTextContent();
+      fullText += c.items.map(x=>x.str).join(' ').toLowerCase() + ' ';
+    }
+
+    // Vérifier les mots-clés
+    const found = AUDIT_KEYWORDS.filter(kw => fullText.includes(kw.toLowerCase()));
+    const score = found.length;
+
+    if(score >= AUDIT_REQUIRED){
+      // ✅ Document valide
+      activateAudit(file.name, found);
+    } else {
+      // ❌ Document non reconnu
+      document.getElementById('auditFileName').textContent = '❌ Document non reconnu comme audit énergétique';
+      document.getElementById('auditFileName').style.color = '#FF1744';
+      zone.style.borderColor = 'rgba(255,23,68,0.5)';
+      zone.style.background = 'rgba(255,23,68,0.05)';
+      document.getElementById('d_audit').value = '';
+      setTimeout(()=>{
+        document.getElementById('auditFileName').textContent = 'Aucun audit chargé';
+        document.getElementById('auditFileName').style.color = 'var(--muted)';
+        zone.style.borderColor = 'rgba(16,185,129,0.3)';
+        zone.style.background = 'rgba(16,185,129,0.05)';
+      }, 3000);
+      showAuditError(score, found);
+    }
+  } catch(err) {
+    document.getElementById('auditFileName').textContent = '❌ Erreur lecture PDF';
+    document.getElementById('auditFileName').style.color = '#FF1744';
+    console.error(err);
+  }
+}
+
+function showAuditError(score, found){
+  const msg = `❌ Ce document ne semble pas être un audit énergétique valide.\n\n`+
+    `Mots-clés détectés (${score}/${AUDIT_REQUIRED} requis) : ${found.length>0?found.join(', '):'aucun'}\n\n`+
+    `Un audit énergétique doit contenir : DPE, classe énergétique, scénarios de rénovation, kWh, etc.`;
+  alert(msg);
+}
+
+function activateAudit(name, keywords){
   auditLoaded = true;
-  document.getElementById('auditFileName').textContent = '✅ ' + name;
+  const kw = keywords||[];
+  // Détecter scénarios
+  const hasScen1 = kw.some(k=>k.includes('scénario 1')||k.includes('scénario'));
+  const hasScen2 = kw.some(k=>k.includes('scénario 2')||k.includes('étapes'));
+  let badges = '';
+  if(hasScen1) badges += ' <span style="font-size:10px;padding:2px 8px;border-radius:100px;background:rgba(16,185,129,0.15);color:#10B981;border:1px solid rgba(16,185,129,0.3);">✓ Scénario 1</span>';
+  if(hasScen2) badges += ' <span style="font-size:10px;padding:2px 8px;border-radius:100px;background:rgba(96,165,250,0.15);color:#60A5FA;border:1px solid rgba(96,165,250,0.3);">✓ Scénario 2</span>';
+  document.getElementById('auditFileName').innerHTML = '✅ ' + name + badges;
   document.getElementById('auditFileName').style.color = '#10B981';
   document.getElementById('d_audit_remove').style.display = 'block';
   const zone = document.getElementById('auditUploadZone');
@@ -1745,9 +2580,25 @@ function removeLigne(i){lignes.splice(i,1);renderLignes();}
 function renderLignes(){
   const container=document.getElementById('lignes-container');
   container.innerHTML=lignes.map((l,i)=>`
-    <div style="margin-bottom:10px;background:var(--bg3);border-radius:8px;padding:10px;border:1px solid var(--border);">
+    <div style="margin-bottom:10px;background:var(--bg3);border-radius:8px;padding:10px;border:1px solid var(--border);" id="ligne_wrap_${i}">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">
-        <input class="form-input" style="font-size:13px;" placeholder="Description des travaux" value="${l.desc||''}" oninput="lignes[${i}].desc=this.value;updateDocPreview()">
+        <!-- Champ description avec autocomplétion BAR-TH -->
+        <div style="position:relative;">
+          <input class="form-input" style="font-size:13px;" id="desc_input_${i}"
+            placeholder="🔍 Rechercher une opération BAR-TH..."
+            value="${l.desc||''}"
+            autocomplete="off"
+            oninput="lignes[${i}].desc=this.value;filtrerOperations(${i});updateDocPreview()"
+            onfocus="filtrerOperations(${i})"
+            onblur="setTimeout(()=>fermerSuggestions(${i}),200)">
+          <!-- Badge fiche détectée -->
+          ${detecterFicheCEE((l.desc||'')+' '+(l.complement||'')) ?
+            `<span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:10px;padding:2px 7px;background:rgba(16,185,129,0.15);color:var(--green);border-radius:4px;font-family:'Space Mono',monospace;pointer-events:none;">
+              ${(FICHES_CEE[detecterFicheCEE((l.desc||'')+' '+(l.complement||''))]||{code:''}).code||''}
+            </span>` : ''}
+          <!-- Liste suggestions -->
+          <div id="sugg_${i}" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:300;background:var(--bg2);border:1px solid rgba(16,185,129,0.3);border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.4);"></div>
+        </div>
         <input class="form-input" style="font-size:13px;" placeholder="Complément (marque, référence...)" value="${l.complement||''}" oninput="lignes[${i}].complement=this.value;updateDocPreview()">
       </div>
       <div style="display:grid;grid-template-columns:70px 110px 110px 30px;gap:8px;align-items:center;">
@@ -1758,8 +2609,629 @@ function renderLignes(){
       </div>
     </div>`).join('');
   updateDocPreview();
+  calculerCumac();
+}
+
+/* ── AUTOCOMPLÉTION BAR-TH ── */
+function filtrerOperations(idx){
+  const input = document.getElementById('desc_input_'+idx);
+  const sugg  = document.getElementById('sugg_'+idx);
+  if(!input || !sugg) return;
+  const q = input.value.toLowerCase().trim();
+
+  // Filtrer le catalogue selon la saisie
+  const resultats = CATALOGUE_OPERATIONS.filter(op =>
+    !q ||
+    op.code.toLowerCase().includes(q) ||
+    op.nom.toLowerCase().includes(q) ||
+    op.desc.toLowerCase().includes(q)
+  );
+
+  if(resultats.length === 0){ sugg.style.display='none'; return; }
+
+  sugg.style.display = 'block';
+  sugg.innerHTML = resultats.map(op => `
+    <div onclick="selectionnerOperation(${idx},'${op.code}')"
+      style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.15s;"
+      onmouseover="this.style.background='rgba(16,185,129,0.08)'"
+      onmouseout="this.style.background='transparent'">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
+        <span style="font-size:10px;padding:2px 7px;background:rgba(16,185,129,0.12);color:var(--green);border-radius:4px;font-family:'Space Mono',monospace;flex-shrink:0;">${op.code}</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text);">${op.nom}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);padding-left:2px;">${op.desc.substring(0,70)}${op.desc.length>70?'...':''}</div>
+      <div style="font-size:11px;color:#FFD740;margin-top:2px;">💰 ${op.cout_min.toLocaleString('fr-FR')} – ${op.cout_max.toLocaleString('fr-FR')} €</div>
+    </div>`).join('');
+}
+
+function selectionnerOperation(idx, code){
+  const op = CATALOGUE_OPERATIONS.find(o => o.code === code);
+  if(!op) return;
+  lignes[idx].desc       = op.desc;
+  lignes[idx].complement = op.code;
+  lignes[idx].pu         = Math.round((op.cout_min + op.cout_max) / 2);
+  fermerSuggestions(idx);
+  renderLignes();
+}
+
+function fermerSuggestions(idx){
+  const sugg = document.getElementById('sugg_'+idx);
+  if(sugg) sugg.style.display = 'none';
 }
 let logoDataUrl = '';
+
+/* ══════════════════════════════════════════════════════════════
+   MOTEUR CUMAC / CEE
+   Source : Arrêté du 22 décembre 2014 modifié + fiches BAR-TH
+   CUMAC = kWhc (cumac) = économies d'énergie cumulées actualisées
+   sur la durée de vie de l'équipement
+══════════════════════════════════════════════════════════════ */
+
+// Fiches standardisées d'opération BAR-TH
+// CUMAC de base par m² selon zone H1/H2/H3 (kWhc/m²)
+const FICHES_CEE = {
+  // BAR-TH-101 — Isolation combles perdus
+  'combles': {
+    code:'BAR-TH-101', nom:'Isolation combles perdus',
+    H1:{tres_modeste:3600,modeste:3600,intermediaire:2400,classique:2400},
+    H2:{tres_modeste:3000,modeste:3000,intermediaire:2000,classique:2000},
+    H3:{tres_modeste:1800,modeste:1800,intermediaire:1200,classique:1200},
+    unite:'kWhc/m² combles', duree_vie:30,
+  },
+  // BAR-TH-102 — Isolation murs
+  'murs': {
+    code:'BAR-TH-102', nom:'Isolation des murs',
+    H1:{tres_modeste:5100,modeste:5100,intermediaire:3400,classique:3400},
+    H2:{tres_modeste:4200,modeste:4200,intermediaire:2800,classique:2800},
+    H3:{tres_modeste:2400,modeste:2400,intermediaire:1600,classique:1600},
+    unite:'kWhc/m² mur', duree_vie:30,
+  },
+  // BAR-TH-103 — Isolation plancher bas
+  'plancher': {
+    code:'BAR-TH-103', nom:'Isolation plancher bas',
+    H1:{tres_modeste:3000,modeste:3000,intermediaire:2000,classique:2000},
+    H2:{tres_modeste:2400,modeste:2400,intermediaire:1600,classique:1600},
+    H3:{tres_modeste:1500,modeste:1500,intermediaire:1000,classique:1000},
+    unite:'kWhc/m² plancher', duree_vie:30,
+  },
+  // BAR-TH-127 — VMC simple flux hygro
+  'vmc_sf': {
+    code:'BAR-TH-127', nom:'VMC simple flux hygroreglable',
+    H1:{tres_modeste:71000,modeste:71000,intermediaire:47300,classique:47300},
+    H2:{tres_modeste:58000,modeste:58000,intermediaire:38700,classique:38700},
+    H3:{tres_modeste:34000,modeste:34000,intermediaire:22700,classique:22700},
+    unite:'kWhc/logement', duree_vie:15, parSurface:false,
+  },
+  // BAR-TH-125 — VMC double flux
+  'vmc_df': {
+    code:'BAR-TH-125', nom:'VMC double flux avec récupération',
+    H1:{tres_modeste:142000,modeste:142000,intermediaire:94700,classique:94700},
+    H2:{tres_modeste:116000,modeste:116000,intermediaire:77300,classique:77300},
+    H3:{tres_modeste:68000,modeste:68000,intermediaire:45300,classique:45300},
+    unite:'kWhc/logement', duree_vie:20, parSurface:false,
+  },
+  // BAR-TH-129 — PAC air/eau
+  'pac': {
+    code:'BAR-TH-129', nom:'PAC air/eau (chauffage)',
+    H1:{tres_modeste:56600,modeste:56600,intermediaire:37700,classique:37700},
+    H2:{tres_modeste:46200,modeste:46200,intermediaire:30800,classique:30800},
+    H3:{tres_modeste:27300,modeste:27300,intermediaire:18200,classique:18200},
+    unite:'kWhc/logement', duree_vie:17, parSurface:false,
+  },
+  // BAR-TH-148 — Chauffe-eau thermodynamique
+  'cet': {
+    code:'BAR-TH-148', nom:'Chauffe-eau thermodynamique',
+    H1:{tres_modeste:12500,modeste:12500,intermediaire:8300,classique:8300},
+    H2:{tres_modeste:10200,modeste:10200,intermediaire:6800,classique:6800},
+    H3:{tres_modeste:6000,modeste:6000,intermediaire:4000,classique:4000},
+    unite:'kWhc/logement', duree_vie:15, parSurface:false,
+  },
+  // BAR-EN-102 — Fenêtres double vitrage
+  'fenetres': {
+    code:'BAR-EN-102', nom:'Fenêtres / menuiseries (DV bas-émissif)',
+    H1:{tres_modeste:1400,modeste:1400,intermediaire:900,classique:900},
+    H2:{tres_modeste:1100,modeste:1100,intermediaire:750,classique:750},
+    H3:{tres_modeste:650,modeste:650,intermediaire:450,classique:450},
+    unite:'kWhc/m² de fenêtre', duree_vie:24,
+  },
+  // BAR-TH-160 — Isolation rampants toiture
+  'rampants': {
+    code:'BAR-TH-160', nom:'Isolation rampants toiture',
+    H1:{tres_modeste:3600,modeste:3600,intermediaire:2400,classique:2400},
+    H2:{tres_modeste:3000,modeste:3000,intermediaire:2000,classique:2000},
+    H3:{tres_modeste:1800,modeste:1800,intermediaire:1200,classique:1200},
+    unite:'kWhc/m² rampant', duree_vie:30,
+  },
+  // BAR-TH-174 — Rénovation d'ampleur maison individuelle
+  'renov_maison': {
+    code:'BAR-TH-174', nom:"Rénovation d'ampleur — Maison individuelle",
+    // CUMAC global selon gain de classes et zone (base 100m²)
+    // Saut 2 classes (ex: E→C ou D→B)
+    H1:{tres_modeste:420000,modeste:350000,intermediaire:280000,classique:210000},
+    H2:{tres_modeste:340000,modeste:285000,intermediaire:228000,classique:171000},
+    H3:{tres_modeste:200000,modeste:167000,intermediaire:134000,classique:100000},
+    unite:'kWhc/logement', duree_vie:30, parSurface:false,
+    prime_anah:{tres_modeste:0.70,modeste:0.50,intermediaire:0.35,classique:0.15},
+    // Prime ANAH = % du coût total des travaux
+  },
+  // BAR-TH-175 — Rénovation d'ampleur appartement
+  'renov_appart': {
+    code:'BAR-TH-175', nom:"Rénovation d'ampleur — Appartement",
+    H1:{tres_modeste:280000,modeste:234000,intermediaire:187000,classique:140000},
+    H2:{tres_modeste:228000,modeste:190000,intermediaire:152000,classique:114000},
+    H3:{tres_modeste:134000,modeste:112000,intermediaire:90000,classique:67000},
+    unite:'kWhc/logement', duree_vie:30, parSurface:false,
+    prime_anah:{tres_modeste:0.70,modeste:0.50,intermediaire:0.35,classique:0.15},
+  },
+};
+
+// Catalogue des opérations BAR-TH suggérées
+const CATALOGUE_OPERATIONS = [
+  {code:'BAR-TH-101', nom:'Isolation combles perdus',           desc:"Isolation des combles perdus (R≥7 m².K/W) — 30 cm laine minérale",           typeKey:'combles',      cout_min:2500,  cout_max:3500},
+  {code:'BAR-TH-102', nom:'Isolation des murs',                 desc:"Isolation murs par l'extérieur ITE (U≤0.27 W/m².K) — 13 cm",               typeKey:'murs',         cout_min:8000,  cout_max:20000},
+  {code:'BAR-TH-103', nom:'Isolation plancher bas',             desc:"Isolation plancher bas (R≥3 m².K/W) — vide sanitaire/garage",                typeKey:'plancher',     cout_min:3000,  cout_max:6000},
+  {code:'BAR-TH-125', nom:'VMC double flux',                    desc:"VMC double flux avec récupération de chaleur (efficacité ≥80%)",                typeKey:'vmc_df',       cout_min:2000,  cout_max:4000},
+  {code:'BAR-TH-127', nom:'VMC simple flux hygro',              desc:"VMC simple flux hygroreglable basse consommation",                            typeKey:'vmc_sf',       cout_min:500,   cout_max:1000},
+  {code:'BAR-TH-129', nom:'PAC air/eau',                        desc:"Pompe à chaleur air/eau (COP≥3.4) — remplacement chaudière",                  typeKey:'pac',          cout_min:10000, cout_max:16000},
+  {code:'BAR-TH-148', nom:'Chauffe-eau thermodynamique',        desc:"Chauffe-eau thermodynamique CET (COP≥2.5)",                                   typeKey:'cet',          cout_min:1500,  cout_max:3500},
+  {code:'BAR-EN-102', nom:'Fenêtres double vitrage',           desc:"Remplacement fenêtres — double vitrage bas-émissif (Uw≤1.3 W/m².K)",          typeKey:'fenetres',     cout_min:400,   cout_max:800},
+  {code:'BAR-TH-160', nom:'Isolation rampants toiture',         desc:"Isolation rampants toiture (R≥6 m².K/W)",                                     typeKey:'rampants',     cout_min:3000,  cout_max:6000},
+  {code:'BAR-TH-174', nom:"Rénovation d'ampleur — Maison",     desc:"Rénovation d'ampleur maison individuelle (gain ≥2 classes DPE)",              typeKey:'renov_maison', cout_min:15000, cout_max:70000},
+  {code:'BAR-TH-175', nom:"Rénovation d'ampleur — Appartement",desc:"Rénovation d'ampleur appartement (gain ≥2 classes DPE)",                     typeKey:'renov_appart', cout_min:10000, cout_max:50000},
+]
+
+// Prix d'achat CUMAC (en €/MWhc) selon profil ménage — indicatif marché 2026
+const PRIX_CUMAC = {
+  tres_modeste:  9.0,
+  modeste:       7.5,
+  intermediaire: 6.0,
+  classique:     5.0,
+};
+
+/* ══ BARÈME MaPrimeRénov' 2026 (au 1er janvier 2026) ══
+   Source : Guide des aides financières 2026 — ANAH
+   Montants fixes par équipement ou €/m²
+══════════════════════════════════════════════════════ */
+const MPR_2026 = {
+  // CHAUFFAGE & ECS
+  pac_aireau: {
+    nom: "Pompe à chaleur air/eau (dont PAC hybrides)",
+    plafond_depense: 12000,
+    tres_modeste: 5000, modeste: 4000, intermediaire: 3000, classique: 0,
+    unite: '€/logement',
+  },
+  pac_geo: {
+    nom: "PAC géothermique ou solarothermique",
+    plafond_depense: 18000,
+    tres_modeste: 11000, modeste: 9000, intermediaire: 6000, classique: 0,
+    unite: '€/logement',
+  },
+  cet: {
+    nom: "Chauffe-eau thermodynamique",
+    plafond_depense: 3500,
+    tres_modeste: 1200, modeste: 800, intermediaire: 400, classique: 0,
+    unite: '€/logement',
+  },
+  cesi: {
+    nom: "Chauffe-eau solaire individuel",
+    plafond_depense: 7000,
+    tres_modeste: 4000, modeste: 3000, intermediaire: 2000, classique: 0,
+    unite: '€/logement',
+  },
+  vmc_df: {
+    nom: "VMC double flux (conditionnée à isolation)",
+    plafond_depense: 6000,
+    tres_modeste: 2500, modeste: 2000, intermediaire: 1500, classique: 0,
+    unite: '€/logement',
+  },
+  reseau_chaleur: {
+    nom: "Raccordement réseau de chaleur",
+    plafond_depense: 1800,
+    tres_modeste: 1200, modeste: 800, intermediaire: 400, classique: 0,
+    unite: '€/logement',
+  },
+  poele_buches: {
+    nom: "Poêle à bûches / cuisinière à bûches",
+    plafond_depense: 4000,
+    tres_modeste: 1250, modeste: 1000, intermediaire: 500, classique: 0,
+    unite: '€/logement',
+  },
+  poele_granules: {
+    nom: "Poêle à granulés / cuisinière à granulés",
+    plafond_depense: 5000,
+    tres_modeste: 1250, modeste: 1000, intermediaire: 750, classique: 0,
+    unite: '€/logement',
+  },
+  insert: {
+    nom: "Foyer fermé / insert bûches ou granulés",
+    plafond_depense: 4000,
+    tres_modeste: 1250, modeste: 750, intermediaire: 500, classique: 0,
+    unite: '€/logement',
+  },
+  depose_fioul: {
+    nom: "Dépose de cuve à fioul",
+    plafond_depense: 4000,
+    tres_modeste: 1200, modeste: 800, intermediaire: 400, classique: 0,
+    unite: '€/logement',
+  },
+  // ISOLATION — montants en €/m²
+  combles_rampants: {
+    nom: "Isolation rampants toiture / plafonds combles",
+    plafond_depense: 75,  // €/m²
+    tres_modeste: 25, modeste: 20, intermediaire: 15, classique: 0,
+    unite: '€/m²',
+  },
+  toiture_terrasse: {
+    nom: "Isolation toiture-terrasse",
+    plafond_depense: 180,
+    tres_modeste: 75, modeste: 60, intermediaire: 40, classique: 0,
+    unite: '€/m²',
+  },
+  fenetres_sv: {
+    nom: "Parois vitrées (remplacement simple vitrage)",
+    plafond_depense: 1000,  // €/équipement
+    tres_modeste: 100, modeste: 80, intermediaire: 40, classique: 0,
+    unite: '€/équipement',
+  },
+  // AUDIT
+  audit: {
+    nom: "Audit énergétique (hors obligation réglementaire)",
+    plafond_depense: 800,
+    tres_modeste: 500, modeste: 400, intermediaire: 300, classique: 0,
+    unite: '€/logement',
+  },
+  // RÉNOVATION D'AMPLEUR — % des travaux HT
+  renov_2classes: {
+    nom: "Rénovation d'ampleur — gain 2 classes DPE",
+    plafond_depense: 30000,
+    tres_modeste: 0.80, modeste: 0.60, intermediaire: 0.45, classique: 0.10,
+    unite: '% travaux HT', est_pourcentage: true,
+    ecretement: {tres_modeste:1.0, modeste:0.90, intermediaire:0.80, classique:0.50},
+  },
+  renov_3classes: {
+    nom: "Rénovation d'ampleur — gain 3 classes ou plus",
+    plafond_depense: 40000,
+    tres_modeste: 0.80, modeste: 0.60, intermediaire: 0.45, classique: 0.10,
+    unite: '% travaux HT', est_pourcentage: true,
+    ecretement: {tres_modeste:1.0, modeste:0.90, intermediaire:0.80, classique:0.50},
+  },
+  // PLAFONDS CUMUL (écrêtement)
+  _ecretement: {
+    'tres_modeste': 0.90,  // MPR + CEE ≤ 90% dépense éligible
+    'modeste':      0.75,
+    'intermediaire':0.60,
+    'classique':    null,
+  },
+};
+
+/* Correspondance typeKey CEE → clé MPR */
+const CEE_TO_MPR = {
+  'pac':          'pac_aireau',
+  'cet':          'cet',
+  'vmc_df':       'vmc_df',
+  'vmc_sf':       null,          // VMC SF non éligible MPR
+  'combles':      'combles_rampants',
+  'murs':         null,          // Isolation murs non dans ce barème (uniquement CEE)
+  'plancher':     null,          // Plancher bas non dans ce barème
+  'fenetres':     'fenetres_sv',
+  'rampants':     'combles_rampants',
+  'renov_maison': 'renov_2classes',
+  'renov_appart': 'renov_2classes',
+};
+
+function calculerMPR(typeKey, profil, surface, coutTravaux, sautClasses){
+  const mprKey = CEE_TO_MPR[typeKey];
+  if(!mprKey) return null;
+  const mpr = MPR_2026[mprKey];
+  if(!mpr) return null;
+  const montantBase = mpr[profil] || 0;
+  if(montantBase === 0) return {montant:0, plafond:mpr.plafond_depense, eligible:false};
+
+  let montant = 0;
+  if(mpr.est_pourcentage){
+    // Rénovation d'ampleur
+    const cle = sautClasses >= 3 ? 'renov_3classes' : 'renov_2classes';
+    const mprR = MPR_2026[cle];
+    const taux = mprR[profil] || 0;
+    montant = Math.round(coutTravaux * taux);
+    montant = Math.min(montant, mprR.plafond_depense);
+  } else if(mpr.unite === '€/m²'){
+    const surf = typeKey === 'fenetres' ? Math.round(surface*0.15) :
+                 typeKey === 'plancher' ? Math.round(surface*0.5) :
+                 Math.round(surface*0.55);
+    montant = Math.round(montantBase * surf);
+    montant = Math.min(montant, mpr.plafond_depense * surf);
+  } else {
+    montant = montantBase;
+    montant = Math.min(montant, mpr.plafond_depense);
+  }
+  return {montant, plafond:mpr.plafond_depense, eligible: montant > 0, unite: mpr.unite, nom: mpr.nom};
+}
+
+// Correspondance mots-clés ligne → fiche CEE
+function detecterFicheCEE(description){
+  const d = (description||'').toLowerCase();
+  if(d.includes('comble') || d.includes('toiture') || d.includes('laine') && d.includes('souffl'))
+    return 'combles';
+  if(d.includes('mur') || d.includes('ite') || d.includes('iti') || d.includes('facade') || d.includes('façade'))
+    return 'murs';
+  if(d.includes('plancher') || d.includes('vide sanitaire') || d.includes('sous-sol'))
+    return 'plancher';
+  if(d.includes('vmc double') || d.includes('double flux'))
+    return 'vmc_df';
+  if(d.includes('vmc') || d.includes('ventilation') || d.includes('hygro'))
+    return 'vmc_sf';
+  if(d.includes('pac') || d.includes('pompe') || d.includes('chaleur') || d.includes('air/eau') || d.includes('air-eau'))
+    return 'pac';
+  if(d.includes('thermodynamique') || d.includes('cet') || d.includes('ballon thermo'))
+    return 'cet';
+  if(d.includes('fen') || d.includes('vitrage') || d.includes('menuiser'))
+    return 'fenetres';
+  if(d.includes('rampant'))
+    return 'rampants';
+  return null;
+}
+
+/* ── Catalogue BAR-TH ── */
+function ouvrirCatalogue(){
+  const modal = document.getElementById('catalogueModal');
+  const list  = document.getElementById('catalogueList');
+  modal.style.display = 'flex';
+  list.innerHTML = CATALOGUE_OPERATIONS.map((op,i) => `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;">
+      <input type="checkbox" id="cat_${i}" style="margin-top:3px;width:16px;height:16px;accent-color:#10B981;">
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span style="font-size:10px;padding:2px 8px;background:rgba(16,185,129,0.1);color:var(--green);border-radius:4px;font-family:'Space Mono',monospace;">${op.code}</span>
+          <span style="font-size:13px;font-weight:600;">${op.nom}</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted);">${op.desc}</div>
+        <div style="font-size:11px;color:#FFD740;margin-top:4px;">💰 ${op.cout_min.toLocaleString('fr-FR')} – ${op.cout_max.toLocaleString('fr-FR')} €</div>
+      </div>
+    </div>`).join('');
+  // Pré-cocher les fiches déjà dans les lignes
+  lignes.forEach(l => {
+    const tk = detecterFicheCEE(l.desc+' '+(l.complement||''));
+    CATALOGUE_OPERATIONS.forEach((op,i) => {
+      if(op.typeKey === tk){
+        const cb = document.getElementById('cat_'+i);
+        if(cb) cb.checked = true;
+      }
+    });
+  });
+}
+function fermerCatalogue(){ document.getElementById('catalogueModal').style.display='none'; }
+function ajouterDepuisCatalogue(){
+  CATALOGUE_OPERATIONS.forEach((op,i) => {
+    const cb = document.getElementById('cat_'+i);
+    if(!cb||!cb.checked) return;
+    // Vérifier si déjà dans les lignes
+    const deja = lignes.some(l => detecterFicheCEE(l.desc+' '+(l.complement||'')) === op.typeKey);
+    if(!deja){
+      lignes.push({desc:op.desc, complement:op.code, qte:1, pu:Math.round((op.cout_min+op.cout_max)/2)});
+    }
+  });
+  renderLignes();
+  fermerCatalogue();
+}
+
+/* ── Détection type bien depuis beneficiaireData ── */
+function detecterTypeBien(){
+  const sel = document.getElementById('cee_typebien');
+  if(!sel) return;
+  if(beneficiaireData && beneficiaireData.typeBien){
+    if(beneficiaireData.typeBien.toLowerCase().includes('appartement'))
+      sel.value = 'appartement';
+    else
+      sel.value = 'maison';
+  }
+}
+
+function calculerCumac(){
+  const zone    = document.getElementById('cee_zone')?.value    || 'H2';
+  const profil  = document.getElementById('cee_profil')?.value  || 'classique';
+  const surface = parseFloat(document.getElementById('cee_surface')?.value || 100);
+  const prix    = PRIX_CUMAC[profil] || 5.0;
+
+  let totalCumac = 0;
+  let totalMPR   = 0;
+  let lignesHtml = '';
+  let hasResults = false;
+
+  lignes.forEach((l, i) => {
+    if(!l.desc && !l.complement) return;
+    const typeKey = detecterFicheCEE(l.desc + ' ' + (l.complement||''));
+    if(!typeKey) return;
+
+    const fiche = FICHES_CEE[typeKey];
+    if(!fiche) return;
+
+    const valZone   = fiche[zone]?.[profil] || 0;
+    const parSurface = fiche.parSurface !== false;
+
+    // Calcul CUMAC selon type
+    let cumac = 0;
+    let surfaceRef = '';
+    if(parSurface){
+      // Pour combles/murs/plancher/fenêtres : CUMAC × surface
+      // Surface estimée : habitable pour combles/plancher, façades pour murs
+      const surfaceCalc = typeKey==='murs' ? Math.round(surface*1.4) :
+                          typeKey==='fenetres' ? Math.round(surface*0.15) :
+                          typeKey==='plancher' ? Math.round(surface*0.5) :
+                          Math.round(surface*0.55);
+      cumac = Math.round(valZone * surfaceCalc);
+      surfaceRef = surfaceCalc + ' m²';
+    } else {
+      // Pour équipements (VMC, PAC, CET) : CUMAC par logement
+      cumac = valZone;
+      surfaceRef = '1 logement';
+    }
+
+    totalCumac += cumac;
+    hasResults = true;
+    const ceeEuros = Math.round(cumac * prix / 1000);
+    totalMPR += (calculerMPR(typeKey, profil, surface, (l.qte||1)*(l.pu||0), 0)?.montant || 0);
+
+    // Calcul prime MPR 2026 par ligne
+    const mprResult  = calculerMPR(typeKey, profil, surface, (l.qte||1)*(l.pu||0), 0);
+    const mprMontant = mprResult?.montant || 0;
+    const mprOk      = mprResult?.eligible || false;
+
+    lignesHtml += `
+      <div style="background:var(--bg4);border-radius:8px;padding:10px 12px;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+          <span style="font-size:10px;padding:2px 8px;background:rgba(16,185,129,0.12);color:var(--green);border-radius:4px;font-family:'Space Mono',monospace;">${fiche.code}</span>
+          <span style="font-size:13px;font-weight:600;">${fiche.nom}</span>
+          <span style="font-size:10px;color:var(--muted);margin-left:auto;">${surfaceRef} · ${fiche.duree_vie} ans</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div style="text-align:center;background:var(--bg3);border-radius:6px;padding:8px;">
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:2px;">CUMAC</div>
+            <div style="font-size:15px;font-weight:700;color:#FFD740;font-family:'Space Mono',monospace;">${cumac.toLocaleString('fr-FR')}</div>
+            <div style="font-size:10px;color:var(--muted);">kWhc</div>
+          </div>
+          <div style="text-align:center;background:var(--bg3);border-radius:6px;padding:8px;">
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:2px;">CEE estimé</div>
+            <div style="font-size:15px;font-weight:700;color:var(--green);font-family:'Space Mono',monospace;">~${ceeEuros.toLocaleString('fr-FR')} €</div>
+            <div style="font-size:10px;color:var(--muted);">${prix} €/MWhc</div>
+          </div>
+          <div style="text-align:center;background:${mprOk?'rgba(96,165,250,0.08)':'var(--bg3)'};border:1px solid ${mprOk?'rgba(96,165,250,0.3)':'var(--border)'};border-radius:6px;padding:8px;">
+            <div style="font-size:10px;color:${mprOk?'#60A5FA':'var(--muted)'};text-transform:uppercase;margin-bottom:2px;">MPR 2026</div>
+            <div style="font-size:15px;font-weight:700;color:${mprOk?'#60A5FA':'#444'};font-family:'Space Mono',monospace;">${mprOk?mprMontant.toLocaleString('fr-FR')+' €':'—'}</div>
+            <div style="font-size:10px;color:var(--muted);">${mprResult?.unite||'Non éligible'}</div>
+          </div>
+        </div>
+      </div>`;
+  });
+
+  const container = document.getElementById('cumac-results');
+  if(!container) return;
+
+  // ── BAR-TH-174 / 175 — Rénovation d'ampleur ──
+  const typeBien      = document.getElementById('cee_typebien')?.value || 'maison';
+  const classeAvant   = document.getElementById('cee_classe_avant')?.value || '';
+  const classeApres   = document.getElementById('cee_classe_apres')?.value || '';
+  const ficheRenov    = typeBien === 'appartement' ? FICHES_CEE['renov_appart'] : FICHES_CEE['renov_maison'];
+  const sautClasses   = classeAvant && classeApres ? ORDER.indexOf(classeAvant) - ORDER.indexOf(classeApres) : 0;
+  const eligibleRenov = sautClasses >= 2;
+
+  let renovHtml = '';
+  let cumacRenov = 0;
+  let primeAnahEuros = 0;
+  const sousTotal = lignes.reduce((s,l)=>s+(l.qte||1)*(l.pu||0), 0);
+
+  if(eligibleRenov && ficheRenov){
+    const valRenov = ficheRenov[zone]?.[profil] || 0;
+    // Ajustement selon nombre de sauts de classes
+    const facteurSaut = sautClasses >= 4 ? 1.5 : sautClasses >= 3 ? 1.25 : 1.0;
+    cumacRenov = Math.round(valRenov * facteurSaut);
+    const ceeRenov = Math.round(cumacRenov * prix / 1000);
+    const tauxAnah = ficheRenov.prime_anah?.[profil] || 0;
+    primeAnahEuros = Math.round(sousTotal * tauxAnah);
+    const plafondAnah = typeBien === 'maison' ? 70000 : 50000;
+    primeAnahEuros = Math.min(primeAnahEuros, plafondAnah);
+
+    renovHtml = `
+      <div style="background:rgba(16,185,129,0.08);border:2px solid rgba(16,185,129,0.4);border-radius:10px;padding:14px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <span style="font-size:11px;padding:3px 10px;background:var(--green);color:white;border-radius:4px;font-family:'Space Mono',monospace;font-weight:700;">${ficheRenov.code}</span>
+          <span style="font-size:14px;font-weight:700;">${ficheRenov.nom}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;">
+          <div style="text-align:center;background:var(--bg3);border-radius:8px;padding:10px;">
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Saut DPE</div>
+            <div style="font-size:16px;font-weight:700;color:#FFD740;">${classeAvant} → ${classeApres}</div>
+            <div style="font-size:11px;color:var(--muted);">${sautClasses} classe(s)</div>
+          </div>
+          <div style="text-align:center;background:var(--bg3);border-radius:8px;padding:10px;">
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">CUMAC global</div>
+            <div style="font-size:16px;font-weight:700;color:#FFD740;">${cumacRenov.toLocaleString('fr-FR')}</div>
+            <div style="font-size:11px;color:var(--muted);">kWhc</div>
+          </div>
+          <div style="text-align:center;background:var(--bg3);border-radius:8px;padding:10px;">
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">CEE estimé</div>
+            <div style="font-size:16px;font-weight:700;color:var(--green);">~${ceeRenov.toLocaleString('fr-FR')} €</div>
+            <div style="font-size:11px;color:var(--muted);">${prix} €/MWhc</div>
+          </div>
+          <div style="text-align:center;background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);border-radius:8px;padding:10px;">
+            <div style="font-size:10px;color:#60A5FA;text-transform:uppercase;">Prime ANAH</div>
+            <div style="font-size:16px;font-weight:700;color:#60A5FA;">~${primeAnahEuros.toLocaleString('fr-FR')} €</div>
+            <div style="font-size:11px;color:var(--muted);">${Math.round(tauxAnah*100)}% travaux</div>
+          </div>
+        </div>
+      </div>`;
+  } else if(classeAvant && classeApres && sautClasses < 2){
+    renovHtml = `<div style="background:rgba(255,23,68,0.08);border:1px solid rgba(255,23,68,0.2);border-radius:8px;padding:10px;margin-bottom:12px;font-size:12px;color:#FF1744;">
+      ⚠️ Saut de ${sautClasses} classe(s) — La rénovation d'ampleur requiert ≥ 2 sauts de classes DPE pour être éligible BAR-TH-174/175.
+    </div>`;
+  }
+
+  if(!hasResults && !eligibleRenov){
+    container.innerHTML = '<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px;">Aucune ligne éligible CEE. Utilisez le bouton "Ajouter opération BAR-TH" pour ajouter des travaux.</div>';
+    return;
+  }
+
+  const totalCEE = Math.round(totalCumac * prix / 1000);
+  const totalAides = totalCEE + primeAnahEuros;
+  const resteACharge = Math.max(0, sousTotal - totalAides);
+
+  container.innerHTML = `
+    ${renovHtml}
+    ${hasResults ? `
+    <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;font-family:'Space Mono',monospace;margin-bottom:8px;">
+      Détail par fiche — Zone ${zone} · Profil ${profil.replace('_',' ')} · ${prix} €/MWhc
+    </div>
+    ${lignesHtml}` : ''}
+    `;
+  const totalAidesMPR = totalMPR + primeAnahEuros;
+  const ecretTaux = MPR_2026._ecretement[profil] || 0;
+  const plafondCumul = Math.round(sousTotal * ecretTaux);
+  const aidesCEE_MPR = Math.min(totalCEE + totalAidesMPR, plafondCumul);
+  const resteChargeTotal = Math.max(0, sousTotal - aidesCEE_MPR);
+
+  container.innerHTML += `
+    <div style="background:var(--bg3);border-radius:10px;padding:14px;margin-top:12px;">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;font-family:'Space Mono',monospace;">Récapitulatif des aides — Profil : ${profil.replace('_',' ')}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;">
+        <div style="text-align:center;background:var(--bg4);border-radius:8px;padding:10px;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">CUMAC total</div>
+          <div style="font-size:16px;font-weight:700;color:#FFD740;font-family:'Space Mono',monospace;">${(totalCumac+cumacRenov).toLocaleString('fr-FR')}</div>
+          <div style="font-size:10px;color:var(--muted);">kWhc</div>
+        </div>
+        <div style="text-align:center;background:var(--bg4);border-radius:8px;padding:10px;">
+          <div style="font-size:10px;color:var(--green);text-transform:uppercase;">CEE estimé</div>
+          <div style="font-size:16px;font-weight:700;color:var(--green);font-family:'Space Mono',monospace;">~${totalCEE.toLocaleString('fr-FR')} €</div>
+        </div>
+        <div style="text-align:center;background:var(--bg4);border-radius:8px;padding:10px;">
+          <div style="font-size:10px;color:#60A5FA;text-transform:uppercase;">MPR 2026</div>
+          <div style="font-size:16px;font-weight:700;color:#60A5FA;font-family:'Space Mono',monospace;">${totalMPR.toLocaleString('fr-FR')} €</div>
+        </div>
+        ${primeAnahEuros>0?`<div style="text-align:center;background:var(--bg4);border-radius:8px;padding:10px;">
+          <div style="font-size:10px;color:#60A5FA;text-transform:uppercase;">ANAH ampleur</div>
+          <div style="font-size:16px;font-weight:700;color:#60A5FA;font-family:'Space Mono',monospace;">${primeAnahEuros.toLocaleString('fr-FR')} €</div>
+        </div>`:''}
+        <div style="text-align:center;background:rgba(255,92,0,0.1);border:1px solid rgba(255,92,0,0.3);border-radius:8px;padding:10px;">
+          <div style="font-size:10px;color:var(--orange,#FF6D00);text-transform:uppercase;">Reste à charge</div>
+          <div style="font-size:16px;font-weight:700;color:#FF6D00;font-family:'Space Mono',monospace;">~${resteChargeTotal.toLocaleString('fr-FR')} €</div>
+          <div style="font-size:10px;color:var(--muted);">écrêtement ${Math.round(ecretTaux*100)}%</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:12px;">
+        <div style="padding:6px 10px;background:rgba(255,215,64,0.08);border-radius:6px;"><span style="color:var(--muted);">Coût total TTC :</span><br><strong>${sousTotal.toLocaleString('fr-FR')} €</strong></div>
+        <div style="padding:6px 10px;background:rgba(16,185,129,0.08);border-radius:6px;"><span style="color:var(--muted);">Total aides (plafond ${Math.round(ecretTaux*100)}%) :</span><br><strong style="color:var(--green);">~${aidesCEE_MPR.toLocaleString('fr-FR')} €</strong></div>
+        <div style="padding:6px 10px;background:rgba(255,109,0,0.08);border-radius:6px;"><span style="color:var(--muted);">Reste à charge :</span><br><strong style="color:#FF6D00;">~${resteChargeTotal.toLocaleString('fr-FR')} €</strong></div>
+      </div>
+    </div>
+    <div style="margin-top:10px;padding:8px 12px;background:rgba(16,185,129,0.05);border-radius:6px;font-size:11px;color:var(--muted);line-height:1.6;">
+      💡 <strong>MPR 2026</strong> : Barème MaPrimeRénov' au 1er janvier 2026 (Guide ANAH). 
+      Écrêtement CEE+MPR : très modeste 90%, modeste 75%, intermédiaire 60%. 
+      Plafond rénovation d'ampleur : 30 000€ (2 classes) / 40 000€ (3+ classes). 
+      <strong>CEE</strong> : ${prix} €/MWhc — estimatif marché. Montants définitifs calculés par mandataires certifiés.
+    </div>
+  `;
+  updateDocPreview();
+}
+
 
 function handleLogoUpload(input){
   const file = input.files[0];
@@ -1791,6 +3263,61 @@ function removeLogo(){
   updateDocPreview();
 }
 
+/* ══ DÉDUCTIONS MPR & CEE ══ */
+let deductionMPR = false;
+let deductionCEE = false;
+
+function toggleDeduction(type){
+  if(type === 'mpr') deductionMPR = !deductionMPR;
+  if(type === 'cee') deductionCEE = !deductionCEE;
+
+  // Style boutons
+  const btnMPR = document.getElementById('btn_deduc_mpr');
+  const btnCEE = document.getElementById('btn_deduc_cee');
+  if(btnMPR){
+    btnMPR.style.background    = deductionMPR ? 'rgba(96,165,250,0.15)' : 'var(--bg4)';
+    btnMPR.style.borderColor   = deductionMPR ? 'rgba(96,165,250,0.4)'  : 'var(--border)';
+    btnMPR.style.color         = deductionMPR ? '#60A5FA'                : 'var(--muted)';
+    btnMPR.innerHTML = deductionMPR ? '✅ MaPrimeRénov&#8217; déduite' : '🏦 Déduire MaPrimeRénov&#8217;';
+  }
+  if(btnCEE){
+    btnCEE.style.background    = deductionCEE ? 'rgba(16,185,129,0.15)' : 'var(--bg4)';
+    btnCEE.style.borderColor   = deductionCEE ? 'rgba(16,185,129,0.4)'  : 'var(--border)';
+    btnCEE.style.color         = deductionCEE ? 'var(--green)'           : 'var(--muted)';
+    btnCEE.textContent         = deductionCEE ? '✅ CEE déduit' : '💰 Déduire CEE';
+  }
+  updateDocPreview();
+}
+
+function getMontantsMPR_CEE(){
+  // Récupérer les montants calculés dans la section CUMAC
+  const profil  = document.getElementById('cee_profil')?.value  || 'classique';
+  const zone    = document.getElementById('cee_zone')?.value    || 'H2';
+  const surface = parseFloat(document.getElementById('cee_surface')?.value || 100);
+  const prix    = PRIX_CUMAC[profil] || 5.0;
+  let totalMPR  = 0;
+  let totalCEE  = 0;
+
+  lignes.forEach(l => {
+    if(!l.desc) return;
+    const typeKey = detecterFicheCEE(l.desc + ' ' + (l.complement||''));
+    if(!typeKey) return;
+    const fiche = FICHES_CEE[typeKey];
+    if(!fiche) return;
+    const valZone   = fiche[zone]?.[profil] || 0;
+    const parSurface = fiche.parSurface !== false;
+    let cumac = 0;
+    if(parSurface){
+      const sc = typeKey==='murs'?Math.round(surface*1.4):typeKey==='fenetres'?Math.round(surface*0.15):typeKey==='plancher'?Math.round(surface*0.5):Math.round(surface*0.55);
+      cumac = Math.round(valZone * sc);
+    } else { cumac = valZone; }
+    totalCEE += Math.round(cumac * prix / 1000);
+    const mpr = calculerMPR(typeKey, profil, surface, (l.qte||1)*(l.pu||0), 0);
+    if(mpr?.eligible) totalMPR += mpr.montant;
+  });
+  return { totalMPR, totalCEE };
+}
+
 function updateDocPreview(){
   const type=document.getElementById('d_type')?.value||'DEVIS';
   const num=document.getElementById('d_num')?.value||'2026-001';
@@ -1808,12 +3335,35 @@ function updateDocPreview(){
   const tva=parseFloat(document.getElementById('d_tva')?.value||'5.5');
   const mentions=document.getElementById('d_mentions')?.value||'';
   const sousTotal=lignes.reduce((s,l)=>s+(l.qte||1)*(l.pu||0),0);
-  const montantTVA=sousTotal*tva/100;
-  const totalTTC=sousTotal+montantTVA;
+
+  // Déductions MPR & CEE
+  const {totalMPR, totalCEE} = getMontantsMPR_CEE();
+  const deducMPR = deductionMPR ? totalMPR : 0;
+  const deducCEE = deductionCEE ? totalCEE : 0;
+  const totalDeduc = deducMPR + deducCEE;
+  const sousTotalApresAides = Math.max(0, sousTotal - totalDeduc);
+  const baseCalcTTC = deductionMPR || deductionCEE ? sousTotalApresAides : sousTotal;
+  const montantTVA = baseCalcTTC * tva / 100;
+  const totalTTC   = baseCalcTTC + montantTVA;
+  const resteACharge = totalTTC;
   const fmt=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+
   if(document.getElementById('d_sousTotal'))document.getElementById('d_sousTotal').textContent=fmt(sousTotal);
   if(document.getElementById('d_montantTVA'))document.getElementById('d_montantTVA').textContent=fmt(montantTVA);
   if(document.getElementById('d_totalTTC'))document.getElementById('d_totalTTC').textContent=fmt(totalTTC);
+
+  // Affichage déductions
+  const deducDetail = document.getElementById('deduc_detail');
+  const deducMPRRow = document.getElementById('deduc_mpr_row');
+  const deducCEERow = document.getElementById('deduc_cee_row');
+  const deducTotRow = document.getElementById('deduc_total_row');
+  const resteRow    = document.getElementById('d_resteACharge_row');
+  const hasDedu     = deductionMPR || deductionCEE;
+  if(deducDetail) deducDetail.style.display = hasDedu ? 'block' : 'none';
+  if(deducMPRRow){ deducMPRRow.style.display = deductionMPR ? 'flex' : 'none'; document.getElementById('deduc_mpr_val').textContent='- '+fmt(deducMPR); }
+  if(deducCEERow){ deducCEERow.style.display = deductionCEE ? 'flex' : 'none'; document.getElementById('deduc_cee_val').textContent='- '+fmt(deducCEE); }
+  if(deducTotRow){ deducTotRow.style.display = hasDedu ? 'flex' : 'none'; document.getElementById('deduc_total_val').textContent=fmt(sousTotalApresAides); }
+  if(resteRow){ resteRow.style.display = hasDedu ? 'flex' : 'none'; document.getElementById('d_resteACharge').textContent=fmt(resteACharge); }
   const preview=document.getElementById('docPreview');
   if(!preview)return;
   preview.innerHTML=`
@@ -1843,23 +3393,153 @@ function updateDocPreview(){
     <div class="doc-totals">
       <div class="doc-totals-box">
         <div class="doc-total-row"><span>Sous-total HT :</span><span>${fmt(sousTotal)}</span></div>
+        ${deductionMPR?`<div class="doc-total-row" style="color:#3B82F6;"><span>— MaPrimeRénov' 2026 :</span><span>- ${fmt(deducMPR)}</span></div>`:''}
+        ${deductionCEE?`<div class="doc-total-row" style="color:#10B981;"><span>— CEE estimé :</span><span>- ${fmt(deducCEE)}</span></div>`:''}
+        ${(deductionMPR||deductionCEE)?`<div class="doc-total-row" style="font-weight:700;"><span>= HT après aides :</span><span>${fmt(sousTotalApresAides)}</span></div>`:''}
         <div class="doc-total-row"><span>TVA ${tva}% :</span><span>${fmt(montantTVA)}</span></div>
         <div class="doc-total-final"><span>TOTAL TTC :</span><span style="color:#10B981;">${fmt(totalTTC)}</span></div>
+        ${(deductionMPR||deductionCEE)?`<div style="margin-top:10px;padding:8px 0;border-top:2px solid #10B981;display:flex;justify-content:space-between;font-size:15px;font-weight:700;color:#FF6D00;"><span>Reste à charge client :</span><span>${fmt(resteACharge)}</span></div>`:''}
       </div>
     </div>
-    <div class="doc-footer">${mentions}<br><br>© 2026 — Droits Réservés à AYOUB TARHI · NYX Plateforme Énergétique</div>`;
+    ${buildCumacPreview()}
+    <div class="doc-footer">${mentions}</div>`;
 }
 
-function imprimerDevis(){window.print();}
+function buildCumacPreview(){
+  const zone   = document.getElementById('cee_zone')?.value   || 'H2';
+  const profil = document.getElementById('cee_profil')?.value || 'classique';
+  const surface = parseFloat(document.getElementById('cee_surface')?.value || 100);
+  const prix   = PRIX_CUMAC[profil] || 5.0;
+
+  let rows = '';
+  let total = 0;
+  lignes.forEach(l => {
+    if(!l.desc) return;
+    const typeKey = detecterFicheCEE(l.desc + ' ' + (l.complement||''));
+    if(!typeKey) return;
+    const fiche = FICHES_CEE[typeKey];
+    if(!fiche) return;
+    const valZone = fiche[zone]?.[profil] || 0;
+    const parSurface = fiche.parSurface !== false;
+    let cumac = 0, surfRef = '';
+    if(parSurface){
+      const sc = typeKey==='murs'?Math.round(surface*1.4):typeKey==='fenetres'?Math.round(surface*0.15):typeKey==='plancher'?Math.round(surface*0.5):Math.round(surface*0.55);
+      cumac = Math.round(valZone * sc); surfRef = sc + ' m²';
+    } else { cumac = valZone; surfRef = '1 logement'; }
+    total += cumac;
+    const euros = Math.round(cumac * prix / 1000);
+    rows += `<tr><td style="padding:6px 8px;font-size:12px;"><strong>${fiche.code}</strong></td><td style="padding:6px 8px;font-size:12px;">${fiche.nom}</td><td style="padding:6px 8px;font-size:12px;text-align:center;">${surfRef}</td><td style="padding:6px 8px;font-size:12px;text-align:right;font-weight:700;">${cumac.toLocaleString('fr-FR')}</td><td style="padding:6px 8px;font-size:12px;text-align:right;color:#10B981;font-weight:700;">~${euros.toLocaleString('fr-FR')} €</td></tr>`;
+  });
+
+  if(!rows) return '';
+  const totalEuros = Math.round(total * prix / 1000);
+
+  return `
+    <div style="margin-top:24px;border-top:2px solid #eee;padding-top:16px;">
+      <div style="font-size:13px;font-weight:700;color:#10B981;margin-bottom:10px;">⚡ Certificats d'Économie d'Énergie (CEE) — Estimation CUMAC</div>
+      <table style="width:100%;border-collapse:collapse;font-family:sans-serif;">
+        <thead><tr style="background:#f5f5f5;">
+          <th style="padding:6px 8px;font-size:11px;text-align:left;">Fiche</th>
+          <th style="padding:6px 8px;font-size:11px;text-align:left;">Opération</th>
+          <th style="padding:6px 8px;font-size:11px;text-align:center;">Surface/Qté</th>
+          <th style="padding:6px 8px;font-size:11px;text-align:right;">kWhc</th>
+          <th style="padding:6px 8px;font-size:11px;text-align:right;">CEE estimé</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr style="background:#f0fdf4;font-weight:700;">
+          <td colspan="3" style="padding:8px;font-size:13px;">TOTAL CUMAC</td>
+          <td style="padding:8px;text-align:right;font-size:13px;">${total.toLocaleString('fr-FR')} kWhc</td>
+          <td style="padding:8px;text-align:right;font-size:13px;color:#10B981;">~${totalEuros.toLocaleString('fr-FR')} €</td>
+        </tr></tfoot>
+      </table>
+      <div style="margin-top:8px;font-size:10px;color:#999;">Zone ${zone} · Profil ${profil.replace('_',' ')} · Prix CUMAC : ${prix} €/MWhc · Estimation indicative — fiches BAR-TH/BAR-EN (Arrêté 22/12/2014 modifié).</div>
+    </div>`;
+}
+
+function imprimerDevis(){
+  const clientNom = document.getElementById('d_client_nom')?.value||'Client';
+  const num       = document.getElementById('d_num')?.value||'devis';
+  const oldTitle  = document.title;
+  document.title  = clientNom.trim() + ' - ' + num.trim();
+  // Générer le contenu du document
+  updateDocPreview();
+  const preview = document.getElementById('docPreview');
+  const printArea = document.getElementById('printArea');
+  if(preview && printArea){
+    printArea.innerHTML = '<div class="doc-preview">' + preview.innerHTML + '</div>';
+  }
+  window.print();
+  setTimeout(()=>{ document.title = oldTitle; }, 2000);
+}
 function sauvegarderDevis(){
-  const type=document.getElementById('d_type')?.value;
-  const sousTotal=lignes.reduce((s,l)=>s+(l.qte||1)*(l.pu||0),0);
-  const tva=parseFloat(document.getElementById('d_tva')?.value||'5.5');
-  const total=sousTotal*(1+tva/100);
-  devisList.push({id:Date.now(),type,num:document.getElementById('d_num')?.value,client:document.getElementById('d_client_nom')?.value,total,date:new Date().toLocaleDateString('fr-FR')});
-  localStorage.setItem('nyx_devis',JSON.stringify(devisList));
+  const type    = document.getElementById('d_type')?.value||'DEVIS';
+  const num     = document.getElementById('d_num')?.value||'';
+  const date    = document.getElementById('d_date')?.value||'';
+  const validite= document.getElementById('d_validite')?.value||'30';
+  const entrep  = document.getElementById('d_entreprise')?.value||'';
+  const entrepAdr= document.getElementById('d_entreprise_adresse')?.value||'';
+  const entrepComp= document.getElementById('d_entreprise_complement')?.value||'';
+  const siret   = document.getElementById('d_siret')?.value||'';
+  const rge     = document.getElementById('d_rge')?.value||'';
+  const clientNom= document.getElementById('d_client_nom')?.value||'';
+  const clientAdr= document.getElementById('d_client_adresse')?.value||'';
+  const clientEmail= document.getElementById('d_client_email')?.value||'';
+  const clientTel= document.getElementById('d_client_tel')?.value||'';
+  const tva     = parseFloat(document.getElementById('d_tva')?.value||'5.5');
+  const mentions= document.getElementById('d_mentions')?.value||'';
+  const sousTotal= lignes.reduce((s,l)=>s+(l.qte||1)*(l.pu||0),0);
+  const total   = sousTotal*(1+tva/100);
+
+  const devis = {
+    id: Date.now(),
+    type, num, date, validite,
+    entrep, entrepAdr, entrepComp, siret, rge,
+    clientNom, clientAdr, clientEmail, clientTel,
+    tva, mentions, total,
+    lignes: JSON.parse(JSON.stringify(lignes)),
+    logo: logoDataUrl||'',
+    savedAt: new Date().toLocaleDateString('fr-FR'),
+  };
+  devisList.push(devis);
+  localStorage.setItem('nyx_devis', JSON.stringify(devisList));
+  // Firebase
+  saveDossier_Firebase({
+    type, num, clientNom, clientAdr, total,
+    lignes: JSON.parse(JSON.stringify(lignes)),
+    tva, mentions, entrep,
+  });
   refreshCRM();
-  alert('✅ '+type+' sauvegardé !');
+  alert('✅ ' + type + ' sauvegardé ! Vous pouvez le retrouver et le reprendre dans le CRM.');
+}
+
+function chargerDevis(id){
+  const d = devisList.find(x=>x.id===id);
+  if(!d) return;
+  // Remplir les champs
+  const set = (elId, val) => { const el=document.getElementById(elId); if(el) el.value=val||''; };
+  set('d_type', d.type); set('d_num', d.num); set('d_date', d.date);
+  set('d_validite', d.validite); set('d_entreprise', d.entrep);
+  set('d_entreprise_adresse', d.entrepAdr); set('d_entreprise_complement', d.entrepComp);
+  set('d_siret', d.siret); set('d_rge', d.rge);
+  set('d_client_nom', d.clientNom); set('d_client_adresse', d.clientAdr);
+  set('d_client_email', d.clientEmail); set('d_client_tel', d.clientTel);
+  set('d_tva', d.tva); set('d_mentions', d.mentions);
+  // Logo
+  if(d.logo){ logoDataUrl=d.logo; document.getElementById('d_logo_img').src=d.logo; document.getElementById('d_logo_preview').style.display='block'; }
+  // Lignes
+  lignes = d.lignes ? JSON.parse(JSON.stringify(d.lignes)) : [];
+  renderLignes();
+  switchTab('devis');
+  toggleCRM();
+  updateDocPreview();
+  alert('✅ ' + d.type + ' N°' + d.num + ' chargé avec succès !');
+}
+
+function supprimerDevis(id){
+  if(!confirm('Supprimer ce devis ?')) return;
+  devisList = devisList.filter(x=>x.id!==id);
+  localStorage.setItem('nyx_devis', JSON.stringify(devisList));
+  refreshCRM();
 }
 
 function exporterDevisDepuisAnalyse(){
@@ -1884,6 +3564,336 @@ function exporterDevisDepuisManuel(){
   document.getElementById('d_client_nom').value=nom;
   document.getElementById('d_client_adresse').value=adresse;
   updateDocPreview();
+}
+
+function genererSynthese(){
+  if(!analysisResult){ alert("Veuillez d'abord analyser un document."); return; }
+  const r   = analysisResult;
+  const b   = beneficiaireData || {};
+  const eq  = r.equip || equip || {};
+  const niv = calculerNiveau(r.num||{}, eq, r.classe);
+  const zone= document.getElementById('dpe_zone')?.value || 'Non renseignée';
+  const now = new Date().toLocaleDateString('fr-FR', {day:'2-digit',month:'long',year:'numeric'});
+  const fmt = v => v !== null && v !== undefined ? v : '—';
+  const CLASSE_LABEL = {A:'Très performant',B:'Performant',C:'Standard',D:'Modéré',E:'Faible',F:'Très faible',G:'Passoire thermique'};
+  const CLASSE_COLOR = {A:'#00C853',B:'#69F0AE',C:'#FFD740',D:'#FFAB40',E:'#FF6D00',F:'#FF1744',G:'#B71C1C'};
+  const cl = r.classe || '?';
+
+  // Travaux pour scénario
+  const travaux = genererScenario(eq, cl);
+  const oblig   = travaux.filter(t=>t.priorite==='OBLIGATOIRE');
+  const reco    = travaux.filter(t=>t.priorite==='RECOMMANDÉ');
+  const gainComb= travaux._gainCombine || 0;
+  const coeff   = travaux._coeff || 1.0;
+  const zoneLib = travaux._zone || zone;
+
+  // EP estimé après travaux
+  const EP_BASE = {A:50,B:90,C:145,D:215,E:290,F:375,G:500};
+  const epBase  = r.ep || EP_BASE[cl] || 300;
+  const epApres = Math.round(epBase*(1-gainComb/100));
+  function epToClasse(ep){return ep<70?'A':ep<110?'B':ep<180?'C':ep<250?'D':ep<330?'E':ep<420?'F':'G';}
+  const classeVisee = epToClasse(epApres);
+
+  // Scénarios budgétisés
+  const sc1Travaux = oblig.slice(0,2);
+  const sc2Travaux = oblig;
+  function coutMin(arr){ return arr.reduce((s,t)=>{const m=t.cout.match(/(\d[\d\s]*)/);return s+(m?parseInt(m[1].replace(/\s/g,'')):0);},0); }
+  function coutMax(arr){ return arr.reduce((s,t)=>{const m=t.cout.match(/–\s*([\d\s]+)/);return s+(m?parseInt(m[1].replace(/\s/g,'')):0);},0); }
+  const g1 = gainCombine(sc1Travaux.map(t=>t.impact));
+  const g2 = gainCombine(sc2Travaux.map(t=>t.impact));
+  const ep1 = Math.round(epBase*(1-g1/100));
+  const ep2 = Math.round(epBase*(1-g2/100));
+
+  // Sauts de classes HTML
+  const ORDER=['A','B','C','D','E','F','G'];
+  const idx = ORDER.indexOf(cl);
+  const SAUT_LIST = [
+    {icon:'🏠',label:'Isolation combles perdus',gain:2,cout:2000,cond:e=>['Non isolés','Non détecté'].includes(e.combles)},
+    {icon:'🔥',label:'PAC air/eau',gain:3,cout:13000,cond:e=>['Fioul','Gaz ancien','Électrique'].includes(e.ch)},
+    {icon:'🧱',label:'ITE murs extérieurs',gain:2,cout:15000,cond:e=>['Non isolés','ITI'].includes(e.murs)},
+    {icon:'💨',label:'VMC double flux',gain:1,cout:4500,cond:e=>e.vmc!=='VMC double flux'},
+    {icon:'💧',label:'Chauffe-eau thermodynamique',gain:1,cout:2500,cond:e=>e.ecs==='Électrique'},
+    {icon:'🪟',label:'Remplacement fenêtres',gain:1,cout:5000,cond:e=>['Simple vitrage','Double vitrage ancien'].includes(e.fen)},
+  ];
+  const applicable = SAUT_LIST.filter(t=>t.cond(eq));
+  let sautsHtml = '';
+  for(let target=Math.max(0,idx-4); target<idx; target++){
+    const needed = idx-target;
+    let sel=[],gainAcc=0,cout=0;
+    for(const w of applicable){sel.push(w);gainAcc+=w.gain;cout+=w.cout;if(gainAcc>=needed*2.5)break;}
+    sautsHtml += `<tr style="border-bottom:1px solid #eee;">
+      <td style="padding:8px;font-weight:700;color:${CLASSE_COLOR[cl]}">${cl}</td>
+      <td style="padding:8px;text-align:center;color:#555;">→</td>
+      <td style="padding:8px;font-weight:700;color:${CLASSE_COLOR[ORDER[target]]}">${ORDER[target]}</td>
+      <td style="padding:8px;font-size:12px;">${sel.map(w=>w.icon+' '+w.label).join('<br>')}</td>
+      <td style="padding:8px;text-align:right;font-weight:700;">~${cout.toLocaleString('fr-FR')} €</td>
+    </tr>`;
+  }
+
+  // Équipements diagnostic
+  const EQ_ITEMS = [
+    {lbl:'Chauffage',val:eq.ch||'—',icon:'🔥'},
+    {lbl:'Murs',val:eq.murs||'—',icon:'🧱'},
+    {lbl:'Combles',val:eq.combles||'—',icon:'🏠'},
+    {lbl:'Fenêtres',val:eq.fen||'—',icon:'🪟'},
+    {lbl:'Ventilation',val:eq.vmc||'—',icon:'💨'},
+    {lbl:'Plancher bas',val:eq.plancher||'—',icon:'🏚️'},
+    {lbl:'Eau chaude',val:eq.ecs||'—',icon:'💧'},
+    {lbl:'Volets',val:eq.volets||'—',icon:'🚪'},
+  ];
+
+  const synthHTML = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Synthèse DPE — ${b.nom||'Bénéficiaire'} ${b.prenom||''}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',Arial,sans-serif; color:#1a1a1a; background:#fff; font-size:13px; line-height:1.5; }
+  .page { max-width:800px; margin:0 auto; padding:32px 40px; }
+  /* Header */
+  .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #10B981; padding-bottom:16px; margin-bottom:24px; }
+  .logo-txt { font-size:28px; font-weight:900; letter-spacing:0.2em; color:#10B981; }
+  .logo-sub { font-size:10px; color:#888; letter-spacing:0.2em; text-transform:uppercase; }
+  .doc-title { text-align:right; }
+  .doc-title h1 { font-size:20px; font-weight:700; color:#1a1a1a; }
+  .doc-title p  { font-size:12px; color:#888; margin-top:4px; }
+  /* Section */
+  .section { margin-bottom:22px; page-break-inside:avoid; }
+  .section-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; color:#10B981; border-bottom:1px solid #e0f2f1; padding-bottom:6px; margin-bottom:12px; }
+  /* Info grid */
+  .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .info-item { background:#f9f9f9; border-radius:6px; padding:8px 12px; }
+  .info-key { font-size:10px; color:#888; text-transform:uppercase; letter-spacing:0.08em; }
+  .info-val { font-size:14px; font-weight:600; margin-top:2px; }
+  /* Classe hero */
+  .classe-block { display:flex; align-items:center; gap:24px; background:#f9fafb; border-radius:10px; padding:16px 20px; margin-bottom:12px; }
+  .classe-letter { font-size:72px; font-weight:900; line-height:1; }
+  .classe-meta { flex:1; }
+  .classe-label { font-size:13px; color:#666; }
+  .classe-valeur { font-size:22px; font-weight:700; }
+  /* EP/GES boxes */
+  .ep-ges { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:12px; }
+  .ep-box { background:#f9f9f9; border-radius:8px; padding:10px 14px; text-align:center; }
+  .ep-key { font-size:10px; color:#888; text-transform:uppercase; }
+  .ep-val { font-size:18px; font-weight:700; margin-top:2px; }
+  .ep-unit { font-size:10px; color:#aaa; }
+  /* Méthodes compare */
+  .methods { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
+  .meth-box { flex:1; min-width:100px; background:#f9f9f9; border-radius:6px; padding:8px 10px; text-align:center; }
+  .meth-box.result { background:#e8f5e9; border:1px solid #10B981; }
+  .meth-name { font-size:10px; color:#888; text-transform:uppercase; }
+  .meth-val  { font-size:16px; font-weight:700; color:#10B981; }
+  /* Niveau */
+  .niveau-badge { display:inline-flex; align-items:center; gap:6px; padding:5px 14px; border-radius:100px; font-weight:700; font-size:13px; }
+  .badge-or { background:linear-gradient(135deg,#B8860B,#FFD700); color:#1a1a00; }
+  .badge-argent { background:linear-gradient(135deg,#888,#C0C0C0); color:#1a1a1a; }
+  .badge-bronze { background:linear-gradient(135deg,#8B4513,#CD7F32); color:#fff; }
+  /* Équipements */
+  .equip-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .equip-item { background:#f9f9f9; border-radius:6px; padding:8px; }
+  .equip-icon { font-size:16px; }
+  .equip-lbl { font-size:10px; color:#888; text-transform:uppercase; margin-top:2px; }
+  .equip-val { font-size:12px; font-weight:600; margin-top:2px; }
+  /* Travaux */
+  .travail-row { border-left:3px solid #10B981; padding:8px 12px; margin-bottom:6px; background:#f9fafb; border-radius:0 6px 6px 0; }
+  .travail-row.reco { border-color:#FFD740; }
+  .travail-titre { font-size:13px; font-weight:600; }
+  .travail-meta  { display:flex; gap:10px; flex-wrap:wrap; margin-top:4px; font-size:11px; }
+  .meta-tag { padding:2px 8px; border-radius:4px; background:#eee; color:#555; }
+  /* Scénarios */
+  .scenario-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
+  .sc-box { border:1px solid #ddd; border-radius:8px; padding:12px; }
+  .sc-box.sc1 { border-color:#FFD740; background:#fffde7; }
+  .sc-box.sc2 { border-color:#10B981; background:#e8f5e9; }
+  .sc-title { font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:8px; }
+  .sc-row { display:flex; justify-content:space-between; font-size:12px; margin-bottom:3px; }
+  /* Sauts table */
+  table { width:100%; border-collapse:collapse; }
+  th { background:#f5f5f5; padding:8px; text-align:left; font-size:11px; text-transform:uppercase; color:#666; }
+  /* Footer */
+  .footer { margin-top:32px; padding-top:12px; border-top:1px solid #eee; font-size:10px; color:#aaa; text-align:center; }
+  @media print {
+    @page { margin:12mm; size:A4; }
+    body > * { visibility:visible; }
+    .page { padding:0; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <div class="logo-txt">NYX</div>
+      <div class="logo-sub">Plateforme Énergétique</div>
+    </div>
+    <div class="doc-title">
+      <h1>Synthèse Énergétique</h1>
+      <p>Méthode 3CL-2021 + Th-CE-Ex · ${now}</p>
+      <p style="color:#10B981;font-weight:600;">Zone climatique : ${zoneLib}</p>
+    </div>
+  </div>
+
+  <!-- 1. BÉNÉFICIAIRE -->
+  <div class="section">
+    <div class="section-title">1 — Bénéficiaire</div>
+    <div class="info-grid">
+      <div class="info-item"><div class="info-key">Nom / Prénom</div><div class="info-val">${(b.nom||'—')+' '+(b.prenom||'')}</div></div>
+      <div class="info-item"><div class="info-key">Type de bien</div><div class="info-val">${b.typeBien||'—'}</div></div>
+      <div class="info-item"><div class="info-key">Adresse</div><div class="info-val">${b.adresse||'—'}</div></div>
+      <div class="info-item"><div class="info-key">Code postal / Ville</div><div class="info-val">${(b.cp||'—')+' '+(b.ville||'')}</div></div>
+      <div class="info-item"><div class="info-key">Surface habitable</div><div class="info-val">${b.surface||'—'}</div></div>
+      <div class="info-item"><div class="info-key">Méthode d'analyse</div><div class="info-val" style="font-size:11px;">${r.methode||'3CL-2021 + Th-CE-Ex'}</div></div>
+    </div>
+  </div>
+
+  <!-- 2. CLASSE ÉNERGÉTIQUE -->
+  <div class="section">
+    <div class="section-title">2 — Classe Énergétique Initiale Estimée</div>
+    <div class="classe-block">
+      <div class="classe-letter" style="color:${CLASSE_COLOR[cl]||'#888'}">${cl}</div>
+      <div class="classe-meta">
+        <div class="classe-label">Classe initiale estimée</div>
+        <div class="classe-valeur" style="color:${CLASSE_COLOR[cl]||'#888'}">${CLASSE_LABEL[cl]||'—'}</div>
+        <div style="font-size:12px;color:#888;margin-top:6px;">Score : ${r.score||'—'} / 100</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:11px;color:#888;">Objectif après travaux</div>
+        <div style="font-size:28px;font-weight:900;color:${CLASSE_COLOR[classeVisee]||'#10B981'}">${classeVisee}</div>
+        <div style="font-size:11px;color:#888;">Gain estimé : ${gainComb}%</div>
+      </div>
+    </div>
+    <div class="ep-ges">
+      <div class="ep-box">
+        <div class="ep-key">Énergie Primaire (EP)</div>
+        <div class="ep-val" style="color:#FF8A3D;">${fmt(r.ep)}</div>
+        <div class="ep-unit">kWh EP/m²/an</div>
+      </div>
+      <div class="ep-box">
+        <div class="ep-key">Émissions GES</div>
+        <div class="ep-val" style="color:#FF6D00;">${fmt(r.ges)}</div>
+        <div class="ep-unit">kg CO₂/m²/an</div>
+      </div>
+      <div class="ep-box" style="background:#e8f5e9;">
+        <div class="ep-key">EP après travaux (est.)</div>
+        <div class="ep-val" style="color:#10B981;">${epApres}</div>
+        <div class="ep-unit">kWh EP/m²/an → Classe ${classeVisee}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. CROISEMENT 3CL + Th-CE-Ex -->
+  <div class="section">
+    <div class="section-title">3 — Croisement 3CL-2021 + Th-CE-Ex</div>
+    <div class="methods">
+      <div class="meth-box"><div class="meth-name">3CL-2021</div><div class="meth-val">${r.ep3CL||'—'} kWh EP/m²</div><div style="font-size:10px;color:#aaa;">${r.ges3CL||'—'} kg CO₂/m²</div></div>
+      <div style="color:#10B981;font-size:18px;">⟶</div>
+      <div class="meth-box"><div class="meth-name">Th-CE-Ex</div><div class="meth-val">${r.epThCEEx||'—'} kWh EP/m²</div><div style="font-size:10px;color:#aaa;">${r.gesThCEEx||'—'} kg CO₂/m²</div></div>
+      <div style="color:#10B981;font-size:18px;">⟶</div>
+      <div class="meth-box result"><div class="meth-name">Résultat croisé</div><div class="meth-val">${r.ep||'—'} kWh EP/m²</div><div style="font-size:10px;color:#555;">${r.ges||'—'} kg CO₂/m²</div></div>
+    </div>
+    ${r.detailThCEEx ? `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;">
+      <div class="info-item"><div class="info-key">Bbio (besoin bioclimatique)</div><div class="info-val">${r.detailThCEEx.Bbio||'—'} kWh/m²/an</div></div>
+      <div class="info-item"><div class="info-key">Ponts thermiques ψ</div><div class="info-val">${r.detailThCEEx.psi||'—'} W/m.K</div></div>
+      <div class="info-item"><div class="info-key">Perméabilité n50</div><div class="info-val">${r.detailThCEEx.n50||'—'} vol/h à 50Pa</div></div>
+      <div class="info-item"><div class="info-key">Rendement saisonnier η</div><div class="info-val">${r.detailThCEEx.eta_sais||'—'}</div></div>
+      <div class="info-item"><div class="info-key">Besoins chauffage nets</div><div class="info-val">${r.detailThCEEx.Bch_net||'—'} kWh/an</div></div>
+      <div class="info-item"><div class="info-key">Surface / Occupants</div><div class="info-val">${r.detailThCEEx.surface||'—'} m² / ${r.detailThCEEx.nOcc||'—'} occ.</div></div>
+    </div>` : ''}
+    <div style="font-size:11px;color:#aaa;margin-top:8px;">Pondération : 3CL-2021 (40%) + Th-CE-Ex (60%). Zone ${zoneLib}. Valeurs indicatives — un DPE certifié reste nécessaire.</div>
+  </div>
+
+  <!-- 4. NIVEAU D'ANALYSE -->
+  <div class="section">
+    <div class="section-title">4 — Niveau d'Analyse</div>
+    <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:#f9f9f9;border-radius:8px;">
+      <span class="niveau-badge ${niv.cssClass==='niveau-or'?'badge-or':niv.cssClass==='niveau-argent'?'badge-argent':'badge-bronze'}">${niv.etoiles} ${niv.niveau}</span>
+      <div>
+        <div style="font-size:12px;font-weight:700;margin-bottom:2px;">${niv.urgence}</div>
+        <div style="font-size:11px;color:#666;">${niv.description.replace(/<[^>]+>/g,'')}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. DIAGNOSTIC ÉQUIPEMENTS -->
+  <div class="section">
+    <div class="section-title">5 — Diagnostic des Équipements</div>
+    <div class="equip-grid">
+      ${EQ_ITEMS.map(e=>`<div class="equip-item"><div class="equip-icon">${e.icon}</div><div class="equip-lbl">${e.lbl}</div><div class="equip-val">${e.val}</div></div>`).join('')}
+    </div>
+  </div>
+
+  <!-- 6. SCÉNARIO DE RÉNOVATION -->
+  <div class="section">
+    <div class="section-title">6 — Scénario de Rénovation Suggéré</div>
+    <div style="margin-bottom:10px;font-size:12px;color:#555;">Zone ${zoneLib} · Coefficient ×${coeff} · Gain combiné (synergie) : <strong>${gainComb}%</strong></div>
+    ${oblig.length > 0 ? `<div style="margin-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;color:#10B981;letter-spacing:0.08em;">Travaux obligatoires</div>
+    ${oblig.map(t=>`<div class="travail-row">
+      <div class="travail-titre">${t.icon} ${t.titre}</div>
+      <div style="font-size:11px;color:#666;margin-top:2px;">${t.desc}</div>
+      <div class="travail-meta">
+        <span class="meta-tag">🎯 ${t.gainClasse}</span>
+        <span class="meta-tag">💰 ${t.cout}</span>
+        <span class="meta-tag">🏦 ${t.aide}</span>
+      </div>
+    </div>`).join('')}` : ''}
+    ${reco.length > 0 ? `<div style="margin:10px 0 8px 0;font-size:11px;font-weight:700;text-transform:uppercase;color:#FFD740;letter-spacing:0.08em;">Travaux recommandés</div>
+    ${reco.slice(0,4).map(t=>`<div class="travail-row reco">
+      <div class="travail-titre">${t.icon} ${t.titre}</div>
+      <div class="travail-meta"><span class="meta-tag">💰 ${t.cout}</span><span class="meta-tag">🏦 ${t.aide}</span></div>
+    </div>`).join('')}` : ''}
+  </div>
+
+  <!-- 7. SCÉNARIOS BUDGÉTISÉS -->
+  <div class="section">
+    <div class="section-title">7 — Scénarios Budgétisés</div>
+    <div class="scenario-grid">
+      <div class="sc-box sc1">
+        <div class="sc-title" style="color:#B8860B;">💰 Scénario 1 — Budget limité</div>
+        <div class="sc-row"><span>Travaux :</span><span style="font-size:11px;">${sc1Travaux.slice(0,2).map(t=>t.titre.split('(')[0].trim().substring(0,30)).join(', ')||'—'}</span></div>
+        <div class="sc-row"><span>Investissement brut :</span><span style="font-weight:700;">${coutMin(sc1Travaux).toLocaleString('fr-FR')} – ${coutMax(sc1Travaux).toLocaleString('fr-FR')} €</span></div>
+        <div class="sc-row"><span>Après aides (~55%) :</span><span style="color:#10B981;font-weight:700;">~${Math.round(coutMin(sc1Travaux)*0.45).toLocaleString('fr-FR')} €</span></div>
+        <div class="sc-row"><span>Gain CEP :</span><span style="font-weight:700;">${g1}%</span></div>
+        <div class="sc-row"><span>Résultat estimé :</span><span style="font-weight:700;color:#10B981;">${cl} → ${epToClasse(ep1)} (~${ep1} kWh/m²/an)</span></div>
+      </div>
+      <div class="sc-box sc2">
+        <div class="sc-title" style="color:#10B981;">🚀 Scénario 2 — Budget confortable</div>
+        <div class="sc-row"><span>Travaux :</span><span style="font-size:11px;">Ensemble des travaux obligatoires</span></div>
+        <div class="sc-row"><span>Investissement brut :</span><span style="font-weight:700;">${coutMin(sc2Travaux).toLocaleString('fr-FR')} – ${coutMax(sc2Travaux).toLocaleString('fr-FR')} €</span></div>
+        <div class="sc-row"><span>Après aides (~55%) :</span><span style="color:#10B981;font-weight:700;">~${Math.round(coutMin(sc2Travaux)*0.45).toLocaleString('fr-FR')} €</span></div>
+        <div class="sc-row"><span>Gain CEP :</span><span style="font-weight:700;">${g2}%</span></div>
+        <div class="sc-row"><span>Résultat estimé :</span><span style="font-weight:700;color:#10B981;">${cl} → ${epToClasse(ep2)} (~${ep2} kWh/m²/an)</span></div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:#aaa;">Formule synergie : G_A + G_B − (0.15×G_A×G_B)/100. Source §6.1 Cahier des charges 3CL-2021. Aides : MaPrimeRénov', CEE, éco-PTZ, TVA 5.5%.</div>
+  </div>
+
+  <!-- 8. SAUTS DE CLASSES -->
+  <div class="section">
+    <div class="section-title">8 — Sauts de Classes — Par Étapes</div>
+    ${sautsHtml ? `<table>
+      <thead><tr><th>De</th><th></th><th>À</th><th>Travaux principaux</th><th style="text-align:right">Coût est.</th></tr></thead>
+      <tbody>${sautsHtml}</tbody>
+    </table>` : '<div style="font-size:12px;color:#888;">Aucun saut calculé — logement déjà en classe A.</div>'}
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    Synthèse générée le ${now} · Méthode 3CL-2021 + Th-CE-Ex (Arrêté du 31/03/2021) · Valeurs indicatives — un DPE certifié par un professionnel accrédité reste nécessaire.<br>
+    © 2026 Droits Réservés à AYOUB TARHI — NYX Plateforme Énergétique
+  </div>
+
+</div>
+</body>
+</html>`;
+
+  // Ouvrir dans un nouvel onglet pour impression/PDF
+  const win = window.open('', '_blank');
+  win.document.write(synthHTML);
+  win.document.close();
+  setTimeout(()=>{ win.focus(); win.print(); }, 800);
 }
 
 async function genererPDF(){
@@ -1926,9 +3936,233 @@ async function genererPDF(){
 
 /* ── INIT ── */
 document.getElementById('d_date').value=new Date().toISOString().split('T')[0];
+
+// Restaurer la session si existante
+(function restoreSession(){
+  try {
+    const sess = localStorage.getItem('nyx_session');
+    if(!sess) return;
+    const {login, role} = JSON.parse(sess);
+    const users = getUsers();
+    const found = users.find(u => u.login === login && u.actif !== false);
+    if(!found) { localStorage.removeItem('nyx_session'); return; }
+    currentUser = found;
+    document.getElementById('loginScreen').style.display = 'none';
+    applyRole(found.role);
+    refreshUsers();
+    refreshCRM();
+  } catch(e) {
+    localStorage.removeItem('nyx_session');
+  }
+})();
 addLigne('Isolation des combles perdus (30-40 cm)',1,2000,'');
 addLigne('Chauffe-eau thermodynamique CET',1,2500,'');
 refreshCRM();
+/* ══════════════════════════════════════════════════════
+   FIREBASE — Configuration & Initialisation
+══════════════════════════════════════════════════════ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCDIluwhCeV1_5BzeKhaQsziNR3v5IF9nA",
+  authDomain: "nyx-plateforme.firebaseapp.com",
+  projectId: "nyx-plateforme",
+  storageBucket: "nyx-plateforme.firebasestorage.app",
+  messagingSenderId: "915541903062",
+  appId: "1:915541903062:web:4ee414ea2f33afbd99eb77"
+};
+
+let db   = null;
+let auth = null;
+try {
+  firebase.initializeApp(firebaseConfig);
+  db   = firebase.firestore();
+  auth = firebase.auth();
+  console.log("✅ Firebase connecté");
+} catch(e) {
+  console.warn("Firebase non disponible:", e);
+}
+
+/* ── Sauvegarde VT dans Firebase ── */
+async function saveVT_Firebase(data){
+  if(!db || !currentUser) return;
+  try {
+    await db.collection('vt_analyses').add({
+      userId    : currentUser.login,
+      userName  : currentUser.nom || currentUser.login,
+      role      : currentUser.role,
+      client    : data.nom || 'Inconnu',
+      classe    : data.classe || '?',
+      ep        : data.ep || null,
+      ges       : data.ges || null,
+      adresse   : data.adresse || '',
+      ville     : data.ville || '',
+      surface   : data.surface || '',
+      typeBien  : data.typeBien || '',
+      methode   : data.methode || '',
+      date      : new Date().toISOString(),
+      dateStr   : new Date().toLocaleDateString('fr-FR'),
+    });
+  } catch(e){ console.warn("Firebase VT save error:", e); }
+}
+
+/* ── Sauvegarde Dossier dans Firebase ── */
+async function saveDossier_Firebase(dossier){
+  if(!db || !currentUser) return null;
+  try {
+    const ref = await db.collection('dossiers').add({
+      userId    : currentUser.login,
+      userName  : currentUser.nom || currentUser.login,
+      role      : currentUser.role,
+      type      : dossier.type || 'DEVIS',
+      num       : dossier.num || '',
+      clientNom : dossier.clientNom || '',
+      clientAdr : dossier.clientAdr || '',
+      total     : dossier.total || 0,
+      statut    : 'En cours',
+      date      : new Date().toISOString(),
+      dateStr   : new Date().toLocaleDateString('fr-FR'),
+      lignes    : dossier.lignes || [],
+      tva       : dossier.tva || 5.5,
+      mentions  : dossier.mentions || '',
+      entrep    : dossier.entrep || '',
+    });
+    return ref.id;
+  } catch(e){ console.warn("Firebase dossier save error:", e); return null; }
+}
+
+/* ── Mettre à jour statut dossier ── */
+async function updateStatutDossier(id, statut){
+  if(!db) return;
+  try {
+    await db.collection('dossiers').doc(id).update({statut});
+    charger360();
+  } catch(e){ console.warn("Firebase update error:", e); }
+}
+
+/* ── Charger Dashboard 360° ── */
+let db360_filtre_user = null;
+
+async function charger360(){
+  if(!db || !currentUser) return;
+  const isAdmin = currentUser.role === 'admin';
+
+  // Scope label
+  document.getElementById('db360_scope').textContent = isAdmin && !db360_filtre_user
+    ? 'Toutes les activités'
+    : db360_filtre_user
+    ? 'Activité de ' + db360_filtre_user
+    : 'Mes statistiques';
+
+  // Filtres utilisateurs (admin)
+  if(isAdmin){
+    const filtre = document.getElementById('db360_filtre');
+    if(filtre) filtre.style.display = 'block';
+    try {
+      const users = getUsers();
+      const btns = document.getElementById('db360_user_btns');
+      if(btns){
+        btns.innerHTML = `<button onclick="db360SetUser(null)"
+          style="padding:6px 14px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid ${!db360_filtre_user?'var(--green)':'var(--border)'};background:${!db360_filtre_user?'rgba(16,185,129,0.15)':'var(--bg3)'};color:${!db360_filtre_user?'var(--green)':'var(--muted)'};">
+          Tous
+        </button>` + users.map(u=>`
+          <button onclick="db360SetUser('${u.login}')"
+            style="padding:6px 14px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid ${db360_filtre_user===u.login?'var(--green)':'var(--border)'};background:${db360_filtre_user===u.login?'rgba(16,185,129,0.15)':'var(--bg3)'};color:${db360_filtre_user===u.login?'var(--green)':'var(--muted)'};">
+            ${u.nom||u.login}
+          </button>`).join('');
+      }
+    } catch(e){}
+  }
+
+  // Requêtes Firestore
+  try {
+    let vtQuery  = db.collection('vt_analyses').orderBy('date','desc');
+    let dosQuery = db.collection('dossiers').orderBy('date','desc');
+
+    if(!isAdmin){
+      vtQuery  = vtQuery.where('userId','==', currentUser.login);
+      dosQuery = dosQuery.where('userId','==', currentUser.login);
+    } else if(db360_filtre_user){
+      vtQuery  = vtQuery.where('userId','==', db360_filtre_user);
+      dosQuery = dosQuery.where('userId','==', db360_filtre_user);
+    }
+
+    const [vtSnap, dosSnap] = await Promise.all([vtQuery.get(), dosQuery.get()]);
+    const vts     = vtSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const dossiers= dosSnap.docs.map(d=>({id:d.id,...d.data()}));
+
+    // Stats
+    const ca      = dossiers.reduce((s,d)=>s+(d.total||0),0);
+    const signes  = dossiers.filter(d=>d.statut==='Signé').length;
+    document.getElementById('db360_nb_vt').textContent      = vts.length;
+    document.getElementById('db360_nb_dossiers').textContent = dossiers.length;
+    document.getElementById('db360_ca').textContent          = Math.round(ca).toLocaleString('fr-FR')+' €';
+    document.getElementById('db360_signes').textContent      = signes;
+
+    // Liste VT
+    const vtList = document.getElementById('db360_vt_list');
+    if(vtList){
+      if(vts.length === 0){
+        vtList.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">Aucune VT enregistrée</div>';
+      } else {
+        const CLASSE_COLOR = {A:'#00C853',B:'#69F0AE',C:'#FFD740',D:'#FFAB40',E:'#FF6D00',F:'#FF1744',G:'#B71C1C'};
+        vtList.innerHTML = `
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:8px;padding:8px 12px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-family:'Space Mono',monospace;border-bottom:1px solid var(--border);">
+            <div>Client</div><div>Classe</div><div>EP</div><div>${isAdmin?'Utilisateur':'Date'}</div><div>Date</div>
+          </div>
+          ${vts.map(v=>`
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='rgba(16,185,129,0.04)'" onmouseout="this.style.background=''">
+            <div>
+              <div style="font-weight:600;">${v.client||'—'}</div>
+              <div style="font-size:11px;color:var(--muted);">${v.typeBien||''} ${v.ville?'· '+v.ville:''}</div>
+            </div>
+            <div style="font-weight:700;font-size:18px;color:${CLASSE_COLOR[v.classe]||'#888'}">${v.classe||'?'}</div>
+            <div style="font-family:'Space Mono',monospace;font-size:12px;">${v.ep||'—'} <span style="color:var(--muted);font-size:10px;">kWh</span></div>
+            <div style="font-size:11px;color:var(--muted);">${isAdmin?(v.userName||v.userId||'—'):v.dateStr||'—'}</div>
+            <div style="font-size:11px;color:var(--muted);">${v.dateStr||'—'}</div>
+          </div>`).join('')}`;
+      }
+    }
+
+    // Liste Dossiers
+    const dosList = document.getElementById('db360_dossiers_list');
+    if(dosList){
+      if(dossiers.length === 0){
+        dosList.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">Aucun dossier créé</div>';
+      } else {
+        const STATUT_COLOR = {'En cours':'#FFD740','Envoyé':'#60A5FA','Signé':'#00C853','Annulé':'#FF1744'};
+        const STATUTS = ['En cours','Envoyé','Signé','Annulé'];
+        dosList.innerHTML = `
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:8px;padding:8px 12px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-family:'Space Mono',monospace;border-bottom:1px solid var(--border);">
+            <div>Client</div><div>Montant</div><div>Statut</div><div>${isAdmin?'Utilisateur':'Type'}</div><div>Date</div>
+          </div>
+          ${dossiers.map(d=>`
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='rgba(16,185,129,0.04)'" onmouseout="this.style.background=''">
+            <div>
+              <div style="font-weight:600;">${d.clientNom||'—'}</div>
+              <div style="font-size:11px;color:var(--muted);">${d.type||'DEVIS'} N°${d.num||'—'}</div>
+            </div>
+            <div style="font-family:'Space Mono',monospace;font-weight:700;color:var(--green);">${(d.total||0).toLocaleString('fr-FR',{minimumFractionDigits:2})} €</div>
+            <div>
+              <select onchange="updateStatutDossier('${d.id}',this.value)"
+                style="background:rgba(${d.statut==='Signé'?'0,200,83':'d.statut'==='Annulé'?'255,23,68':'d.statut'==='Envoyé'?'96,165,250':'255,215,64'},0.12);border:1px solid rgba(${d.statut==='Signé'?'0,200,83':'255,255,255'},0.2);border-radius:6px;color:${STATUT_COLOR[d.statut]||'#FFD740'};font-size:11px;padding:3px 6px;cursor:pointer;font-weight:600;">
+                ${STATUTS.map(s=>`<option value="${s}" ${d.statut===s?'selected':''}>${s}</option>`).join('')}
+              </select>
+            </div>
+            <div style="font-size:11px;color:var(--muted);">${isAdmin?(d.userName||d.userId||'—'):(d.type||'DEVIS')}</div>
+            <div style="font-size:11px;color:var(--muted);">${d.dateStr||'—'}</div>
+          </div>`).join('')}`;
+      }
+    }
+  } catch(e){
+    console.warn("Firebase query error:", e);
+    document.getElementById('db360_vt_list').innerHTML = '<div style="text-align:center;color:#FF1744;padding:16px;font-size:13px;">⚠️ Connexion Firebase en cours...</div>';
+  }
+}
+
+function db360SetUser(login){
+  db360_filtre_user = login;
+  charger360();
+}
+
 // Init zone audit drag & drop après chargement DOM
 document.addEventListener('DOMContentLoaded', ()=>{ initAuditZone(); lockLignes(); });
 // Fallback si DOM déjà chargé
