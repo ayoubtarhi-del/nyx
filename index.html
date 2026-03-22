@@ -2592,91 +2592,6 @@ function renderNiveau(niv,badgeId='niveauBadge',methodeId='niveauMethode',equips
 }
 
 /* ══════════════════════════════════════════════════════
-   EXTRACTION IA — Claude API
-══════════════════════════════════════════════════════ */
-async function extraireAvecIA(texteVT){
-  const PROMPT_SYSTEME = `Tu es un expert en diagnostic énergétique de logements (DPE, 3CL-2021).
-Tu reçois le texte brut d'une Visite Technique (VT) de logement individuel.
-Tu dois extraire TOUTES les informations disponibles et retourner UNIQUEMENT un objet JSON valide, sans markdown, sans commentaires, sans texte avant ou après.
-
-Règles strictes :
-- Si une info est absente ou ambiguë, utilise null
-- Pour les champs à valeurs fixes, utilise EXACTEMENT les valeurs listées
-- Ne jamais inventer une valeur
-
-Format JSON attendu :
-{
-  "beneficiaire": {
-    "nom": "string | null",
-    "prenom": "string | null",
-    "adresse": "string | null",
-    "cp": "string | null",
-    "ville": "string | null",
-    "surface": number | null,
-    "typeBien": "Maison individuelle" | "Appartement" | "Immeuble" | null,
-    "anneeConstruction": number | null
-  },
-  "equipements": {
-    "chauffage": "PAC" | "Gaz condensation" | "Gaz ancien" | "Électrique" | "Fioul" | "Bois/granulés" | "Non détecté",
-    "ecs": "Thermodynamique" | "Solaire" | "Électrique" | "Gaz" | "Non détecté",
-    "vmc": "VMC double flux" | "VMC simple flux" | "Naturelle" | "Non détecté",
-    "murs": "ITE" | "ITI" | "Isolés" | "Non isolés" | "Non détecté",
-    "combles": "Très bien isolés" | "Isolés" | "Non isolés" | "Non détecté",
-    "plancher": "Isolé" | "Non isolé" | "Non détecté",
-    "fenetres": "Triple vitrage" | "Double vitrage récent" | "Double vitrage ancien" | "Simple vitrage" | "Non détecté",
-    "volets": "Volets roulants" | "Volets battants" | "Aucun" | "Non détecté",
-    "robinets": "Présents" | "Absents" | "Non détecté",
-    "chauffageMixte": boolean
-  },
-  "numeriques": {
-    "ep": number | null,
-    "ges": number | null,
-    "classeDirecte": "A"|"B"|"C"|"D"|"E"|"F"|"G" | null
-  },
-  "confiance": {
-    "score": number,
-    "notes": "string"
-  }
-}
-
-Pour "confiance.score" : 0 à 100. 100 = toutes les données clairement présentes. Moins de données détectées = score plus bas.
-Pour "confiance.notes" : explique en 1-2 phrases ce qui était clair, ambigu ou manquant.
-
-Exemples de mapping :
-- "Chaudière gaz à condensation" → chauffage: "Gaz condensation"
-- "Radiateurs électriques" → chauffage: "Électrique"
-- "ECS intégré à la chaudière" → ecs: "Gaz"
-- "Ballon électrique" → ecs: "Électrique"
-- "VMC simple flux autoréglable" → vmc: "VMC simple flux"
-- "Ventilation : NON" → vmc: "Naturelle"
-- Murs non isolés (épaisseur 300mm brique sans isolation) → murs: "Non isolés"
-- Combles perdus avec isolation 30cm → combles: "Très bien isolés"
-- Combles perdus isolés il y a plusieurs années → combles: "Isolés"
-- Double vitrage +10 ans → fenetres: "Double vitrage ancien"
-- Double vitrage récent (<10 ans) → fenetres: "Double vitrage récent"
-- "Surface habitable [m²] 74.23" → surface: 74.23
-- "TOTAL 76.28" (tableau surfaces) → surface: 76.28`;
-
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
-      system: PROMPT_SYSTEME,
-      messages: [{ role: 'user', content: `Voici le texte brut de la visite technique :\n\n${texteVT.substring(0, 12000)}` }]
-    })
-  });
-
-  if(!response.ok) throw new Error('Claude API error: ' + response.status);
-  const data = await response.json();
-  const raw = data.content.map(b => b.text || '').join('').trim();
-  // Nettoyer les éventuels backticks markdown
-  const clean = raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
-  return JSON.parse(clean);
-}
-
-/* ══════════════════════════════════════════════════════
    ANALYSE PDF
 ══════════════════════════════════════════════════════ */
 let equip={};
@@ -2685,7 +2600,7 @@ async function analyserDocument(){
   const btn=document.getElementById('btnAnalyser');
   const sp=document.getElementById('loadingSpinner');
   const bt=document.getElementById('btnText');
-  btn.disabled=true;sp.classList.remove('hidden');bt.textContent='🤖 Analyse IA en cours…';
+  btn.disabled=true;sp.classList.remove('hidden');bt.textContent='🔍 Analyse en cours…';
   try{
     let fullText='';
     if(currentFile.type.startsWith('image/')){fullText='image uniquement';}
@@ -2699,29 +2614,7 @@ async function analyserDocument(){
       }
     }
 
-    // ── Extraction IA Claude ──
-    let iaResult = null;
-    let iaConfiance = null;
-    bt.textContent='🤖 Claude analyse la VT…';
-    try {
-      iaResult = await extraireAvecIA(fullText);
-      iaConfiance = iaResult.confiance || {score: 50, notes: ''};
-    } catch(iaErr) {
-      console.warn('Claude API indisponible, fallback regex:', iaErr);
-    }
-
-    // ── Bénéficiaire ──
-    let benefIA = iaResult?.beneficiaire || {};
-    beneficiaireData = extraireBeneficiaire(fullText); // fallback regex
-    // Fusion : priorité IA si valeur présente
-    if(benefIA.nom)      beneficiaireData.nom      = benefIA.nom;
-    if(benefIA.prenom)   beneficiaireData.prenom    = benefIA.prenom;
-    if(benefIA.adresse)  beneficiaireData.adresse   = benefIA.adresse;
-    if(benefIA.cp)       beneficiaireData.cp        = benefIA.cp;
-    if(benefIA.ville)    beneficiaireData.ville     = benefIA.ville;
-    if(benefIA.surface)  beneficiaireData.surface   = benefIA.surface + ' m²';
-    if(benefIA.typeBien) beneficiaireData.typeBien  = benefIA.typeBien;
-
+    beneficiaireData=extraireBeneficiaire(fullText);
     document.getElementById('beneGrid').innerHTML=[
       {k:'Nom',v:beneficiaireData.nom||'—'},{k:'Prénom',v:beneficiaireData.prenom||'—'},
       {k:'Adresse',v:beneficiaireData.adresse||'—'},{k:'CP',v:beneficiaireData.cp||'—'},
@@ -2730,61 +2623,35 @@ async function analyserDocument(){
     ].map(f=>`<div class="bene-item"><div class="bene-key">${f.k}</div><div class="bene-val">${f.v}</div></div>`).join('');
     document.getElementById('beneficiaireCard').classList.remove('hidden');
 
-    // ── Numériques + équipements : IA en priorité, regex en fallback ──
-    const num = extraireNumeriques(fullText);
-    if(iaResult?.numeriques){
-      if(iaResult.numeriques.ep   !== null) num.ep           = iaResult.numeriques.ep;
-      if(iaResult.numeriques.ges  !== null) num.ges          = iaResult.numeriques.ges;
-      if(iaResult.numeriques.classeDirecte) num.classeDirecte = iaResult.numeriques.classeDirecte;
-    }
-    if(benefIA.anneeConstruction) num.annee = benefIA.anneeConstruction;
-
-    equip = detecterEquipements(fullText); // fallback regex
-    if(iaResult?.equipements){
-      const ie = iaResult.equipements;
-      // Remplacer uniquement si l'IA a une valeur non-"Non détecté"
-      const ov = (iaVal, fallback) => (iaVal && iaVal !== 'Non détecté') ? iaVal : fallback;
-      equip.ch            = ov(ie.chauffage,   equip.ch);
-      equip.ecs           = ov(ie.ecs,         equip.ecs);
-      equip.vmc           = ov(ie.vmc,         equip.vmc);
-      equip.murs          = ov(ie.murs,        equip.murs);
-      equip.combles       = ov(ie.combles,     equip.combles);
-      equip.plancher      = ov(ie.plancher,    equip.plancher);
-      equip.fen           = ov(ie.fenetres,    equip.fen);
-      equip.volets        = ov(ie.volets,      equip.volets);
-      equip.robinets      = ov(ie.robinets,    equip.robinets);
-      if(ie.chauffageMixte !== undefined) equip.chauffageMixte = ie.chauffageMixte;
-    }
-
-    const surfaceM2 = benefIA.surface || (beneficiaireData.surface ? parseFloat(beneficiaireData.surface) : null);
-    const{classe,ep,ges,score,methode,detail3CL,detailThCEEx,ep3CL,epThCEEx,ges3CL,gesThCEEx}=determinerClasse(num,equip,surfaceM2);
-    analysisResult={classe,ep,ges,score,methode,detail3CL,detailThCEEx,ep3CL,epThCEEx,ges3CL,gesThCEEx,num,equip};
+    const num=extraireNumeriques(fullText);
+    equip=detecterEquipements(fullText);
+    const surfaceM2=beneficiaireData.surface?parseFloat(beneficiaireData.surface):null;
+    const{classe,ep,ges,score,methode,detail3CL,ep3CL,ges3CL}=determinerClasse(num,equip,surfaceM2);
+    analysisResult={classe,ep,ges,score,methode,detail3CL,ep3CL,ges3CL,num,equip};
 
     const niv=calculerNiveau(num,equip,classe);
     document.getElementById('classeLetter').textContent=classe;
     document.getElementById('classeLetter').className='classe-letter cl-'+classe;
+    document.getElementById('methodeLabel').textContent='Méthode : '+methode;
 
-    document.getElementById('methodeLabel').textContent='Méthode : '+methode+(iaResult?' — Extraction IA ✓':' — Extraction regex');
-
-    // ── Badge confiance IA + qualité données ──
-    const scoreEl = document.getElementById('scoreNum');
+    const scoreEl=document.getElementById('scoreNum');
     if(scoreEl){
-      const confScore = iaConfiance?.score ?? null;
-      const confBadge = confScore !== null ? (() => {
-        const col = confScore>=80?'#00C853':confScore>=50?'#FFD740':'#FF6D00';
-        const lbl = confScore>=80?'Extraction IA — Haute fiabilité':confScore>=50?'Extraction IA — Fiabilité correcte':'Extraction IA — Données partielles';
-        const ico = confScore>=80?'🤖✅':confScore>=50?'🤖📐':'🤖⚠️';
-        return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;background:rgba(${col==='#00C853'?'0,200,83':col==='#FFD740'?'255,215,64':'255,109,0'},0.10);border:1px solid ${col}40;margin-top:8px;">
+      const qualite=getQualiteDonnees(num,equip);
+      const champs=[equip.ch,equip.murs,equip.combles,equip.fen,equip.vmc,equip.plancher,equip.ecs];
+      const detectes=champs.filter(v=>v&&v!=='Non détecté').length;
+      const fiabilite=num.ep!==null?100:Math.round((detectes/champs.length)*100);
+      const col=fiabilite>=80?'#00C853':fiabilite>=50?'#FFD740':'#FF6D00';
+      const ico=fiabilite>=80?'✅':fiabilite>=50?'📐':'⚠️';
+      const lbl=fiabilite>=80?'Analyse 3CL — Haute fiabilité':fiabilite>=50?'Analyse 3CL — Fiabilité correcte':'Analyse 3CL — Données partielles';
+      const note=`${detectes}/${champs.length} équipements détectés${num.ep!==null?' · EP officiel extrait':''}`;
+      scoreEl.innerHTML=`
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;background:rgba(${col==='#00C853'?'0,200,83':col==='#FFD740'?'255,215,64':'255,109,0'},0.10);border:1px solid ${col}40;margin-top:8px;">
           <span style="font-size:18px;">${ico}</span>
           <div>
-            <div style="font-size:12px;font-weight:700;color:${col};font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:0.05em;">${lbl} (${confScore}/100)</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${iaConfiance?.notes||''}</div>
+            <div style="font-size:12px;font-weight:700;color:${col};font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:0.05em;">${lbl} (${fiabilite}/100)</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${note}</div>
           </div>
-        </div>`;
-      })() : `<div style="padding:8px 12px;border-radius:8px;background:rgba(255,109,0,0.08);border:1px solid rgba(255,109,0,0.2);font-size:11px;color:#FF6D00;margin-top:8px;">⚠️ Claude API indisponible — extraction par regex (moins fiable)</div>`;
-
-      const qualite = getQualiteDonnees(num, equip);
-      scoreEl.innerHTML = confBadge + `
+        </div>
         <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;background:rgba(${qualite.couleur==='#00C853'?'0,200,83':qualite.couleur==='#FFD740'?'255,215,64':'255,109,0'},0.10);border:1px solid ${qualite.couleur}40;margin-top:8px;">
           <span style="font-size:18px;">${qualite.icone}</span>
           <div>
@@ -2794,15 +2661,11 @@ async function analyserDocument(){
           </div>
         </div>
         <div style="margin-top:10px;padding:8px 12px;background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.15);border-radius:6px;font-size:11px;color:var(--muted);line-height:1.7;">
-          ⚖️ <em>Étude réalisée selon la méthode officielle <strong style="color:var(--text);">3CL-2021</strong> (Arrêté du 31/03/2021).
-          Cette analyse constitue un outil d'aide à la décision pour la rénovation énergétique.
-          Elle ne se substitue pas à un DPE officiel établi par un diagnostiqueur certifié.</em>
+          ⚖️ <em>Étude réalisée selon la méthode officielle <strong style="color:var(--text);">3CL-2021</strong> (Arrêté du 31/03/2021). Cette analyse constitue un outil d'aide à la décision. Elle ne se substitue pas à un DPE officiel.</em>
         </div>`;
     }
-
     renderDPE(classe,'dpeMeter');
     renderNiveau(niv,'niveauBadge','niveauMethode','niveauEquipements');
-
     const epVal=ep!==null?ep:num.ep!==null?num.ep:null;
     const gesVal=ges!==null?ges:num.ges!==null?num.ges:null;
     if(epVal!==null||gesVal!==null){
@@ -2812,22 +2675,22 @@ async function analyserDocument(){
     }
     if(detail3CL){
       document.getElementById('detail3CLPanel').classList.remove('hidden');
-      const d = detail3CL;
-      const setEl = (id, val) => { const e=document.getElementById(id); if(e) e.textContent=val; };
-      setEl('d3cl_ep3CL',    (ep3CL||'—')+' kWh EP/m²/an');
-      setEl('d3cl_ges3CL',   (ges3CL||'—')+' kg CO₂/m²/an');
-      setEl('d3cl_epCroise', (ep||'—')+' kWh EP/m²/an');
+      const d=detail3CL;
+      const setEl=(id,val)=>{const e=document.getElementById(id);if(e)e.textContent=val;};
+      setEl('d3cl_ep3CL',(ep3CL||'—')+' kWh EP/m²/an');
+      setEl('d3cl_ges3CL',(ges3CL||'—')+' kg CO₂/m²/an');
+      setEl('d3cl_epCroise',(ep||'—')+' kWh EP/m²/an');
       setEl('d3cl_gesCroise',(ges||'—')+' kg CO₂/m²/an');
-      const surf = surfaceM2 || (beneficiaireData&&beneficiaireData.surface?parseFloat(beneficiaireData.surface):100);
-      const nOcc = Math.max(1,Math.round(surf/30));
-      setEl('d3cl_surface', surf+' m² / '+nOcc+' occ. (estimé)');
-      setEl('d3cl_Ubat',    d.Ubat ? d.Ubat+' W/m².K' : (ep3CL?Math.round(ep3CL/140*100)/100+' W/m².K (est.)':'—'));
-      setEl('d3cl_Bch',     d.Bch_net ? d.Bch_net+' kWh/an' : (ep3CL?Math.round(ep3CL*surf*0.7)+' kWh/an (est.)':'—'));
-      setEl('d3cl_psi',     d.psi ? d.psi+' W/m.K' : '0.35 W/m.K (défaut)');
-      setEl('d3cl_n50',     d.n50 ? d.n50+' vol/h à 50Pa' : '1.2 vol/h (défaut)');
-      setEl('d3cl_eta',     d.eta_sais || (equip&&equip.ch==='Gaz condensation'?'0.92':equip&&equip.ch==='PAC'?'2.80':'0.80'));
-      setEl('d3cl_Ep_ch',   d.Ep_ch ? d.Ep_ch+' kWh EP/m²/an' : (ep3CL?Math.round(ep3CL*0.75)+' kWh EP/m²/an (est.)':'—'));
-      setEl('d3cl_Ep_ecs',  d.Ep_ecs ? d.Ep_ecs+' kWh EP/m²/an' : (ep3CL?Math.round(ep3CL*0.25)+' kWh EP/m²/an (est.)':'—'));
+      const surf=surfaceM2||100;
+      const nOcc=Math.max(1,Math.round(surf/30));
+      setEl('d3cl_surface',surf+' m² / '+nOcc+' occ. (estimé)');
+      setEl('d3cl_Ubat',d.Ubat?d.Ubat+' W/m².K':(ep3CL?Math.round(ep3CL/140*100)/100+' W/m².K (est.)':'—'));
+      setEl('d3cl_Bch',d.Bch_net?d.Bch_net+' kWh/an':(ep3CL?Math.round(ep3CL*surf*0.7)+' kWh/an (est.)':'—'));
+      setEl('d3cl_psi',d.psi?d.psi+' W/m.K':'0.35 W/m.K (défaut)');
+      setEl('d3cl_n50',d.n50?d.n50+' vol/h à 50Pa':'1.2 vol/h (défaut)');
+      setEl('d3cl_eta',d.eta_sais||(equip&&equip.ch==='Gaz condensation'?'0.92':equip&&equip.ch==='PAC'?'2.80':'0.80'));
+      setEl('d3cl_Ep_ch',d.Ep_ch?d.Ep_ch+' kWh EP/m²/an':(ep3CL?Math.round(ep3CL*0.75)+' kWh EP/m²/an (est.)':'—'));
+      setEl('d3cl_Ep_ecs',d.Ep_ecs?d.Ep_ecs+' kWh EP/m²/an':(ep3CL?Math.round(ep3CL*0.25)+' kWh EP/m²/an (est.)':'—'));
     }
     renderDet(equip,'detGrid');
     detecterTypeBien();
@@ -2837,10 +2700,10 @@ async function analyserDocument(){
     document.getElementById('scenarioCard').classList.remove('hidden');
     renderSauts(classe,equip,'');
     document.getElementById('sautsCard').classList.remove('hidden');
-    afficherOrientationDossier(classe, equip, ep, beneficiaireData);
+    afficherOrientationDossier(classe,equip,ep,beneficiaireData);
     document.getElementById('synthesesBtnWrap').classList.remove('hidden');
-    const btnAct = document.getElementById('btnActualiser');
-    if(btnAct) btnAct.classList.remove('hidden');
+    const btnAct=document.getElementById('btnActualiser');
+    if(btnAct)btnAct.classList.remove('hidden');
     saveAnalyse({nom:(beneficiaireData.nom||'Inconnu')+' '+(beneficiaireData.prenom||''),classe,ep,ges});
     saveVT_Firebase({nom:(beneficiaireData.nom||'Inconnu')+' '+(beneficiaireData.prenom||''),classe,ep,ges,methode,adresse:beneficiaireData.adresse||'',ville:beneficiaireData.ville||'',surface:beneficiaireData.surface||'',typeBien:beneficiaireData.typeBien||''});
   }catch(err){console.error(err);alert('Erreur : '+err.message);}
