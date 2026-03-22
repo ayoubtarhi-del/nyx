@@ -608,10 +608,13 @@ body::after{
         </select>
       </div>
     </div>
-    <div class="text-center">
+    <div class="text-center" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
       <button class="btn hidden" id="btnAnalyser" onclick="analyserDocument()">
         <span class="spinner hidden" id="loadingSpinner"></span>
         <span id="btnText">🔍 Analyser la visite technique</span>
+      </button>
+      <button class="btn btn-ghost hidden" id="btnActualiser" onclick="actualiserAnalyse()" style="border:1px solid rgba(16,185,129,0.3);">
+        🔃 Actualiser
       </button>
     </div>
   </div>
@@ -633,7 +636,7 @@ body::after{
         <div class="classe-hero">
           <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:8px;font-family:'Space Mono',monospace;">Classe initiale estimée</div>
           <div class="classe-letter" id="classeLetter">?</div>
-          <div style="font-size:18px;color:var(--muted);margin-top:8px;font-family:'Space Mono',monospace;" id="scoreNum">— / 100</div>
+          <div id="scoreNum" style="margin-top:10px;"></div>
           <div style="font-size:12px;color:#555;margin-top:6px;" id="methodeLabel"></div>
         </div>
         <div class="num-panel hidden" id="numPanel">
@@ -642,11 +645,11 @@ body::after{
         </div>
         <!-- Détail 3CL + Th-CE-Ex -->
         <div id="detail3CLPanel" class="hidden" style="background:var(--bg3);border:1px solid rgba(16,185,129,0.18);border-radius:10px;padding:14px 16px;margin:12px 0;">
-          <div style="font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:0.2em;margin-bottom:12px;font-weight:700;font-family:'Space Mono',monospace;">📐 Croisement 3CL-2021 + Th-CE-Ex</div>
+          <div style="font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:0.2em;margin-bottom:12px;font-weight:700;font-family:'Space Mono',monospace;">📐 Calcul 3CL-2021 (Arrêté du 31 mars 2021)</div>
           <div class="methods-compare">
             <div class="method-box"><div class="method-name">3CL-2021</div><div class="method-val" id="d3cl_ep3CL">—</div><div class="method-ges" id="d3cl_ges3CL">—</div></div>
             <div class="method-arrow">⟶</div>
-            <div class="method-box"><div class="method-name">Th-CE-Ex</div><div class="method-val" id="d3cl_epThCEEx">—</div><div class="method-ges" id="d3cl_gesThCEEx">—</div></div>
+            <!-- Th-CE-Ex désactivé logements individuels -->
             <div class="method-arrow">⟶</div>
             <div class="method-box croise"><div class="method-name">Résultat</div><div class="method-val" id="d3cl_epCroise">—</div><div class="method-ges" id="d3cl_gesCroise">—</div></div>
           </div>
@@ -660,7 +663,7 @@ body::after{
             <div style="color:var(--muted);">EP chauffage :</div><div id="d3cl_Ep_ch" style="color:var(--green2);font-weight:600;">—</div>
             <div style="color:var(--muted);">EP eau chaude :</div><div id="d3cl_Ep_ecs" style="color:var(--green2);font-weight:600;">—</div>
           </div>
-          <div style="margin-top:10px;font-size:11px;color:#444;line-height:1.6;">Croisement pondéré 3CL-2021 (40%) + Th-CE-Ex (60%). Valeurs indicatives — un DPE certifié RGE reste nécessaire.</div>
+          <div style="margin-top:10px;font-size:11px;color:#444;line-height:1.6;">Méthode 3CL-2021 officielle (Arrêté du 31 mars 2021). Valeurs indicatives — un DPE certifié par un diagnostiqueur accrédité reste nécessaire.</div>
         </div>
         <!-- Niveau d'analyse -->
         <div class="niveau-panel">
@@ -697,6 +700,11 @@ body::after{
   <div class="card hidden" id="sautsCard">
     <div class="card-title">📈 Sauts de Classes — Par Étapes</div>
     <div id="sautsContainer"></div>
+  </div>
+
+  <!-- ORIENTATION DOSSIER -->
+  <div class="card hidden" id="orientationCard" style="border:2px solid rgba(16,185,129,0.3);">
+    <div id="orientationContent"></div>
   </div>
 
   <!-- BOUTON SYNTHÈSE EN BAS -->
@@ -830,10 +838,10 @@ body::after{
         <div class="classe-hero">
           <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:8px;font-family:'Space Mono',monospace;">Classe estimée</div>
           <div class="classe-letter" id="m_classeLetter">?</div>
-          <div style="font-size:18px;color:var(--muted);margin-top:8px;font-family:'Space Mono',monospace;" id="m_scoreNum">—</div>
+          <div id="m_scoreNum" style="margin-top:10px;"></div>
         </div>
         <div class="num-panel" id="m_numPanel">
-          <div><div class="num-lbl">EP (3CL+Th-CE-Ex)</div><div><span class="num-val" id="m_numEP">—</span> <span class="num-unit">kWh EP/m²/an</span></div></div>
+          <div><div class="num-lbl">EP (3CL-2021)</div><div><span class="num-val" id="m_numEP">—</span> <span class="num-unit">kWh EP/m²/an</span></div></div>
           <div><div class="num-lbl">GES</div><div><span class="num-val" id="m_numGES">—</span> <span class="num-unit">kg CO₂/m²/an</span></div></div>
         </div>
         <div class="niveau-panel">
@@ -1603,6 +1611,26 @@ const VT_KEYWORDS = [
 ];
 const VT_REQUIRED = 4; // Minimum 4 mots-clés pour valider
 
+function actualiserAnalyse(){
+  // Remettre à zéro tout l'onglet DPE proprement
+  const ids = ['beneficiaireCard','resultCard','scenarioCard','sautsCard','orientationCard','synthesesBtnWrap','detail3CLPanel','numPanel'];
+  ids.forEach(id=>{ const el=document.getElementById(id); if(el){ el.classList.add('hidden'); }});
+  // Reset zone de dépôt
+  document.getElementById('dropText').textContent = 'Glissez-déposez votre PDF ici';
+  document.getElementById('dropSub').textContent  = 'Nommez votre fichier : VISITE-TECHNIQUE-NOM-PRÉNOM.pdf';
+  const dz = document.getElementById('dropZone');
+  if(dz){ dz.style.borderColor=''; }
+  // Reset boutons
+  document.getElementById('btnAnalyser').classList.add('hidden');
+  document.getElementById('btnActualiser').classList.add('hidden');
+  // Reset variables globales
+  currentFile = null;
+  analysisResult = null;
+  beneficiaireData = null;
+  equip = null;
+  document.getElementById('fileInput').value = '';
+}
+
 async function handleFileSelect(file){
   if(!file) return;
 
@@ -1710,6 +1738,51 @@ function classeGES(v){for(const c of ORDER){if(v<={A:6,B:11,C:30,D:50,E:70,F:100
 function classeMax(a,b){return ORDER.indexOf(a)>=ORDER.indexOf(b)?a:b;}
 function classeToScore(c){return{A:92,B:80,C:65,D:50,E:35,F:20,G:8}[c]||50;}
 
+/* ── Indicateur de qualité des données extraites ── */
+function getQualiteDonnees(num, equip){
+  // Niveau 1 — EP + GES officiels extraits
+  if(num.ep !== null && num.ges !== null)
+    return {
+      niveau: 'Analyse certifiée',
+      couleur: '#00C853',
+      icone: '✅',
+      detail: 'Valeurs EP et GES officielles extraites du document — analyse de haute fiabilité.',
+      action: null,
+    };
+  if(num.ep !== null)
+    return {
+      niveau: 'Analyse certifiée',
+      couleur: '#00C853',
+      icone: '✅',
+      detail: 'Énergie primaire officielle extraite du document — analyse fiable.',
+      action: null,
+    };
+
+  // Niveau 2 — Calcul 3CL sur équipements détectés
+  const equipOk = equip &&
+    equip.ch      !== 'Non détecté' &&
+    equip.combles !== 'Non détecté' &&
+    equip.murs    !== 'Non détecté' &&
+    equip.fen     !== 'Non détecté';
+  if(equipOk)
+    return {
+      niveau: 'Analyse 3CL-2021 complète',
+      couleur: '#00C853',
+      icone: '✅',
+      detail: 'Équipements du logement identifiés — calcul 3CL-2021 réalisé sur données réelles.',
+      action: null,
+    };
+
+  // Niveau 3 — Calcul 3CL sur données partielles (toujours fiable, juste moins d'infos)
+  return {
+    niveau: 'Analyse 3CL-2021 réalisée',
+    couleur: '#FFD740',
+    icone: '📐',
+    detail: 'Calcul 3CL-2021 effectué. Pour affiner, enrichissez les données via la Saisie Manuelle.',
+    action: null,
+  };
+}
+
 function extraireNumeriques(text){
   const r={ep:null,ges:null,classeDirecte:null,annee:null};
   const epP=[/(\d{2,4})\s*kWh\s*\/?\s*m[²2]\s*\.?\s*an/i,/énergie\s*primaire\s*[:\-=]?\s*(\d{2,4})/i,/EP\s*[:\-=]\s*(\d{2,4})/i];
@@ -1726,131 +1799,225 @@ function extraireBeneficiaire(text){
   const r={nom:'',prenom:'',adresse:'',cp:'',ville:'',surface:'',typeBien:''};
   const m=re=>{const x=text.match(re);return x?x[1].trim():'';};
 
-  // Cherche une paire NOM/PRENOM dans une ligne de texte
+  /* ── Extraction NOM / PRÉNOM ──
+     Priorité : bénéficiaire > client > propriétaire > nom seul > nom fichier */
   function splitNomPrenom(str){
-    const parts = str.trim().split(/\s+/);
-    if(parts.length < 2) return {nom: str.trim(), prenom:''};
-    // Convention : tout en majuscules = nom de famille
-    const nomParts    = parts.filter(p => p.length > 1 && p === p.toUpperCase() && /^[A-ZÀ-Ÿ\-]+$/.test(p));
-    const prenomParts = parts.filter(p => !(p.length > 1 && p === p.toUpperCase() && /^[A-ZÀ-Ÿ\-]+$/.test(p)));
+    const parts = str.trim().replace(/\s+/g,' ').split(' ');
+    if(parts.length<2) return {nom:str.trim().toUpperCase(),prenom:''};
+    // Format HC RENO : "cotelle thierry" → NOM=COTELLE, Prénom=Thierry
+    const allLower = parts.every(p=>p===p.toLowerCase());
+    if(allLower){
+      return {
+        nom: parts[0].toUpperCase(),
+        prenom: parts.slice(1).map(p=>p.charAt(0).toUpperCase()+p.slice(1)).join(' ')
+      };
+    }
+    const nomParts    = parts.filter(p=>p.length>1&&/^[A-ZÀ-Ÿ\-]+$/.test(p));
+    const prenomParts = parts.filter(p=>!/^[A-ZÀ-Ÿ\-]+$/.test(p)||p.length<=1);
     return {
-      nom:    (nomParts.join(' ')    || parts[0]).trim(),
-      prenom: (prenomParts.join(' ') || parts.slice(1).join(' ')).trim(),
+      nom:    (nomParts.join(' ')||parts[0]).trim(),
+      prenom: (prenomParts.join(' ')||parts.slice(1).join(' ')).trim(),
     };
   }
 
-  // Format 1 — Bénéficiaire : NOM Prénom
-  const reBenef = /b[eé]n[eé]ficiaire\s*[:\-]\s*([A-Za-zÀ-ÿ\s\-]{3,40})/i;
-  const mBenef  = text.match(reBenef);
-  if(mBenef){
-    const sp = splitNomPrenom(mBenef[1]);
-    r.nom = sp.nom; r.prenom = sp.prenom;
-  }
-
-  // Format 2 — Client : NOM Prénom
-  if(!r.nom){
-    const reClient = /client\s*[:\-]\s*([A-Za-zÀ-ÿ\s\-]{3,40})/i;
-    const mClient  = text.match(reClient);
-    if(mClient){
-      const sp = splitNomPrenom(mClient[1]);
-      r.nom = sp.nom; r.prenom = sp.prenom;
+  const PATTERNS_NOM = [
+    // Format HC RENO — "HC RENO - cotelle thierry" ou tableau client
+    /(?:HC\s*RENO\s*[-–]\s*)([A-Za-zÀ-ÿ\s\-]{3,40})/i,
+    /(?:Client\s*\n?\s*)([A-Za-zÀ-ÿ]+\s+[A-Za-zÀ-ÿ]+)\s*\n/i,
+    // Format libre — "Nom : CARBONNIER"
+    /(?:^|\n)\s*Nom\s*[:\-]\s*([A-ZÀ-Ÿa-zÀ-ÿ\s\-]{2,30})\s*(?:\n|$)/im,
+    /b[eé]n[eé]ficiaire\s*[:\-]\s*([A-Za-zÀ-ÿ\s\-]{3,40})/i,
+    /client\s*[:\-]\s*([A-Za-zÀ-ÿ\s\-]{3,40})/i,
+    /propri[eé]taire\s*[:\-]\s*([A-Za-zÀ-ÿ\s\-]{3,40})/i,
+    /occupant\s*[:\-]\s*([A-Za-zÀ-ÿ\s\-]{3,40})/i,
+    /locataire\s*[:\-]\s*([A-Za-zÀ-ÿ\s\-]{3,40})/i,
+    /demandeur\s*[:\-]\s*([A-Za-zÀ-ÿ\s\-]{3,40})/i,
+    /m[\.\ ]?(?:et\s*m(?:me|me)?)?\s*[:\-]?\s*([A-ZÀ-Ÿ]{2,15}\s+[A-Za-zÀ-ÿ]{2,20})/,
+  ];
+  for(const re of PATTERNS_NOM){
+    const match = text.match(re);
+    if(match){
+      const sp = splitNomPrenom(match[1]);
+      // Ignorer si ça ressemble à un auditeur/technicien
+      const PARASITES = /auditeur|technicien|diagnostiqueur|bureau|agence|expert|cabinet|sarl|sas|eurl|rge/i;
+      if(!PARASITES.test(sp.nom)){
+        r.nom = sp.nom; r.prenom = sp.prenom; break;
+      }
     }
   }
 
-  // Format 3 — Propriétaire : NOM Prénom
+  // Format séparé : Nom : X  Prénom : Y
   if(!r.nom){
-    const reProprio = /propri[eé]taire\s*[:\-]\s*([A-Za-zÀ-ÿ\s\-]{3,40})/i;
-    const mProprio  = text.match(reProprio);
-    if(mProprio){
-      const sp = splitNomPrenom(mProprio[1]);
-      r.nom = sp.nom; r.prenom = sp.prenom;
-    }
-  }
-
-  // Format 4 — Nom : DUPONT   Prénom : Jean (champs séparés)
-  if(!r.nom){
-    const reNom    = /(?:^|\n)\s*nom\s*[:\-]\s*([A-Za-zÀ-ÿ\-]{2,25})/im;
-    const rePrenom = /pr[eé]nom\s*[:\-]\s*([A-Za-zÀ-ÿ\-]{2,25})/i;
-    const mNom    = text.match(reNom);
-    const mPrenom = text.match(rePrenom);
-    if(mNom)    r.nom    = mNom[1].trim();
+    const mNom    = text.match(/(?:^|\n)\s*nom\s*[:\-]\s*([A-Za-zÀ-ÿ\-]{2,25})/im);
+    const mPrenom = text.match(/pr[eé]nom\s*[:\-]\s*([A-Za-zÀ-ÿ\-]{2,25})/i);
+    if(mNom) r.nom = mNom[1].trim();
     if(mPrenom) r.prenom = mPrenom[1].trim();
   }
 
-  // Nettoyage mots parasites (auditeur, technicien...)
-  const parasites = /\b(auditeur|technicien|diagnostiqueur|bureau|agence|expert|cabinet|soci[eé]t[eé]|sarl|sas|eurl|rge|op[eé]rateur)\b/gi;
-  r.nom    = (r.nom    || '').replace(parasites,'').trim();
-  r.prenom = (r.prenom || '').replace(parasites,'').trim();
+  // Fallback — depuis le nom du fichier VISITE-TECHNIQUE-NOM-PRENOM.pdf
+  // Appliqué si nom non trouvé dans le PDF OU si nom extrait suspect
+  const nomSuspect = r.nom.length < 2 || /^(m|mme|mr|monsieur|madame|dr)$/i.test(r.nom);
+  if((!r.nom || nomSuspect) && typeof currentFile !== 'undefined' && currentFile){
+    try {
+      const fn = currentFile.name
+        .replace(/\.pdf$/i,'')
+        .replace(/^VISITE-TECHNIQUE-/i,'')
+        .replace(/^AUDIT-ENERGETIQUE-/i,'')
+        .replace(/_/g,'-');
+      const parts = fn.split('-').filter(p=>p.length>1&&!/^\d+$/.test(p));
+      if(parts.length>=2){
+        r.nom    = parts[0].toUpperCase();
+        r.prenom = parts.slice(1).map(p=>p.charAt(0).toUpperCase()+p.slice(1).toLowerCase()).join(' ');
+      } else if(parts.length===1){
+        r.nom = parts[0].toUpperCase();
+      }
+    } catch(e){}
+  }
 
-  // Adresse
-  r.adresse = m(/adresse\s*[:\-]\s*([^\r\n]{5,60})/i) ||
-              m(/(\d{1,4}[\s,]+(?:rue|avenue|boulevard|impasse|all[eé]e|chemin|place|route)[^\r\n]{3,50})/i);
+  // Nettoyage
+  const PARASITES = /\b(auditeur|technicien|diagnostiqueur|bureau|agence|expert|cabinet|soci[eé]t[eé]|sarl|sas|eurl|rge|op[eé]rateur)\b/gi;
+  r.nom    = (r.nom||'').replace(PARASITES,'').trim();
+  r.prenom = (r.prenom||'').replace(PARASITES,'').trim();
 
+  /* ── Adresse ── */
+  r.adresse = m(/adresse\s*(?:du\s*logement|compl[eè]te)?\s*[:\-]\s*([^\r\n]{5,80})/i)
+    || m(/(\d{1,4}[,\s]+(?:rue|avenue|boulevard|impasse|all[eé]e|chemin|place|route|lieu[\s-]dit)[^\r\n]{3,60})/i);
 
+  /* ── Code postal ── */
+  r.cp = m(/code\s*postal\s*[:\-]\s*(\d{5})/i)
+    || m(/\b((?:0[1-9]|[1-8]\d|9[0-5])\d{3})\b/);
 
-  // Code postal & ville
-  r.cp    = m(/code\s*postal\s*[:\-]\s*(\d{5})/i) || m(/((?:0[1-9]|[1-8]\d|9[0-5])\d{3})/);
-  r.ville = m(/ville\s*[:\-]\s*([A-Za-zÀ-ÿ\s\-]{2,30})/i);
+  /* ── Ville ── */
+  r.ville = m(/(?:commune|ville|localit[eé])\s*[:\-]\s*([A-Za-zÀ-ÿ\s\-]{2,40})/i)
+    || m(/ville\s*[:\-]\s*([A-Za-zÀ-ÿ\s\-]{2,30})/i);
 
-  // Surface
-  const sm = text.match(/(?:superficie|surface)\s*(?:habitable|utile|au\s*sol)?\s*[:\-]?\s*(\d{2,4}(?:[.,]\d{1,2})?)\s*m[²2]/i);
-  if(sm){ const s=parseFloat(sm[1].replace(',','.'));if(s>=15&&s<=1000)r.surface=s+' m²'; }
+  /* ── Surface habitable — 12 patterns ── */
+  const SURF_PATTERNS = [
+    // Format HC RENO — "Surface habitable [m²]  74.23"
+    /Surface\s*habitable\s*\[m[²2]\]\s*[:\-]?\s*(\d{2,4}(?:[.,]\d{1,2})?)/i,
+    /SHAB\s*[:\-]?\s*(\d{2,4}(?:[.,]\d{1,2})?)/i,
+    // Format libre — "TOTAL 76.28 76.28"
+    /TOTAL\s+(\d{2,4}(?:[.,]\d{1,2})?)\s+\d/i,
+    /surface\s*habitable\s*[:\-]?\s*(\d{2,4}(?:[.,]\d{1,2})?)\s*m[²2]/i,
+    /superficie\s*habitable\s*[:\-]?\s*(\d{2,4}(?:[.,]\d{1,2})?)\s*m[²2]/i,
+    /surface\s*utile\s*[:\-]?\s*(\d{2,4}(?:[.,]\d{1,2})?)\s*m[²2]/i,
+    /shab\s*[:\-]?\s*(\d{2,4}(?:[.,]\d{1,2})?)\s*m[²2]/i,
+    /surface\s*[:\-]\s*(\d{2,4}(?:[.,]\d{1,2})?)\s*m[²2]/i,
+    /superficie\s*[:\-]\s*(\d{2,4}(?:[.,]\d{1,2})?)\s*m[²2]/i,
+    /(\d{2,4}(?:[.,]\d{1,2})?)\s*m[²2]\s*(?:habitable|utile|shab)/i,
+    /logement\s*(?:de|d)\s*(\d{2,4})\s*m[²2]/i,
+    /maison\s*(?:de|d)\s*(\d{2,4})\s*m[²2]/i,
+    /appartement\s*(?:de|d)\s*(\d{2,4})\s*m[²2]/i,
+    /plancher\s*(?:de|total)?\s*[:\-]?\s*(\d{2,4})\s*m[²2]/i,
+    /zone\s*chauff[eé]e\s*[:\-]?\s*(\d{2,4})\s*m[²2]/i,
+  ];
+  for(const pat of SURF_PATTERNS){
+    const sm=text.match(pat);
+    if(sm){const s=parseFloat(sm[1].replace(',','.'));if(s>=15&&s<=1000){r.surface=s+' m²';break;}}
+  }
 
-  // Type de bien
-  if(text.match(/appartement/i))               r.typeBien='Appartement';
-  else if(text.match(/maison|villa|pavillon/i)) r.typeBien='Maison individuelle';
+  /* ── Type de bien ── */
+  const tl = text.toLowerCase();
+  if(tl.match(/\bappartement\b/))                r.typeBien='Appartement';
+  else if(tl.match(/maison|villa|pavillon|r[eé]sidence\s*individuelle/)) r.typeBien='Maison individuelle';
 
   return r;
 }
 
 function detecterEquipements(text){
-  const t=text.toLowerCase();
-  let ch='Non détecté',murs='Non détecté',combles='Non détecté',fen='Non détecté';
-  let vmc='Non détecté',plancher='Non détecté',ecs='Non détecté',chauffageMixte=false,volets='Non détecté',robinets='Non détecté';
-  const hasPAC=t.match(/pompe\s*[àa]\s*chaleur|pac\b|air[\s\-]eau|géotherm/);
-  const hasCond=t.match(/condensation/);
-  const hasBois=t.match(/po[eê]le\s*(?:a|à)\s*bois|po[eê]le\/insert|insert.*bois|granul[eé]s|pellets?/);
-  const hasGaz=t.match(/chaudi[eè]re\s*(?:à\s*)?gaz(?!\s*condensation)/);
-  const hasFioul=t.match(/fioul|fuel|mazout/);
-  const hasElec=t.match(/radiateur\s*[eé]lectrique|convecteur|panneau\s*rayonnant|chauffage\s*[eé]lectrique/)||text.match(/radiateur\s*[eé]lectrique[^:]*:\s*[1-9]/i);
-  if(hasPAC)ch='PAC';
-  else if(hasCond)ch='Gaz condensation';
-  else if(hasElec&&hasBois){ch='Électrique';chauffageMixte=true;}
-  else if(hasElec)ch='Électrique';
-  else if(hasFioul)ch='Fioul';
-  else if(hasGaz)ch='Gaz ancien';
-  else if(hasBois)ch='Bois/granulés';
-  const mursON=text.match(/les\s*murs\s*sont\s*ils\s*isol[eé]s\s*\?\s*[:\-]?\s*(OUI|NON)/i);
-  const typeIso=text.match(/type\s*d.isolation\s*[:\-]\s*([^\n]{3,40})/i);
-  if(mursON){if(mursON[1].toUpperCase()==='OUI'){if(typeIso&&typeIso[1].match(/ext[eé]rieur|ite/i))murs='ITE';else if(typeIso&&typeIso[1].match(/int[eé]rieur|iti|laine/i))murs='ITI';else murs='Isolés';}else murs='Non isolés';}
-  else{if(t.match(/ite\b|isolation.*ext[eé]rieur/))murs='ITE';else if(t.match(/iti\b|isolation.*int[eé]rieur|laine\s*de\s*verre/))murs='ITI';else if(t.match(/murs?\s*isol[eé]s?/))murs='Isolés';else if(t.match(/murs?\s*non\s*isol[eé]s?/))murs='Non isolés';}
-  const combON=text.match(/isolation\s*existante\s*dans\s*les\s*combles\s*\?\s*[:\-]?\s*(OUI|NON)/i);
-  if(combON){combles=combON[1].toUpperCase()==='OUI'?'Isolés':'Non isolés';}
-  else{if(t.match(/combles?.*tr[eè]s\s*bien\s*isol[eé]s?|r\s*[≥>]\s*7/))combles='Très bien isolés';else if(t.match(/combles?\s*isol[eé]s?|isolation.*combles?/))combles='Isolés';else if(t.match(/combles?\s*non\s*isol[eé]s?/))combles='Non isolés';}
-  if(t.match(/simple\s*vitrage/))fen='Simple vitrage';
-  else if(t.match(/double\s*vitrage\s*[+\-]20\s*ans|double\s*vitrage\s*\+10\s*ans/i))fen='Double vitrage ancien';
-  else if(t.match(/double\s*vitrage\s*-10\s*ans/i))fen='Double vitrage récent';
-  else if(t.match(/triple\s*vitrage/))fen='Triple vitrage';
-  else if(t.match(/double\s*vitrage/))fen='Double vitrage ancien';
-  const vmcON=text.match(/syst[eè]me\s*de\s*ventilation\s*\?\s*[:\-]?\s*(OUI|NON)/i)||text.match(/^VENTILATION\s*[:\-]\s*(OUI|NON)/im);
-  if(vmcON&&vmcON[1].toUpperCase()==='NON')vmc='Naturelle';
-  else if(t.match(/vmc\s*double\s*flux|double\s*flux/))vmc='VMC double flux';
-  else if(t.match(/\bvmc\b|ventilation\s*m[eé]canique/))vmc='VMC simple flux';
-  else if(t.match(/ventilation\s*naturelle/))vmc='Naturelle';
-  const garON=text.match(/garage\s*attenant[^?]*\?\s*[:\-]?\s*(OUI|NON)/i);
-  if(t.match(/plancher.*isol[eé]|isolation.*plancher/))plancher='Isolé';
-  else if(garON&&garON[1].toUpperCase()==='OUI')plancher='Non isolé';
-  else if(t.match(/\bgarage\b|sous[\s\-]sol|cave|vide\s*sanitaire/))plancher='Non isolé';
-  if(t.match(/ballon\s*thermodynamique|chauffe[\s\-]eau\s*thermodynamique/))ecs='Thermodynamique';
-  else if(t.match(/chauffe[\s\-]eau\s*solaire|ecs\s*solaire/))ecs='Solaire';
-  else if(t.match(/ballon\s*d.eau\s*chaude\s*[eé]lectrique|cumulus/))ecs='Électrique';
-  else if(t.match(/chauffe[\s\-]eau\s*(?:à\s*)?gaz/))ecs='Gaz';
-  if(t.match(/volets?\s*roulants?/i))volets='Volets roulants';
-  else if(t.match(/volets?\s*battants?/i))volets='Volets battants';
-  else if(t.match(/aucun\s*volet|volets?\s*:\s*aucun/i))volets='Aucun';
-  if(t.match(/robinets?\s*thermostatiques?/i))robinets='Présents';
-  else if(t.match(/radiateur\s*[eé]lectrique|convecteur/i))robinets='Absents';
-  return{ch,murs,combles,fen,vmc,plancher,ecs,chauffageMixte,volets,robinets};
+  const t = text.toLowerCase();
+  let ch='Non détecté', murs='Non détecté', combles='Non détecté', fen='Non détecté';
+  let vmc='Non détecté', plancher='Non détecté', ecs='Non détecté';
+  let chauffageMixte=false, volets='Non détecté', robinets='Non détecté';
+
+  /* ── CHAUFFAGE ── */
+  const hasPAC     = t.match(/pompe\s*[àa]\s*chaleur|\bpac\b|air[\s\-\/]eau|g[eé]otherm|a[eé]rotherm|thermodynamique.*chauffage/);
+  const hasCond    = t.match(/(?:chaudi[eè]re|chaudière)\s*[àa]\s*gaz\s*[àa]\s*condensation|condensation/);
+  const hasBois    = t.match(/po[eê]le[\s\-àa]*(?:bois|granul)|granul[eé]s|pellets?|insert.*(?:bois|granul)|bois\s*(?:bûche|énergie)/);
+  const hasGaz     = t.match(/(?:chaudi[eè]re|chaudière)\s*[àa]\s*gaz(?!\s*condensation)|gaz\s*naturel|chaud.*gaz|gaz.*chaud|\bgaz\b.*chauffage|chauffage.*\bgaz\b|gpl\b|combustible.*gaz/);
+  const hasFioul   = t.match(/\bfioul\b|\bfuel\b|mazout|combustible.*p[eé]trole|chaud.*fioul|fioul.*chaud/);
+  const hasPropane = t.match(/\bpropane\b|\bbutane\b/);
+  const hasElec    = t.match(/radiateur[s]?\s*[eé]lectrique|convecteur[s]?|panneau[x]?\s*rayonnant|chauffage\s*[eé]lectrique|grille[\s-]pain|effet\s*joule|chaleur\s*douce|[eé]lectrique.*radiateur/)
+    || text.match(/radiateur\s*[eé]lectrique[^:]*:\s*[1-9]/i);
+
+  if(hasPAC)           ch = 'PAC';
+  else if(hasCond)     ch = 'Gaz condensation';
+  else if(hasElec&&hasBois){ ch='Électrique'; chauffageMixte=true; }
+  else if(hasElec)     ch = 'Électrique';     // → remplacer PAC recommandée
+  else if(hasFioul)    ch = 'Fioul';          // → remplacer PAC recommandée
+  else if(hasPropane)  ch = 'Fioul';          // propane/butane → traité fioul
+  else if(hasGaz)      ch = 'Gaz ancien';     // → remplacer PAC recommandée
+  else if(hasBois)     ch = 'Bois/granulés';
+
+  /* ── MURS ── */
+  const mursON = text.match(/murs?\s*isol[eé]s?\s*\??\s*[:\-]?\s*(OUI|NON|oui|non)/i)
+    || text.match(/isolation\s*(?:des\s*)?murs?\s*[:\-]\s*(OUI|NON|oui|non)/i);
+  const typeIso = text.match(/type\s*d.isolation\s*(?:des\s*murs?)?\s*[:\-]\s*([^\r\n]{3,40})/i);
+  if(mursON){
+    if(mursON[1].match(/oui/i)){
+      if(typeIso&&typeIso[1].match(/ext[eé]rieur|ite/i)) murs='ITE';
+      else if(typeIso&&typeIso[1].match(/int[eé]rieur|iti|laine/i)) murs='ITI';
+      else murs='Isolés';
+    } else { murs='Non isolés'; }
+  } else {
+    if(t.match(/\bite\b|isolation.*ext[eé]rieur/)) murs='ITE';
+    else if(t.match(/\biti\b|isolation.*int[eé]rieur|laine\s*de\s*verre.*mur/)) murs='ITI';
+    else if(t.match(/murs?\s*(?:bien\s*)?isol[eé]s?/)) murs='Isolés';
+    else if(t.match(/murs?\s*non\s*isol[eé]s?|sans\s*isolation.*mur/)) murs='Non isolés';
+  }
+
+  /* ── COMBLES ── */
+  const combON = text.match(/combles?\s*isol[eé]s?\s*\??\s*[:\-]?\s*(OUI|NON|oui|non)/i)
+    || text.match(/isolation.*combles?\s*[:\-]\s*(OUI|NON|oui|non)/i);
+  if(combON){
+    combles = combON[1].match(/oui/i) ? 'Isolés' : 'Non isolés';
+  } else {
+    if(t.match(/combles?.*tr[eè]s\s*bien|r\s*[≥>]\s*[78]/)) combles='Très bien isolés';
+    else if(t.match(/combles?\s*isol[eé]s?|isolation.*combles?|laine.*souffl|souffl.*combles/)) combles='Isolés';
+    else if(t.match(/combles?\s*non\s*isol[eé]s?|sans\s*isolation.*combles?|combles?\s*perdus?\s*(?:non|sans)/)) combles='Non isolés';
+  }
+
+  /* ── FENÊTRES ── */
+  if(t.match(/simple\s*vitrage|sv\b/)) fen='Simple vitrage';
+  else if(t.match(/double\s*vitrage.*(?:\+20|\+\s*20|vieux|ancien|avant\s*20)/i)) fen='Double vitrage ancien';
+  else if(t.match(/triple\s*vitrage|tv\b/)) fen='Triple vitrage';
+  else if(t.match(/double\s*vitrage\s*récent|double\s*vitrage.*(-\s*10|moins\s*10)/i)) fen='Double vitrage récent';
+  else if(t.match(/double\s*vitrage|dv\b|double-vitrage/)) fen='Double vitrage ancien';
+
+  /* ── VENTILATION ── */
+  const vmcNon = text.match(/ventilation\s*[:\-]\s*(NON|aucune|naturelle)/i)
+    || text.match(/pas\s*de\s*(?:vmc|ventilation)/i);
+  if(vmcNon) vmc='Naturelle';
+  else if(t.match(/vmc\s*double\s*flux|double\s*flux|vmr/)) vmc='VMC double flux';
+  else if(t.match(/vmc\s*hygror[eé]glable|hygro/)) vmc='VMC simple flux';
+  else if(t.match(/\bvmc\b|ventilation\s*m[eé]canique/)) vmc='VMC simple flux';
+  else if(t.match(/ventilation\s*naturelle|aération\s*naturelle/)) vmc='Naturelle';
+
+  /* ── PLANCHER BAS ── */
+  if(t.match(/plancher\s*(?:bas\s*)?isol[eé]|isolation.*plancher/)) plancher='Isolé';
+  else if(t.match(/\bgarage\b|sous[\s-]sol|cave|vide\s*sanitaire|sur\s*terre[\s-]plein/)) plancher='Non isolé';
+  else if(t.match(/plancher.*non\s*isol[eé]|sans\s*isolation.*plancher/)) plancher='Non isolé';
+
+  /* ── EAU CHAUDE ── */
+  if(t.match(/ballon\s*thermodynamique|chauffe[\s-]eau\s*thermodynamique|cet\b/)) ecs='Thermodynamique';
+  else if(t.match(/chauffe[\s-]eau\s*solaire|capteur.*solaire.*ecs/)) ecs='Solaire';
+  else if(t.match(/cumulus|ballon\s*[eé]lectrique|chauffe[\s-]eau\s*[eé]lectrique|ballon.*[eé]lectrique/)) ecs='Électrique';
+  else if(t.match(/chauffe[\s-]eau\s*(?:à\s*)?gaz|ballon\s*gaz/)) ecs='Gaz';
+  else if(t.match(/production.*eau\s*chaude|ecs\b/)){
+    if(t.match(/\bgaz\b/)) ecs='Gaz';
+    else if(t.match(/[eé]lectrique/)) ecs='Électrique';
+  }
+
+  /* ── VOLETS ── */
+  if(t.match(/volets?\s*roulants?/)) volets='Volets roulants';
+  else if(t.match(/volets?\s*battants?/)) volets='Volets battants';
+  else if(t.match(/aucun\s*volet|volets?\s*[:\-]\s*(?:aucun|non|0)/i)) volets='Aucun';
+
+  /* ── ROBINETS THERMOSTATIQUES ── */
+  if(t.match(/robinets?\s*thermostatiques?|t[eé]te\s*thermostatique/)) robinets='Présents';
+  else if(t.match(/radiateur\s*[eé]lectrique|convecteur/)) robinets='Absents';
+
+  return {ch,murs,combles,fen,vmc,plancher,ecs,chauffageMixte,volets,robinets};
 }
 
 /* Tables physiques */
@@ -1950,11 +2117,12 @@ function determinerClasse(num,equip,surfaceM2){
   let epAdj=calc.ep;
   if(num.annee){if(num.annee<1948)epAdj=Math.round(epAdj*1.20);else if(num.annee<1975)epAdj=Math.round(epAdj*1.10);else if(num.annee>=2021)epAdj=Math.round(epAdj*0.65);else if(num.annee>=2012)epAdj=Math.round(epAdj*0.85);}
   const gesAdj=Math.round((calc.ges*epAdj/calc.ep)*10)/10;
-  const thcex=calculerThCEEx(equip,surface,num.annee);
-  const epCroise=Math.round(epAdj*0.40+thcex.ep*0.60);
-  const gesCroise=Math.round((gesAdj*0.40+thcex.ges*0.60)*10)/10;
-  const classeCroise=classeMax(classeEP(epCroise),classeGES(gesCroise));
-  return{classe:classeCroise,ep:epCroise,ges:gesCroise,score:classeToScore(classeCroise),methode:'Croisement 3CL-2021 + Th-CE-Ex',detail3CL:{...calc.detail,epAdj,gesAdj},detailThCEEx:thcex.detail,ep3CL:epAdj,epThCEEx:thcex.ep,ges3CL:gesAdj,gesThCEEx:thcex.ges};
+  const classe3CL=classeMax(classeEP(epAdj),classeGES(gesAdj));
+  // ── Th-CE-Ex désactivé pour logements individuels (réservé projets futurs) ──
+  // const thcex=calculerThCEEx(equip,surface,num.annee);
+  // const epCroise=Math.round(epAdj*0.40+thcex.ep*0.60);
+  // const gesCroise=Math.round((gesAdj*0.40+thcex.ges*0.60)*10)/10;
+  return{classe:classe3CL,ep:epAdj,ges:gesAdj,score:classeToScore(classe3CL),methode:'3CL-2021 (Arrêté du 31 mars 2021)',detail3CL:{...calc.detail,epAdj,gesAdj},detailThCEEx:null,ep3CL:epAdj,epThCEEx:null,ges3CL:gesAdj,gesThCEEx:null};
 }
 
 function calculerNiveau(num,equip,classe){
@@ -2060,20 +2228,41 @@ function genererScenario(equip,classeActuelle){
       desc:'Gain net : '+gain+'% CEP. Récupération chaleur ≥ 80%. Recommandé si objectif classe B ou A.',
       gainClasse:'+0.5 à 1 classe',cout:'2 000 – 4 000 €',aide:'CEE',impact:gain});
   }
-  if(['Fioul','Gaz ancien','Électrique'].includes(equip.ch)){
-    const gain=g(GT.pac.moy);
-    const d=equip.ch==='Électrique'?'Coeff EP 2.3 (le plus pénalisant). PAC COP 3–5 → gain '+gain+'% CEP.':
-             equip.ch==='Fioul'?'Fioul CO₂ 0.324 kg/kWh. PAC → -50 à 70% facture. Gain '+gain+'% CEP.':
-             'Chaudière gaz rendement 78–82%. PAC → gain '+gain+'% CEP.';
-    travaux.push({section:'🔥 Chauffage',icon:'🔥',titre:'Remplacement chauffage par PAC air/eau',priorite:'OBLIGATOIRE',
-      desc:d,gainClasse:equip.ch==='Électrique'?'+2 à 3 classes':'+1 à 2 classes',
-      cout:'10 000 – 16 000 €',aide:"MaPrimeRénov' jusqu'à 10 000 € + CEE + éco-PTZ",impact:gain});
+  // Chauffage — tout combustible ou électrique → PAC obligatoire (y compris gaz condensation)
+  const chARemplacer = ['Fioul','Gaz ancien','Gaz condensation','Électrique','Bois/granulés'].includes(equip.ch) || equip.ch==='Non détecté';
+  if(chARemplacer){
+    const gain = g(GT.pac.moy);
+    const desc = equip.ch==='Électrique'
+      ? 'Radiateurs électriques (coeff EP 2.3). Remplacement PAC air/eau COP 3–5 → gain '+gain+'% CEP. Économies 60–75%.'
+      : equip.ch==='Fioul'
+      ? 'Chaudière fioul : CO₂ 0.324 kg/kWh. PAC air/eau → gain '+gain+'% CEP. -50 à 70% sur facture chauffage.'
+      : equip.ch==='Gaz condensation'
+      ? 'Chaudière gaz condensation (rendement 105%). PAC air/eau → gain '+gain+'% CEP. COP 3.4 = 3× moins énergivore. Sortie gaz 2025–2026.'
+      : equip.ch==='Gaz ancien'
+      ? 'Chaudière gaz (rendement 78–82%). PAC air/eau → gain '+gain+'% CEP. COP 3.4 = 3× moins énergivore.'
+      : 'Système de chauffage à remplacer. PAC air/eau recommandée → gain '+gain+'% CEP.';
+    const gcl = (equip.ch==='Électrique'||equip.ch==='Fioul') ? '+2 à 3 classes' : '+1 à 2 classes';
+    gl.push(gain);
+    travaux.push({section:'🔥 Chauffage',icon:'🔥',
+      titre:'Remplacement chauffage par PAC air/eau (COP ≥ 3.4)',
+      priorite:'OBLIGATOIRE', desc, gainClasse:gcl,
+      cout:'10 000 – 16 000 €',
+      aide:"MaPrimeRénov' 3 000–5 000 € (selon profil) + CEE + éco-PTZ",
+      impact:gain});
   }
-  if(equip.ecs==='Électrique'){
-    const gain=g(GT.cet.moy); gl.push(gain);
-    travaux.push({section:'💧 Eau chaude',icon:'💧',titre:'Chauffe-eau thermodynamique CET (COP 2.5–3.5)',priorite:'OBLIGATOIRE',
-      desc:'Gain : '+gain+'% CEP. Ballon électrique 3–4× plus énergivore. Économie 60–75% sur ECS.',
-      gainClasse:'+0.5 à 1 classe',cout:'1 500 – 3 500 €',aide:"MaPrimeRénov' + CEE + TVA 5.5%",impact:gain});
+  // ECS — si pas thermodynamique ni solaire → CET recommandé
+  if(equip.ecs !== 'Thermodynamique' && equip.ecs !== 'Solaire'){
+    const gainE = g(GT.cet.moy); gl.push(gainE);
+    const descECS = equip.ecs==='Électrique'
+      ? 'Ballon électrique 3–4× plus énergivore. CET COP 2.5–3.5 → gain '+gainE+'% CEP. Économie 60–75% ECS.'
+      : equip.ecs==='Gaz'
+      ? 'Chauffe-eau gaz → CET thermodynamique. Gain '+gainE+'% CEP. COP 2.5–3.5.'
+      : 'ECS non optimisée. CET recommandé → gain '+gainE+'% CEP.';
+    travaux.push({section:'💧 Eau chaude',icon:'💧',
+      titre:'Chauffe-eau thermodynamique (CET) — COP 2.5–3.5',
+      priorite:'OBLIGATOIRE', desc:descECS,
+      gainClasse:'+0.5 à 1 classe',cout:'1 500 – 3 500 €',
+      aide:"MaPrimeRénov' 400–1 200 € + CEE + TVA 5.5%",impact:gainE});
   }
   if(equip.fen==='Simple vitrage'){
     const gain=g(GT.fen_sv.moy); gl.push(gain);
@@ -2183,30 +2372,75 @@ function renderScenario(travaux,classeActuelle,prefix=''){
   const cls1=epToClasse(epScen1), cls2=epToClasse(epScen2);
   const aides1=Math.round(coutLimite*0.55), aides2=Math.round(coutConfort*0.55);
 
+  // ── Scénario unique optimal vers meilleure classe possible ──
+  const EP_BASE = {A:50,B:90,C:145,D:215,E:290,F:375,G:500};
+  const epBase  = EP_BASE[classeActuelle] || 300;
+  const gainOpt = gainCombine(travaux.map(t=>t.impact));
+  const epOpt   = Math.round(epBase*(1-gainOpt/100));
+  function epToClasseLocal(ep){return ep<70?'A':ep<110?'B':ep<180?'C':ep<250?'D':ep<330?'E':ep<420?'F':'G';}
+  const classeOpt = epToClasseLocal(epOpt);
+  const coutMin = travaux.reduce((s,t)=>{const m=t.cout.match(/(\d[\d\s]*)/);return s+(m?parseInt(m[1].replace(/\s/g,'')):0);},0);
+  const coutMax = travaux.reduce((s,t)=>{const m=t.cout.match(/[–-]\s*([\d\s]+)/);return s+(m?parseInt(m[1].replace(/\s/g,'')):0);},0);
+  const aides   = Math.round(coutMin*0.55);
+  const resteAC = Math.max(0, coutMin-aides);
+
   const inv=document.getElementById(prefix+'investSummary');
   if(inv) inv.innerHTML=`
-    <div style="grid-column:1/-1;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;font-family:'Space Mono',monospace;margin-bottom:4px;">📊 Scénarios budgétisés (§9.3 Cahier des charges 3CL)</div>
-
-    <div style="background:var(--bg3);border:1px solid rgba(255,215,64,0.2);border-radius:10px;padding:16px;">
-      <div style="font-size:11px;color:#FFD740;font-weight:700;text-transform:uppercase;margin-bottom:10px;">💰 Scénario 1 — Budget limité</div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--muted);">Travaux :</span><span>${oblig.slice(0,2).map(t=>t.titre.split('(')[0].trim()).join(' + ')||'—'}</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--muted);">Investissement brut :</span><span style="font-weight:700;">${coutLimite.toLocaleString('fr-FR')} €</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--muted);">Après aides (~55%) :</span><span style="color:#69F0AE;font-weight:700;">~${(coutLimite-aides1).toLocaleString('fr-FR')} €</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--muted);">Gain CEP combiné :</span><span style="color:#FFD740;font-weight:700;">${gainScen1}%</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--muted);">Résultat :</span><span><span style="color:${COLORS[classeActuelle]}">${classeActuelle}</span> → <span style="color:${COLORS[cls1]||'#10B981'};font-weight:700;">${cls1}</span> (~${epScen1} kWh/m²/an)</span></div>
+    <div style="grid-column:1/-1;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;font-family:'Space Mono',monospace;margin-bottom:8px;">
+      🎯 Scénario optimal — Meilleure performance atteignable
     </div>
 
-    <div style="background:var(--bg3);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:16px;">
-      <div style="font-size:11px;color:var(--green);font-weight:700;text-transform:uppercase;margin-bottom:10px;">🚀 Scénario 2 — Budget confortable</div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--muted);">Travaux :</span><span>Ensemble des travaux obligatoires</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--muted);">Investissement brut :</span><span style="font-weight:700;">${coutConfort.toLocaleString('fr-FR')} €</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--muted);">Après aides (~55%) :</span><span style="color:#69F0AE;font-weight:700;">~${(coutConfort-aides2).toLocaleString('fr-FR')} €</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--muted);">Gain CEP combiné :</span><span style="color:var(--green);font-weight:700;">${gainScen2}%</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--muted);">Résultat :</span><span><span style="color:${COLORS[classeActuelle]}">${classeActuelle}</span> → <span style="color:${COLORS[cls2]||'#10B981'};font-weight:700;">${cls2}</span> (~${epScen2} kWh/m²/an)</span></div>
-    </div>
+    <div style="grid-column:1/-1;background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(16,185,129,0.03));border:1px solid rgba(16,185,129,0.25);border-radius:12px;padding:18px;">
+      <!-- Saut de classe -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:18px;">
+        <div style="text-align:center;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Classe actuelle</div>
+          <div style="font-size:52px;font-weight:900;color:${COLORS[classeActuelle]};line-height:1;">${classeActuelle}</div>
+          <div style="font-size:11px;color:var(--muted);">${epBase} kWh/m²/an</div>
+        </div>
+        <div style="font-size:32px;color:var(--green);">→</div>
+        <div style="text-align:center;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Objectif atteignable</div>
+          <div style="font-size:52px;font-weight:900;color:${COLORS[classeOpt]||'#10B981'};line-height:1;">${classeOpt}</div>
+          <div style="font-size:11px;color:var(--muted);">~${epOpt} kWh/m²/an</div>
+        </div>
+      </div>
 
-    <div style="background:var(--bg3);border-radius:10px;padding:14px;font-size:12px;color:var(--muted);line-height:1.7;">
-      <strong style="color:var(--text);">ℹ️ Formule synergie :</strong> Gains calculés selon G_A + G_B − (0.15 × G_A × G_B)/100 (interaction non-linéaire §6.1). Zone ${zone} — coefficient ×${coeff}. Valeurs indicatives.
+      <!-- Détails financiers -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:14px;">
+        <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Gain CEP</div>
+          <div style="font-size:20px;font-weight:700;color:#FFD740;">${gainOpt}%</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Investissement</div>
+          <div style="font-size:15px;font-weight:700;">${coutMin.toLocaleString('fr-FR')} €</div>
+          <div style="font-size:10px;color:var(--muted);">brut estimé</div>
+        </div>
+        <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:10px;color:var(--green);text-transform:uppercase;">Après aides (~55%)</div>
+          <div style="font-size:15px;font-weight:700;color:var(--green);">~${resteAC.toLocaleString('fr-FR')} €</div>
+          <div style="font-size:10px;color:var(--muted);">reste à charge</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Travaux</div>
+          <div style="font-size:20px;font-weight:700;">${travaux.length}</div>
+          <div style="font-size:10px;color:var(--muted);">${oblig.length} oblig. · ${reco.length} reco.</div>
+        </div>
+      </div>
+
+      <!-- Liste travaux résumée -->
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Travaux à réaliser :</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
+        ${oblig.map(t=>`<span style="font-size:11px;padding:3px 10px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.25);border-radius:100px;color:var(--green);">${t.icon} ${t.titre.split('(')[0].trim().substring(0,35)}</span>`).join('')}
+        ${reco.slice(0,3).map(t=>`<span style="font-size:11px;padding:3px 10px;background:rgba(255,215,64,0.08);border:1px solid rgba(255,215,64,0.2);border-radius:100px;color:#FFD740;">${t.icon} ${t.titre.split('(')[0].trim().substring(0,35)}</span>`).join('')}
+      </div>
+
+      <!-- Note -->
+      <div style="font-size:10px;color:var(--muted);line-height:1.6;padding-top:10px;border-top:1px solid var(--border);">
+        Gain calculé via formule synergie 3CL-2021 : G_A + G_B − (0.15 × G_A × G_B)/100. Zone ${zone} (×${coeff}). 
+        Aides : MaPrimeRénov' + CEE + éco-PTZ + TVA 5.5%. Valeurs indicatives.
+      </div>
     </div>
   `;
 }
@@ -2214,7 +2448,7 @@ function renderScenario(travaux,classeActuelle,prefix=''){
 
 const SAUT_TRAVAUX=[
   {icon:'🏠',label:'Isolation combles perdus',gain:2,cout:2000,cond:e=>['Non isolés','Non détecté'].includes(e.combles)},
-  {icon:'🔥',label:'PAC air/eau',gain:3,cout:13000,cond:e=>['Fioul','Gaz ancien','Électrique'].includes(e.ch)},
+  {icon:'🔥',label:'PAC air/eau',gain:3,cout:13000,cond:e=>['Fioul','Gaz ancien','Gaz condensation','Électrique'].includes(e.ch)},
   {icon:'🧱',label:'ITE murs extérieurs',gain:2,cout:15000,cond:e=>['Non isolés','ITI'].includes(e.murs)},
   {icon:'💨',label:'VMC double flux',gain:1,cout:4500,cond:e=>e.vmc!=='VMC double flux'},
   {icon:'💧',label:'Chauffe-eau thermodynamique',gain:1,cout:2500,cond:e=>e.ecs==='Électrique'},
@@ -2226,22 +2460,93 @@ function renderSauts(classe,equip,prefix=''){
   const idx=ORDER.indexOf(classe);
   const container=document.getElementById(prefix+'sautsContainer');
   if(!container)return;
-  if(idx<=0){container.innerHTML='<div style="text-align:center;padding:24px;color:var(--A);font-size:17px;">🏆 Classe A — aucune rénovation requise !</div>';return;}
-  const applicable=SAUT_TRAVAUX.filter(t=>t.cond(equip));
+  if(idx<=0){
+    container.innerHTML='<div style="text-align:center;padding:24px;color:var(--green);font-size:17px;">🏆 Classe A — logement déjà optimal !</div>';
+    return;
+  }
+
+  // Matrice de travaux par cible — chaque saut a ses propres travaux priorisés
+  // Plus le saut est grand, plus on ajoute de travaux
+  const SAUT_MATRICE = {
+    1: [ // +1 classe — petits gestes
+      {icon:'🏠',label:'Isolation combles perdus',        gain:2, cout:3000,  cond:e=>['Non isolés','Non détecté'].includes(e.combles)},
+      {icon:'🌡️',label:'Robinets thermostatiques',        gain:1, cout:600,   cond:e=>e.robinets!=='Présents'},
+      {icon:'💨',label:'VMC simple flux hygroreglable',   gain:1, cout:800,   cond:e=>e.vmc==='Naturelle'||e.vmc==='Non détecté'},
+      {icon:'🪟',label:'Remplacement fenêtres (SV→DV)',   gain:1, cout:5000,  cond:e=>e.fen==='Simple vitrage'},
+      {icon:'💧',label:'Chauffe-eau thermodynamique',     gain:1, cout:2500,  cond:e=>e.ecs==='Électrique'},
+    ],
+    2: [ // +2 classes — bouquet isolation
+      {icon:'🏠',label:'Isolation combles perdus (R≥7)',  gain:2, cout:3000,  cond:e=>['Non isolés','Non détecté'].includes(e.combles)},
+      {icon:'🏚️',label:'Isolation plancher bas',          gain:1, cout:4000,  cond:e=>e.plancher==='Non isolé'},
+      {icon:'💨',label:'VMC simple flux hygroreglable',   gain:1, cout:800,   cond:e=>e.vmc==='Naturelle'||e.vmc==='Non détecté'},
+      {icon:'💧',label:'Chauffe-eau thermodynamique',     gain:1, cout:2500,  cond:e=>e.ecs==='Électrique'},
+      {icon:'🪟',label:'Remplacement fenêtres (SV→DV)',   gain:1, cout:5000,  cond:e=>e.fen==='Simple vitrage'},
+    ],
+    3: [ // +3 classes — isolation + systèmes
+      {icon:'🏠',label:'Isolation combles perdus (R≥8)',  gain:2, cout:3500,  cond:e=>['Non isolés','Non détecté'].includes(e.combles)},
+      {icon:'🧱',label:'Isolation murs ITE',              gain:2, cout:15000, cond:e=>['Non isolés','ITI'].includes(e.murs)},
+      {icon:'🔥',label:'PAC air/eau (rempl. chauffage)',  gain:3, cout:13000, cond:e=>['Fioul','Gaz ancien','Électrique'].includes(e.ch)},
+      {icon:'💨',label:'VMC double flux',                 gain:1, cout:4000,  cond:e=>e.vmc!=='VMC double flux'},
+      {icon:'🏚️',label:'Isolation plancher bas',          gain:1, cout:4000,  cond:e=>e.plancher==='Non isolé'},
+    ],
+    4: [ // +4 classes — rénovation globale
+      {icon:'🏠',label:'Isolation combles perdus (R≥9)',  gain:2, cout:3500,  cond:e=>['Non isolés','Non détecté'].includes(e.combles)},
+      {icon:'🧱',label:'Isolation murs ITE (140mm)',      gain:2, cout:16000, cond:e=>['Non isolés','ITI'].includes(e.murs)},
+      {icon:'🔥',label:'PAC air/eau haute performance',   gain:3, cout:14000, cond:e=>['Fioul','Gaz ancien','Électrique','Bois/granulés'].includes(e.ch)||e.ch==='Non détecté'},
+      {icon:'💨',label:'VMC double flux',                 gain:1, cout:4000,  cond:e=>e.vmc!=='VMC double flux'},
+      {icon:'🏚️',label:'Isolation plancher bas',          gain:1, cout:4000,  cond:e=>e.plancher==='Non isolé'},
+      {icon:'💧',label:'Chauffe-eau thermodynamique',     gain:1, cout:2500,  cond:e=>e.ecs!=='Thermodynamique'&&e.ecs!=='Solaire'},
+    ],
+    5: [ // +5 classes — passoire → très performant
+      {icon:'🏠',label:'Isolation combles perdus (R≥9)',  gain:2, cout:3500,  cond:e=>true},
+      {icon:'🧱',label:'Isolation murs ITE (160mm)',      gain:2, cout:18000, cond:e=>true},
+      {icon:'🔥',label:'PAC air/eau (COP ≥ 4.0)',        gain:3, cout:14000, cond:e=>true},
+      {icon:'💨',label:'VMC double flux',                 gain:1, cout:4000,  cond:e=>true},
+      {icon:'🏚️',label:'Isolation plancher bas',          gain:1, cout:4000,  cond:e=>true},
+      {icon:'💧',label:'Chauffe-eau thermodynamique',     gain:1, cout:2500,  cond:e=>true},
+    ],
+    6: [ // +6 classes — G→A rénovation totale
+      {icon:'🏠',label:'Isolation combles perdus (R≥9)',  gain:2, cout:3500,  cond:e=>true},
+      {icon:'🧱',label:'Isolation murs ITE (160mm)',      gain:2, cout:20000, cond:e=>true},
+      {icon:'🔥',label:'PAC air/eau + PAC air/air appt', gain:3, cout:14000, cond:e=>true},
+      {icon:'💨',label:'VMC double flux',                 gain:1, cout:4000,  cond:e=>true},
+      {icon:'🏚️',label:'Isolation plancher bas',          gain:1, cout:4000,  cond:e=>true},
+      {icon:'💧',label:'Chauffe-eau thermodynamique',     gain:1, cout:2500,  cond:e=>true},
+      {icon:'☀️',label:'Panneaux solaires (3–6 kWc)',     gain:1, cout:9000,  cond:e=>true},
+    ],
+  };
+
   let html='';
   for(let target=idx-1;target>=0;target--){
-    const needed=idx-target;
-    let gainAcc=0,cout=0,sel=[];
-    for(const w of applicable){sel.push(w);gainAcc+=w.gain;cout+=w.cout;if(gainAcc>=needed*2.5)break;}
+    const needed = idx - target;
+    const matrice = SAUT_MATRICE[Math.min(needed, 6)] || SAUT_MATRICE[6];
+    // Filtrer selon équipements du logement
+    const travaux = matrice.filter(t=>t.cond(equip));
+    // Sélectionner juste assez de travaux pour ce saut
+    let gainAcc=0, coutTotal=0, sel=[];
+    for(const w of travaux){
+      sel.push(w);
+      gainAcc += w.gain;
+      coutTotal += w.cout;
+      // Ajouter travaux jusqu'à gain suffisant — seuil progressif
+      if(gainAcc >= needed * 1.8 && sel.length >= needed) break;
+    }
+    const classeTarget = ORDER[target];
     html+=`<div class="saut-card">
       <div class="saut-head">
         <div class="cls-box" style="background:${COLORS[classe]}">${classe}</div>
         <div class="saut-arrow">→</div>
-        <div class="cls-box" style="background:${COLORS[ORDER[target]]}">${ORDER[target]}</div>
+        <div class="cls-box" style="background:${COLORS[classeTarget]}">${classeTarget}</div>
         <div style="font-size:12px;color:var(--muted)">+${needed} classe(s)</div>
-        <div class="saut-cost">~${cout.toLocaleString('fr-FR')} €</div>
+        <div class="saut-cost">~${coutTotal.toLocaleString('fr-FR')} €</div>
       </div>
-      <div class="saut-body">${sel.map(w=>`<div class="saut-line"><span>${w.icon}</span><span>${w.label}</span><span class="gain-tag">+${w.gain} cls</span></div>`).join('')}</div>
+      <div class="saut-body">${sel.map(w=>`
+        <div class="saut-line">
+          <span>${w.icon}</span>
+          <span>${w.label}</span>
+          <span class="gain-tag">+${w.gain} cls</span>
+        </div>`).join('')}
+      </div>
     </div>`;
   }
   container.innerHTML=html;
@@ -2281,9 +2586,94 @@ function renderNiveau(niv,badgeId='niveauBadge',methodeId='niveauMethode',equips
   const badge=document.getElementById(badgeId);
   if(badge){badge.className='niveau-badge '+niv.cssClass;badge.innerHTML=`<span>${niv.etoiles}</span> ${niv.niveau}`;}
   const meth=document.getElementById(methodeId);
-  if(meth)meth.innerHTML=`<div style="font-weight:700;margin-bottom:4px;">${niv.urgence}</div><strong>Méthode :</strong> Croisement 3CL-2021 + Th-CE-Ex<br>${niv.description}`;
+  if(meth)meth.innerHTML=`<div style="font-weight:700;margin-bottom:4px;">${niv.urgence}</div><strong>Méthode :</strong> Calcul 3CL-2021 (Arrêté du 31 mars 2021)<br>${niv.description}`;
   const eq=document.getElementById(equipsId);
   if(eq)eq.innerHTML=niv.equipsDetectes.map(e=>`<span class="chip">✓ ${e}</span>`).join('');
+}
+
+/* ══════════════════════════════════════════════════════
+   EXTRACTION IA — Claude API
+══════════════════════════════════════════════════════ */
+async function extraireAvecIA(texteVT){
+  const PROMPT_SYSTEME = `Tu es un expert en diagnostic énergétique de logements (DPE, 3CL-2021).
+Tu reçois le texte brut d'une Visite Technique (VT) de logement individuel.
+Tu dois extraire TOUTES les informations disponibles et retourner UNIQUEMENT un objet JSON valide, sans markdown, sans commentaires, sans texte avant ou après.
+
+Règles strictes :
+- Si une info est absente ou ambiguë, utilise null
+- Pour les champs à valeurs fixes, utilise EXACTEMENT les valeurs listées
+- Ne jamais inventer une valeur
+
+Format JSON attendu :
+{
+  "beneficiaire": {
+    "nom": "string | null",
+    "prenom": "string | null",
+    "adresse": "string | null",
+    "cp": "string | null",
+    "ville": "string | null",
+    "surface": number | null,
+    "typeBien": "Maison individuelle" | "Appartement" | "Immeuble" | null,
+    "anneeConstruction": number | null
+  },
+  "equipements": {
+    "chauffage": "PAC" | "Gaz condensation" | "Gaz ancien" | "Électrique" | "Fioul" | "Bois/granulés" | "Non détecté",
+    "ecs": "Thermodynamique" | "Solaire" | "Électrique" | "Gaz" | "Non détecté",
+    "vmc": "VMC double flux" | "VMC simple flux" | "Naturelle" | "Non détecté",
+    "murs": "ITE" | "ITI" | "Isolés" | "Non isolés" | "Non détecté",
+    "combles": "Très bien isolés" | "Isolés" | "Non isolés" | "Non détecté",
+    "plancher": "Isolé" | "Non isolé" | "Non détecté",
+    "fenetres": "Triple vitrage" | "Double vitrage récent" | "Double vitrage ancien" | "Simple vitrage" | "Non détecté",
+    "volets": "Volets roulants" | "Volets battants" | "Aucun" | "Non détecté",
+    "robinets": "Présents" | "Absents" | "Non détecté",
+    "chauffageMixte": boolean
+  },
+  "numeriques": {
+    "ep": number | null,
+    "ges": number | null,
+    "classeDirecte": "A"|"B"|"C"|"D"|"E"|"F"|"G" | null
+  },
+  "confiance": {
+    "score": number,
+    "notes": "string"
+  }
+}
+
+Pour "confiance.score" : 0 à 100. 100 = toutes les données clairement présentes. Moins de données détectées = score plus bas.
+Pour "confiance.notes" : explique en 1-2 phrases ce qui était clair, ambigu ou manquant.
+
+Exemples de mapping :
+- "Chaudière gaz à condensation" → chauffage: "Gaz condensation"
+- "Radiateurs électriques" → chauffage: "Électrique"
+- "ECS intégré à la chaudière" → ecs: "Gaz"
+- "Ballon électrique" → ecs: "Électrique"
+- "VMC simple flux autoréglable" → vmc: "VMC simple flux"
+- "Ventilation : NON" → vmc: "Naturelle"
+- Murs non isolés (épaisseur 300mm brique sans isolation) → murs: "Non isolés"
+- Combles perdus avec isolation 30cm → combles: "Très bien isolés"
+- Combles perdus isolés il y a plusieurs années → combles: "Isolés"
+- Double vitrage +10 ans → fenetres: "Double vitrage ancien"
+- Double vitrage récent (<10 ans) → fenetres: "Double vitrage récent"
+- "Surface habitable [m²] 74.23" → surface: 74.23
+- "TOTAL 76.28" (tableau surfaces) → surface: 76.28`;
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      system: PROMPT_SYSTEME,
+      messages: [{ role: 'user', content: `Voici le texte brut de la visite technique :\n\n${texteVT.substring(0, 12000)}` }]
+    })
+  });
+
+  if(!response.ok) throw new Error('Claude API error: ' + response.status);
+  const data = await response.json();
+  const raw = data.content.map(b => b.text || '').join('').trim();
+  // Nettoyer les éventuels backticks markdown
+  const clean = raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+  return JSON.parse(clean);
 }
 
 /* ══════════════════════════════════════════════════════
@@ -2295,7 +2685,7 @@ async function analyserDocument(){
   const btn=document.getElementById('btnAnalyser');
   const sp=document.getElementById('loadingSpinner');
   const bt=document.getElementById('btnText');
-  btn.disabled=true;sp.classList.remove('hidden');bt.textContent='Analyse en cours…';
+  btn.disabled=true;sp.classList.remove('hidden');bt.textContent='🤖 Analyse IA en cours…';
   try{
     let fullText='';
     if(currentFile.type.startsWith('image/')){fullText='image uniquement';}
@@ -2308,7 +2698,30 @@ async function analyserDocument(){
         fullText+=c.items.map(x=>x.str).join(' ')+'\n';
       }
     }
-    beneficiaireData=extraireBeneficiaire(fullText);
+
+    // ── Extraction IA Claude ──
+    let iaResult = null;
+    let iaConfiance = null;
+    bt.textContent='🤖 Claude analyse la VT…';
+    try {
+      iaResult = await extraireAvecIA(fullText);
+      iaConfiance = iaResult.confiance || {score: 50, notes: ''};
+    } catch(iaErr) {
+      console.warn('Claude API indisponible, fallback regex:', iaErr);
+    }
+
+    // ── Bénéficiaire ──
+    let benefIA = iaResult?.beneficiaire || {};
+    beneficiaireData = extraireBeneficiaire(fullText); // fallback regex
+    // Fusion : priorité IA si valeur présente
+    if(benefIA.nom)      beneficiaireData.nom      = benefIA.nom;
+    if(benefIA.prenom)   beneficiaireData.prenom    = benefIA.prenom;
+    if(benefIA.adresse)  beneficiaireData.adresse   = benefIA.adresse;
+    if(benefIA.cp)       beneficiaireData.cp        = benefIA.cp;
+    if(benefIA.ville)    beneficiaireData.ville     = benefIA.ville;
+    if(benefIA.surface)  beneficiaireData.surface   = benefIA.surface + ' m²';
+    if(benefIA.typeBien) beneficiaireData.typeBien  = benefIA.typeBien;
+
     document.getElementById('beneGrid').innerHTML=[
       {k:'Nom',v:beneficiaireData.nom||'—'},{k:'Prénom',v:beneficiaireData.prenom||'—'},
       {k:'Adresse',v:beneficiaireData.adresse||'—'},{k:'CP',v:beneficiaireData.cp||'—'},
@@ -2317,17 +2730,76 @@ async function analyserDocument(){
     ].map(f=>`<div class="bene-item"><div class="bene-key">${f.k}</div><div class="bene-val">${f.v}</div></div>`).join('');
     document.getElementById('beneficiaireCard').classList.remove('hidden');
 
-    const num=extraireNumeriques(fullText);
-    equip=detecterEquipements(fullText);
-    const surfaceM2=beneficiaireData.surface?parseFloat(beneficiaireData.surface):null;
+    // ── Numériques + équipements : IA en priorité, regex en fallback ──
+    const num = extraireNumeriques(fullText);
+    if(iaResult?.numeriques){
+      if(iaResult.numeriques.ep   !== null) num.ep           = iaResult.numeriques.ep;
+      if(iaResult.numeriques.ges  !== null) num.ges          = iaResult.numeriques.ges;
+      if(iaResult.numeriques.classeDirecte) num.classeDirecte = iaResult.numeriques.classeDirecte;
+    }
+    if(benefIA.anneeConstruction) num.annee = benefIA.anneeConstruction;
+
+    equip = detecterEquipements(fullText); // fallback regex
+    if(iaResult?.equipements){
+      const ie = iaResult.equipements;
+      // Remplacer uniquement si l'IA a une valeur non-"Non détecté"
+      const ov = (iaVal, fallback) => (iaVal && iaVal !== 'Non détecté') ? iaVal : fallback;
+      equip.ch            = ov(ie.chauffage,   equip.ch);
+      equip.ecs           = ov(ie.ecs,         equip.ecs);
+      equip.vmc           = ov(ie.vmc,         equip.vmc);
+      equip.murs          = ov(ie.murs,        equip.murs);
+      equip.combles       = ov(ie.combles,     equip.combles);
+      equip.plancher      = ov(ie.plancher,    equip.plancher);
+      equip.fen           = ov(ie.fenetres,    equip.fen);
+      equip.volets        = ov(ie.volets,      equip.volets);
+      equip.robinets      = ov(ie.robinets,    equip.robinets);
+      if(ie.chauffageMixte !== undefined) equip.chauffageMixte = ie.chauffageMixte;
+    }
+
+    const surfaceM2 = benefIA.surface || (beneficiaireData.surface ? parseFloat(beneficiaireData.surface) : null);
     const{classe,ep,ges,score,methode,detail3CL,detailThCEEx,ep3CL,epThCEEx,ges3CL,gesThCEEx}=determinerClasse(num,equip,surfaceM2);
     analysisResult={classe,ep,ges,score,methode,detail3CL,detailThCEEx,ep3CL,epThCEEx,ges3CL,gesThCEEx,num,equip};
 
     const niv=calculerNiveau(num,equip,classe);
     document.getElementById('classeLetter').textContent=classe;
     document.getElementById('classeLetter').className='classe-letter cl-'+classe;
-    document.getElementById('scoreNum').textContent=score+' / 100';
-    document.getElementById('methodeLabel').textContent='Méthode : '+methode;
+
+    document.getElementById('methodeLabel').textContent='Méthode : '+methode+(iaResult?' — Extraction IA ✓':' — Extraction regex');
+
+    // ── Badge confiance IA + qualité données ──
+    const scoreEl = document.getElementById('scoreNum');
+    if(scoreEl){
+      const confScore = iaConfiance?.score ?? null;
+      const confBadge = confScore !== null ? (() => {
+        const col = confScore>=80?'#00C853':confScore>=50?'#FFD740':'#FF6D00';
+        const lbl = confScore>=80?'Extraction IA — Haute fiabilité':confScore>=50?'Extraction IA — Fiabilité correcte':'Extraction IA — Données partielles';
+        const ico = confScore>=80?'🤖✅':confScore>=50?'🤖📐':'🤖⚠️';
+        return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;background:rgba(${col==='#00C853'?'0,200,83':col==='#FFD740'?'255,215,64':'255,109,0'},0.10);border:1px solid ${col}40;margin-top:8px;">
+          <span style="font-size:18px;">${ico}</span>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:${col};font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:0.05em;">${lbl} (${confScore}/100)</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${iaConfiance?.notes||''}</div>
+          </div>
+        </div>`;
+      })() : `<div style="padding:8px 12px;border-radius:8px;background:rgba(255,109,0,0.08);border:1px solid rgba(255,109,0,0.2);font-size:11px;color:#FF6D00;margin-top:8px;">⚠️ Claude API indisponible — extraction par regex (moins fiable)</div>`;
+
+      const qualite = getQualiteDonnees(num, equip);
+      scoreEl.innerHTML = confBadge + `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;background:rgba(${qualite.couleur==='#00C853'?'0,200,83':qualite.couleur==='#FFD740'?'255,215,64':'255,109,0'},0.10);border:1px solid ${qualite.couleur}40;margin-top:8px;">
+          <span style="font-size:18px;">${qualite.icone}</span>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:${qualite.couleur};font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:0.05em;">${qualite.niveau}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${qualite.detail}</div>
+            ${qualite.action?`<div style="font-size:11px;color:#FF6D00;margin-top:3px;">→ ${qualite.action}</div>`:''}
+          </div>
+        </div>
+        <div style="margin-top:10px;padding:8px 12px;background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.15);border-radius:6px;font-size:11px;color:var(--muted);line-height:1.7;">
+          ⚖️ <em>Étude réalisée selon la méthode officielle <strong style="color:var(--text);">3CL-2021</strong> (Arrêté du 31/03/2021).
+          Cette analyse constitue un outil d'aide à la décision pour la rénovation énergétique.
+          Elle ne se substitue pas à un DPE officiel établi par un diagnostiqueur certifié.</em>
+        </div>`;
+    }
+
     renderDPE(classe,'dpeMeter');
     renderNiveau(niv,'niveauBadge','niveauMethode','niveauEquipements');
 
@@ -2338,24 +2810,24 @@ async function analyserDocument(){
       if(epVal!==null)document.getElementById('numEP').textContent=epVal;
       if(gesVal!==null)document.getElementById('numGES').textContent=gesVal;
     }
-    if(detail3CL||detailThCEEx){
+    if(detail3CL){
       document.getElementById('detail3CLPanel').classList.remove('hidden');
-      document.getElementById('d3cl_ep3CL').textContent=(ep3CL||'—')+' kWh EP/m²/an';
-      document.getElementById('d3cl_ges3CL').textContent=(ges3CL||'—')+' kg CO₂/m²/an';
-      document.getElementById('d3cl_epThCEEx').textContent=(epThCEEx||'—')+' kWh EP/m²/an';
-      document.getElementById('d3cl_gesThCEEx').textContent=(gesThCEEx||'—')+' kg CO₂/m²/an';
-      document.getElementById('d3cl_epCroise').textContent=(ep||'—')+' kWh EP/m²/an';
-      document.getElementById('d3cl_gesCroise').textContent=(ges||'—')+' kg CO₂/m²/an';
-      if(detailThCEEx){
-        document.getElementById('d3cl_surface').textContent=detailThCEEx.surface+' m² / '+detailThCEEx.nOcc+' occ.';
-        document.getElementById('d3cl_Ubat').textContent=detailThCEEx.Bbio+' kWh/m²/an';
-        document.getElementById('d3cl_Bch').textContent=detailThCEEx.Bch_net+' kWh/an';
-        document.getElementById('d3cl_psi').textContent=detailThCEEx.psi+' W/m.K';
-        document.getElementById('d3cl_n50').textContent=detailThCEEx.n50+' vol/h à 50Pa';
-        document.getElementById('d3cl_eta').textContent=detailThCEEx.eta_sais;
-        document.getElementById('d3cl_Ep_ch').textContent=detailThCEEx.Ep_ch+' kWh EP/m²/an';
-        document.getElementById('d3cl_Ep_ecs').textContent=detailThCEEx.Ep_ecs+' kWh EP/m²/an';
-      }
+      const d = detail3CL;
+      const setEl = (id, val) => { const e=document.getElementById(id); if(e) e.textContent=val; };
+      setEl('d3cl_ep3CL',    (ep3CL||'—')+' kWh EP/m²/an');
+      setEl('d3cl_ges3CL',   (ges3CL||'—')+' kg CO₂/m²/an');
+      setEl('d3cl_epCroise', (ep||'—')+' kWh EP/m²/an');
+      setEl('d3cl_gesCroise',(ges||'—')+' kg CO₂/m²/an');
+      const surf = surfaceM2 || (beneficiaireData&&beneficiaireData.surface?parseFloat(beneficiaireData.surface):100);
+      const nOcc = Math.max(1,Math.round(surf/30));
+      setEl('d3cl_surface', surf+' m² / '+nOcc+' occ. (estimé)');
+      setEl('d3cl_Ubat',    d.Ubat ? d.Ubat+' W/m².K' : (ep3CL?Math.round(ep3CL/140*100)/100+' W/m².K (est.)':'—'));
+      setEl('d3cl_Bch',     d.Bch_net ? d.Bch_net+' kWh/an' : (ep3CL?Math.round(ep3CL*surf*0.7)+' kWh/an (est.)':'—'));
+      setEl('d3cl_psi',     d.psi ? d.psi+' W/m.K' : '0.35 W/m.K (défaut)');
+      setEl('d3cl_n50',     d.n50 ? d.n50+' vol/h à 50Pa' : '1.2 vol/h (défaut)');
+      setEl('d3cl_eta',     d.eta_sais || (equip&&equip.ch==='Gaz condensation'?'0.92':equip&&equip.ch==='PAC'?'2.80':'0.80'));
+      setEl('d3cl_Ep_ch',   d.Ep_ch ? d.Ep_ch+' kWh EP/m²/an' : (ep3CL?Math.round(ep3CL*0.75)+' kWh EP/m²/an (est.)':'—'));
+      setEl('d3cl_Ep_ecs',  d.Ep_ecs ? d.Ep_ecs+' kWh EP/m²/an' : (ep3CL?Math.round(ep3CL*0.25)+' kWh EP/m²/an (est.)':'—'));
     }
     renderDet(equip,'detGrid');
     detecterTypeBien();
@@ -2365,17 +2837,15 @@ async function analyserDocument(){
     document.getElementById('scenarioCard').classList.remove('hidden');
     renderSauts(classe,equip,'');
     document.getElementById('sautsCard').classList.remove('hidden');
+    afficherOrientationDossier(classe, equip, ep, beneficiaireData);
     document.getElementById('synthesesBtnWrap').classList.remove('hidden');
+    const btnAct = document.getElementById('btnActualiser');
+    if(btnAct) btnAct.classList.remove('hidden');
     saveAnalyse({nom:(beneficiaireData.nom||'Inconnu')+' '+(beneficiaireData.prenom||''),classe,ep,ges});
-    // Firebase
     saveVT_Firebase({nom:(beneficiaireData.nom||'Inconnu')+' '+(beneficiaireData.prenom||''),classe,ep,ges,methode,adresse:beneficiaireData.adresse||'',ville:beneficiaireData.ville||'',surface:beneficiaireData.surface||'',typeBien:beneficiaireData.typeBien||''});
   }catch(err){console.error(err);alert('Erreur : '+err.message);}
   finally{btn.disabled=false;sp.classList.add('hidden');bt.textContent='🔄 Relancer l\'analyse';}
 }
-
-/* ══════════════════════════════════════════════════════
-   ANALYSE MANUELLE
-══════════════════════════════════════════════════════ */
 function analyserManuel(){
   const e={
     ch:document.getElementById('m_chauffage').value,
@@ -2395,7 +2865,20 @@ function analyserManuel(){
   const niv=calculerNiveau(num,e,classe);
   document.getElementById('m_classeLetter').textContent=classe;
   document.getElementById('m_classeLetter').className='classe-letter cl-'+classe;
-  document.getElementById('m_scoreNum').textContent=score+' / 100';
+  const qualiteM = getQualiteDonnees(num, e);
+  const scoreElM = document.getElementById('m_scoreNum');
+  if(scoreElM) scoreElM.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;background:rgba(${qualiteM.couleur==='#00C853'?'0,200,83':qualiteM.couleur==='#FFD740'?'255,215,64':'255,109,0'},0.10);border:1px solid ${qualiteM.couleur}40;margin-top:8px;">
+      <span style="font-size:18px;">${qualiteM.icone}</span>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:${qualiteM.couleur};font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:0.05em;">${qualiteM.niveau}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">${qualiteM.detail}</div>
+        ${qualiteM.action?`<div style="font-size:11px;color:#FF6D00;margin-top:3px;">→ ${qualiteM.action}</div>`:''}
+      </div>
+    </div>
+    <div style="margin-top:10px;padding:8px 12px;background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.15);border-radius:6px;font-size:11px;color:var(--muted);line-height:1.7;">
+      ⚖️ <em>Analyse réalisée selon la méthode <strong style="color:var(--text);">3CL-2021</strong> (Arrêté du 31/03/2021). Résultats indicatifs — un DPE certifié reste nécessaire.</em>
+    </div>`;
   document.getElementById('m_numEP').textContent=ep||'—';
   document.getElementById('m_numGES').textContent=ges||'—';
   renderDPE(classe,'m_dpeMeter');
@@ -2801,7 +3284,7 @@ const MPR_2026 = {
     unite: '€/logement',
   },
   pac_geo: {
-    nom: "PAC géothermique ou solarothermique",
+    nom: "PAC air/eau (dont PAC hybrides)",
     plafond_depense: 18000,
     tres_modeste: 11000, modeste: 9000, intermediaire: 6000, classique: 0,
     unite: '€/logement',
@@ -3566,6 +4049,154 @@ function exporterDevisDepuisManuel(){
   updateDocPreview();
 }
 
+function afficherOrientationDossier(classe, equip, ep, benef){
+  const card    = document.getElementById('orientationCard');
+  const content = document.getElementById('orientationContent');
+  if(!card || !content) return;
+
+  const typeBien  = (benef&&benef.typeBien)||equip.typeBien||'maison';
+  const estMaison = !typeBien.toLowerCase().includes('appartement');
+  const fiche174  = estMaison ? 'BAR-TH-174' : 'BAR-TH-175';
+  const nomFiche  = estMaison ? "Maison individuelle" : "Appartement";
+  const COLORS    = {A:'#00C853',B:'#69F0AE',C:'#FFD740',D:'#FFAB40',E:'#FF6D00',F:'#FF1744',G:'#B71C1C'};
+
+  // ── Classe E, F, G → Rénovation d'ampleur MPR ──
+  if(['E','F','G'].includes(classe)){
+    const plafond = classe==='G'?40000:classe==='F'?40000:30000;
+    const taux_tm = classe==='G'||classe==='F'?0.80:0.80;
+    const classeVisee = classe==='G'?'D':classe==='F'?'C':'C';
+    content.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+        <div style="font-size:36px;">🏗️</div>
+        <div>
+          <div style="font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:0.12em;font-family:'Space Mono',monospace;font-weight:700;">Orientation recommandée</div>
+          <div style="font-size:18px;font-weight:700;margin-top:2px;">Dossier Rénovation d'Ampleur — ${fiche174}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">${nomFiche} · Classe initiale <span style="color:${COLORS[classe]};font-weight:700;">${classe}</span></div>
+        </div>
+      </div>
+
+      <div style="background:rgba(255,23,68,0.08);border:1px solid rgba(255,23,68,0.2);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;">
+        ⚠️ <strong>Logement classé ${classe}</strong> — Éligible à la <strong>Rénovation d'Ampleur</strong> avec MaPrimeRénov' bonifiée. 
+        Objectif minimal : atteindre la classe <strong style="color:${COLORS[classeVisee]};">${classeVisee}</strong> (gain ≥ 2 classes).
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:14px;">
+        <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Fiche CEE</div>
+          <div style="font-size:16px;font-weight:700;color:var(--green);font-family:'Space Mono',monospace;">${fiche174}</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Plafond travaux</div>
+          <div style="font-size:16px;font-weight:700;color:#FFD740;">${plafond.toLocaleString('fr-FR')} €</div>
+        </div>
+        <div style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:10px;color:#60A5FA;text-transform:uppercase;">MPR Très modeste</div>
+          <div style="font-size:16px;font-weight:700;color:#60A5FA;">${Math.round(taux_tm*100)}% du HT</div>
+          <div style="font-size:10px;color:var(--muted);">max ${Math.round(plafond*taux_tm).toLocaleString('fr-FR')} €</div>
+        </div>
+        <div style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:10px;color:#60A5FA;text-transform:uppercase;">MPR Modeste</div>
+          <div style="font-size:16px;font-weight:700;color:#60A5FA;">60% du HT</div>
+          <div style="font-size:10px;color:var(--muted);">max ${Math.round(plafond*0.60).toLocaleString('fr-FR')} €</div>
+        </div>
+        <div style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:10px;color:#60A5FA;text-transform:uppercase;">MPR Intermédiaire</div>
+          <div style="font-size:16px;font-weight:700;color:#60A5FA;">45% du HT</div>
+          <div style="font-size:10px;color:var(--muted);">max ${Math.round(plafond*0.45).toLocaleString('fr-FR')} €</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">MPR Supérieur</div>
+          <div style="font-size:16px;font-weight:700;color:var(--muted);">10% du HT</div>
+          <div style="font-size:10px;color:var(--muted);">max ${Math.round(plafond*0.10).toLocaleString('fr-FR')} €</div>
+        </div>
+      </div>
+
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;padding:8px 12px;background:var(--bg3);border-radius:6px;line-height:1.7;">
+        📋 <strong style="color:var(--text);">Conditions d'éligibilité :</strong> Gain minimum de 2 classes DPE · Audit énergétique obligatoire · 
+        Travaux réalisés par professionnels RGE · Accompagnement MonAccompagnateurRénov' obligatoire pour MPR.
+      </div>
+
+      <button class="btn" onclick="switchTab('devis')" style="width:100%;justify-content:center;">
+        📁 Créer le dossier Rénovation d'Ampleur
+      </button>`;
+
+  // ── Classe C ou D → BAR-TH-174/175 CEE + CUMAC ──
+  } else if(['C','D'].includes(classe)){
+    const epCible = classe==='D' ? 145 : 90; // cible classe C ou B
+    const classeVisee = classe==='D' ? 'C' : 'B';
+    const cumacEst = estMaison
+      ? (classe==='D'?285000:228000)
+      : (classe==='D'?190000:152000);
+    const ceeEst = Math.round(cumacEst * 7 / 1000); // 7€/MWhc profil modeste
+
+    content.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+        <div style="font-size:36px;">⚡</div>
+        <div>
+          <div style="font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:0.12em;font-family:'Space Mono',monospace;font-weight:700;">Orientation recommandée</div>
+          <div style="font-size:18px;font-weight:700;margin-top:2px;">Dossier ${fiche174} — CEE & CUMAC</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">${nomFiche} · Classe initiale <span style="color:${COLORS[classe]};font-weight:700;">${classe}</span> → objectif <span style="color:${COLORS[classeVisee]};font-weight:700;">${classeVisee}</span></div>
+        </div>
+      </div>
+
+      <div style="background:rgba(255,215,64,0.08);border:1px solid rgba(255,215,64,0.2);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;">
+        💡 <strong>Logement classé ${classe}</strong> — Éligible aux <strong>Certificats d'Économie d'Énergie (CEE)</strong> via la fiche 
+        <strong style="color:var(--green);">${fiche174}</strong>. Objectif : passer en classe <strong style="color:${COLORS[classeVisee]};">${classeVisee}</strong> avec un bouquet de travaux ciblé.
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:14px;">
+        <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Fiche CEE</div>
+          <div style="font-size:16px;font-weight:700;color:var(--green);font-family:'Space Mono',monospace;">${fiche174}</div>
+        </div>
+        <div style="background:rgba(255,215,64,0.08);border:1px solid rgba(255,215,64,0.2);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:10px;color:#FFD740;text-transform:uppercase;">CUMAC estimé</div>
+          <div style="font-size:16px;font-weight:700;color:#FFD740;">${cumacEst.toLocaleString('fr-FR')}</div>
+          <div style="font-size:10px;color:var(--muted);">kWhc</div>
+        </div>
+        <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:10px;color:var(--green);text-transform:uppercase;">CEE estimé</div>
+          <div style="font-size:16px;font-weight:700;color:var(--green);">~${ceeEst.toLocaleString('fr-FR')} €</div>
+          <div style="font-size:10px;color:var(--muted);">7 €/MWhc (modeste)</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">EP actuel</div>
+          <div style="font-size:16px;font-weight:700;">${ep||'—'}</div>
+          <div style="font-size:10px;color:var(--muted);">kWh EP/m²/an</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">EP cible</div>
+          <div style="font-size:16px;font-weight:700;color:${COLORS[classeVisee]};">&lt; ${epCible}</div>
+          <div style="font-size:10px;color:var(--muted);">kWh EP/m²/an → Classe ${classeVisee}</div>
+        </div>
+      </div>
+
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;padding:8px 12px;background:var(--bg3);border-radius:6px;line-height:1.7;">
+        📋 <strong style="color:var(--text);">Travaux éligibles ${fiche174} :</strong> Isolation combles (BAR-TH-101) · Isolation murs (BAR-TH-102) · 
+        Isolation plancher (BAR-TH-103) · VMC double flux (BAR-TH-125) · PAC air/eau (BAR-TH-129). 
+        Gain minimum requis : <strong>2 classes DPE</strong>. Travaux RGE obligatoires.
+      </div>
+
+      <button class="btn" onclick="switchTab('devis')" style="width:100%;justify-content:center;">
+        📁 Créer le dossier ${fiche174}
+      </button>`;
+
+  // ── Classe A ou B → Pas d'action requise ──
+  } else {
+    content.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;padding:16px;">
+        <div style="font-size:36px;">🏆</div>
+        <div>
+          <div style="font-size:16px;font-weight:700;">Logement performant — Classe <span style="color:${COLORS[classe]};">${classe}</span></div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">Ce logement est déjà performant. Aucune rénovation d'ampleur nécessaire. 
+          Des travaux d'amélioration complémentaires peuvent être envisagés (panneaux solaires, CET...).</div>
+        </div>
+      </div>`;
+  }
+
+  card.classList.remove('hidden');
+}
+
 function genererSynthese(){
   if(!analysisResult){ alert("Veuillez d'abord analyser un document."); return; }
   const r   = analysisResult;
@@ -3731,7 +4362,7 @@ function genererSynthese(){
     </div>
     <div class="doc-title">
       <h1>Synthèse Énergétique</h1>
-      <p>Méthode 3CL-2021 + Th-CE-Ex · ${now}</p>
+      <p>Méthode 3CL-2021 · ${now}</p>
       <p style="color:#10B981;font-weight:600;">Zone climatique : ${zoneLib}</p>
     </div>
   </div>
@@ -3757,7 +4388,11 @@ function genererSynthese(){
       <div class="classe-meta">
         <div class="classe-label">Classe initiale estimée</div>
         <div class="classe-valeur" style="color:${CLASSE_COLOR[cl]||'#888'}">${CLASSE_LABEL[cl]||'—'}</div>
-        <div style="font-size:12px;color:#888;margin-top:6px;">Score : ${r.score||'—'} / 100</div>
+        <div style="font-size:12px;color:#888;margin-top:6px;">
+          ${(r.ep!==null&&r.ges!==null)?'<span style="color:#00C853;font-weight:600;">✅ Données officielles EP + GES extraites du document</span>':
+            r.ep!==null?'<span style="color:#00C853;font-weight:600;">✅ Énergie primaire certifiée extraite du document</span>':
+            '<span style="color:#FFD740;font-weight:600;">📐 Calcul 3CL-2021 sur données équipements</span>'}
+        </div>
       </div>
       <div style="text-align:right;">
         <div style="font-size:11px;color:#888;">Objectif après travaux</div>
@@ -3846,28 +4481,47 @@ function genererSynthese(){
     </div>`).join('')}` : ''}
   </div>
 
-  <!-- 7. SCÉNARIOS BUDGÉTISÉS -->
+  <!-- 7. SCÉNARIO OPTIMAL -->
   <div class="section">
-    <div class="section-title">7 — Scénarios Budgétisés</div>
-    <div class="scenario-grid">
-      <div class="sc-box sc1">
-        <div class="sc-title" style="color:#B8860B;">💰 Scénario 1 — Budget limité</div>
-        <div class="sc-row"><span>Travaux :</span><span style="font-size:11px;">${sc1Travaux.slice(0,2).map(t=>t.titre.split('(')[0].trim().substring(0,30)).join(', ')||'—'}</span></div>
-        <div class="sc-row"><span>Investissement brut :</span><span style="font-weight:700;">${coutMin(sc1Travaux).toLocaleString('fr-FR')} – ${coutMax(sc1Travaux).toLocaleString('fr-FR')} €</span></div>
-        <div class="sc-row"><span>Après aides (~55%) :</span><span style="color:#10B981;font-weight:700;">~${Math.round(coutMin(sc1Travaux)*0.45).toLocaleString('fr-FR')} €</span></div>
-        <div class="sc-row"><span>Gain CEP :</span><span style="font-weight:700;">${g1}%</span></div>
-        <div class="sc-row"><span>Résultat estimé :</span><span style="font-weight:700;color:#10B981;">${cl} → ${epToClasse(ep1)} (~${ep1} kWh/m²/an)</span></div>
+    <div class="section-title">7 — Scénario de Rénovation Optimal</div>
+    <div style="border:2px solid #10B981;border-radius:10px;padding:16px;background:#f0fdf4;">
+      <!-- Saut classe -->
+      <div style="display:flex;align-items:center;gap:20px;margin-bottom:16px;justify-content:center;">
+        <div style="text-align:center;">
+          <div style="font-size:11px;color:#666;text-transform:uppercase;">Classe actuelle</div>
+          <div style="font-size:48px;font-weight:900;color:${CLASSE_COLOR[cl]||'#888'};line-height:1.1;">${cl}</div>
+          <div style="font-size:11px;color:#888;">${epBase} kWh/m²/an</div>
+        </div>
+        <div style="font-size:28px;color:#10B981;">→</div>
+        <div style="text-align:center;">
+          <div style="font-size:11px;color:#666;text-transform:uppercase;">Objectif atteignable</div>
+          <div style="font-size:48px;font-weight:900;color:${CLASSE_COLOR[classeVisee]||'#10B981'};line-height:1.1;">${classeVisee}</div>
+          <div style="font-size:11px;color:#888;">~${epApres} kWh/m²/an</div>
+        </div>
       </div>
-      <div class="sc-box sc2">
-        <div class="sc-title" style="color:#10B981;">🚀 Scénario 2 — Budget confortable</div>
-        <div class="sc-row"><span>Travaux :</span><span style="font-size:11px;">Ensemble des travaux obligatoires</span></div>
-        <div class="sc-row"><span>Investissement brut :</span><span style="font-weight:700;">${coutMin(sc2Travaux).toLocaleString('fr-FR')} – ${coutMax(sc2Travaux).toLocaleString('fr-FR')} €</span></div>
-        <div class="sc-row"><span>Après aides (~55%) :</span><span style="color:#10B981;font-weight:700;">~${Math.round(coutMin(sc2Travaux)*0.45).toLocaleString('fr-FR')} €</span></div>
-        <div class="sc-row"><span>Gain CEP :</span><span style="font-weight:700;">${g2}%</span></div>
-        <div class="sc-row"><span>Résultat estimé :</span><span style="font-weight:700;color:#10B981;">${cl} → ${epToClasse(ep2)} (~${ep2} kWh/m²/an)</span></div>
+      <!-- Chiffres clés -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">
+        <div style="text-align:center;background:#fff;border-radius:8px;padding:10px;">
+          <div style="font-size:10px;color:#888;text-transform:uppercase;">Gain CEP</div>
+          <div style="font-size:20px;font-weight:700;color:#B8860B;">${gainComb}%</div>
+        </div>
+        <div style="text-align:center;background:#fff;border-radius:8px;padding:10px;">
+          <div style="font-size:10px;color:#888;text-transform:uppercase;">Investissement estimé</div>
+          <div style="font-size:16px;font-weight:700;">${coutMin(oblig).toLocaleString('fr-FR')} €</div>
+          <div style="font-size:10px;color:#888;">brut avant aides</div>
+        </div>
+        <div style="text-align:center;background:#fff;border-radius:8px;padding:10px;">
+          <div style="font-size:10px;color:#10B981;text-transform:uppercase;">Après aides (~55%)</div>
+          <div style="font-size:16px;font-weight:700;color:#10B981;">~${Math.round(coutMin(oblig)*0.45).toLocaleString('fr-FR')} €</div>
+          <div style="font-size:10px;color:#888;">reste à charge</div>
+        </div>
+      </div>
+      <!-- Travaux tags -->
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        ${oblig.map(t=>`<span style="font-size:11px;padding:3px 10px;background:#dcfce7;border:1px solid #10B981;border-radius:100px;color:#065f46;">${t.icon} ${t.titre.split('(')[0].trim().substring(0,35)}</span>`).join('')}
       </div>
     </div>
-    <div style="font-size:10px;color:#aaa;">Formule synergie : G_A + G_B − (0.15×G_A×G_B)/100. Source §6.1 Cahier des charges 3CL-2021. Aides : MaPrimeRénov', CEE, éco-PTZ, TVA 5.5%.</div>
+    <div style="margin-top:8px;font-size:10px;color:#aaa;">Formule synergie 3CL-2021 : G_A + G_B − (0.15×G_A×G_B)/100. Aides : MaPrimeRénov' + CEE + éco-PTZ + TVA 5.5%. Valeurs indicatives.</div>
   </div>
 
   <!-- 8. SAUTS DE CLASSES -->
