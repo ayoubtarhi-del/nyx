@@ -590,25 +590,11 @@ body::after{
     <div class="card-title">📎 Charger la visite technique</div>
     <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
       <div style="font-size:44px;margin-bottom:12px;">📄</div>
-      <p style="font-size:17px;font-weight:500;" id="dropText">Glissez-déposez votre PDF ici</p>
+      <p style="font-size:17px;font-weight:500;" id="dropText">Glissez-déposez votre VT ici</p>
       <p style="color:var(--muted);font-size:13px;margin-top:4px;" id="dropSub">Nommez votre fichier : VISITE-TECHNIQUE-NOM-PRÉNOM.pdf</p>
       <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="handleFileSelect(this.files[0])">
     </div>
-    <div style="display:flex;justify-content:center;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:12px;">
-      <div class="form-group" style="min-width:220px;">
-        <label class="form-label">Zone climatique (3CL)</label>
-        <select class="form-select" id="dpe_zone">
-          <option value="">-- Sélectionner votre zone --</option>
-          <option value="H1a">H1a — Nord / Est (très froid) ×1.15</option>
-          <option value="H1b">H1b — Île-de-France ×1.10</option>
-          <option value="H1c">H1c — Bourgogne / Centre-Est ×1.05</option>
-          <option value="H2">H2 — Centre / Ouest ×1.00</option>
-          <option value="H2d">H2d — Pyrénées / Corse ×0.95</option>
-          <option value="H3">H3 — Méditerranée (tempéré) ×0.85</option>
-        </select>
-      </div>
-    </div>
-    <div class="text-center" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+    <div class="text-center" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px;">
       <button class="btn hidden" id="btnAnalyser" onclick="analyserDocument()">
         <span class="spinner hidden" id="loadingSpinner"></span>
         <span id="btnText">🔍 Analyser la visite technique</span>
@@ -636,7 +622,7 @@ body::after{
         <div class="classe-hero">
           <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:8px;font-family:'Space Mono',monospace;">Classe initiale estimée</div>
           <div class="classe-letter" id="classeLetter">?</div>
-          <div id="scoreNum" style="margin-top:10px;"></div>
+          <div id="scoreNum" style="display:none;"></div>
           <div style="font-size:12px;color:#555;margin-top:6px;" id="methodeLabel"></div>
         </div>
         <div class="num-panel hidden" id="numPanel">
@@ -664,15 +650,6 @@ body::after{
             <div style="color:var(--muted);">EP eau chaude :</div><div id="d3cl_Ep_ecs" style="color:var(--green2);font-weight:600;">—</div>
           </div>
           <div style="margin-top:10px;font-size:11px;color:#444;line-height:1.6;">Méthode 3CL-2021 officielle (Arrêté du 31 mars 2021). Valeurs indicatives — un DPE certifié par un diagnostiqueur accrédité reste nécessaire.</div>
-        </div>
-        <!-- Niveau d'analyse -->
-        <div class="niveau-panel">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-            <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;font-family:'Space Mono',monospace;">📊 Niveau d'analyse</span>
-            <div class="niveau-badge" id="niveauBadge">—</div>
-          </div>
-          <div style="font-size:12px;color:#666;line-height:1.6;" id="niveauMethode"></div>
-          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;" id="niveauEquipements"></div>
         </div>
       </div>
       <div class="dpe-meter" id="dpeMeter"></div>
@@ -751,6 +728,12 @@ body::after{
       <div class="form-group"><label class="form-label">Type de bien</label>
         <select class="form-select" id="m_type"><option value="">Sélectionner</option><option>Maison individuelle</option><option>Appartement</option><option>Immeuble</option></select></div>
       <div class="form-group"><label class="form-label">Nombre de niveaux chauffés</label><input class="form-input" id="m_niveaux" type="number" placeholder="2"></div>
+      <div class="form-group"><label class="form-label">Mitoyenneté</label>
+        <select class="form-select" id="m_mitoyennete">
+          <option value="Aucune">Aucune — maison isolée</option>
+          <option value="Un côté">Un côté mitoyen</option>
+          <option value="Deux côtés">Deux côtés mitoyens</option>
+        </select></div>
     </div>
   </div>
 
@@ -781,6 +764,14 @@ body::after{
           <option value="VMC simple flux">VMC simple flux</option>
           <option value="VMC double flux">VMC double flux</option>
         </select></div>
+      <div class="form-group"><label class="form-label">Régulation du chauffage</label>
+        <select class="form-select" id="m_regulation">
+          <option value="Non détecté">Non renseigné</option>
+          <option value="Régulation par émetteurs">Régulation par émetteurs (robinets thermostatiques)</option>
+          <option value="Régulation globale">Régulation globale (thermostat programmable)</option>
+          <option value="Régulation complète">Régulation complète (émetteurs + thermostat)</option>
+          <option value="Aucune régulation">Aucune régulation</option>
+        </select></div>
     </div>
   </div>
 
@@ -791,7 +782,8 @@ body::after{
         <select class="form-select" id="m_murs">
           <option value="Non détecté">Non renseigné</option>
           <option value="ITE">ITE — Isolation par l'extérieur</option>
-          <option value="ITI">ITI — Isolation par l'intérieur</option>
+          <option value="ITI">ITI complète — Isolation intérieure</option>
+          <option value="ITI_MOY">ITI moyenne — Isolation partielle intérieure</option>
           <option value="Isolés">Isolés (autre)</option>
           <option value="Non isolés">Non isolés</option>
         </select></div>
@@ -828,6 +820,7 @@ body::after{
 
   <div class="text-center" style="margin-bottom:30px;">
     <button class="btn" onclick="analyserManuel()">⚡ Calculer la classe énergétique</button>
+    <button class="btn btn-ghost" onclick="reinitialiserManuel()" style="margin-left:12px;">🔄 Nouvelle étude</button>
   </div>
 
   <!-- Résultats saisie manuelle (mêmes IDs avec préfixe m_) -->
@@ -838,18 +831,11 @@ body::after{
         <div class="classe-hero">
           <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:8px;font-family:'Space Mono',monospace;">Classe estimée</div>
           <div class="classe-letter" id="m_classeLetter">?</div>
-          <div id="m_scoreNum" style="margin-top:10px;"></div>
+          <div id="m_scoreNum" style="display:none;"></div>
         </div>
         <div class="num-panel" id="m_numPanel">
           <div><div class="num-lbl">EP (3CL-2021)</div><div><span class="num-val" id="m_numEP">—</span> <span class="num-unit">kWh EP/m²/an</span></div></div>
           <div><div class="num-lbl">GES</div><div><span class="num-val" id="m_numGES">—</span> <span class="num-unit">kg CO₂/m²/an</span></div></div>
-        </div>
-        <div class="niveau-panel">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;font-family:'Space Mono',monospace;">Niveau d'analyse</span>
-            <div class="niveau-badge" id="m_niveauBadge">—</div>
-          </div>
-          <div style="font-size:12px;color:#666;" id="m_niveauMethode"></div>
         </div>
       </div>
       <div class="dpe-meter" id="m_dpeMeter"></div>
@@ -872,6 +858,13 @@ body::after{
   <div class="card hidden" id="m_sautsCard">
     <div class="card-title">📈 Sauts de Classes</div>
     <div id="m_sautsContainer"></div>
+  </div>
+
+  <!-- Bouton synthèse saisie manuelle -->
+  <div class="hidden text-center" id="m_synthesesBtnWrap" style="margin:24px 0 8px 0;">
+    <button class="btn" onclick="genererSyntheseManuel()" style="padding:16px 48px;font-size:15px;letter-spacing:0.05em;">
+      📄 Générer la Synthèse
+    </button>
   </div>
 
 </div><!-- /tab-manuel -->
@@ -1859,12 +1852,15 @@ function extraireBeneficiaire(text){
   const nomSuspect = r.nom.length < 2 || /^(m|mme|mr|monsieur|madame|dr)$/i.test(r.nom);
   if((!r.nom || nomSuspect) && typeof currentFile !== 'undefined' && currentFile){
     try {
+      // Mots à exclure du nom de fichier (termes techniques, mots communs)
+      const MOTS_EXCLUS = /^(VISITE|TECHNIQUE|AUDIT|ENERGETIQUE|CHAUFFE|NON|OUI|RDC|PDF|DOC|LOGEMENT|MAISON|APPARTEMENT|FICHE|RAPPORT|ANALYSE|NYX|VT|DPE|BILAN|CLIENT|BENEFICIAIRE)$/i;
       const fn = currentFile.name
         .replace(/\.pdf$/i,'')
         .replace(/^VISITE-TECHNIQUE-/i,'')
+        .replace(/^VT-/i,'')
         .replace(/^AUDIT-ENERGETIQUE-/i,'')
         .replace(/_/g,'-');
-      const parts = fn.split('-').filter(p=>p.length>1&&!/^\d+$/.test(p));
+      const parts = fn.split('-').filter(p=>p.length>1&&!/^\d+$/.test(p)&&!MOTS_EXCLUS.test(p));
       if(parts.length>=2){
         r.nom    = parts[0].toUpperCase();
         r.prenom = parts.slice(1).map(p=>p.charAt(0).toUpperCase()+p.slice(1).toLowerCase()).join(' ');
@@ -2022,7 +2018,7 @@ function detecterEquipements(text){
 
 /* Tables physiques */
 const R_PAROI={
-  murs:{'ITE':3.7,'ITI':2.5,'Isolés':1.5,'Non isolés':0.2,'Non détecté':0.3},
+  murs:{'ITE':3.7,'ITI':2.5,'ITI_MOY':1.8,'Isolés':1.5,'Non isolés':0.2,'Non détecté':0.3},
   combles:{'Très bien isolés':7.0,'Isolés':4.0,'Non isolés':0.2,'Non détecté':0.3},
   fenetres:{'Triple vitrage':0.8,'Double vitrage récent':1.2,'Double vitrage ancien':2.5,'Simple vitrage':4.5,'Non détecté':3.0},
   plancher:{'Isolé':3.0,'Non isolé':0.2,'Non détecté':0.5},
@@ -2720,11 +2716,34 @@ function analyserManuel(){
     ecs:document.getElementById('m_ecs').value,
     volets:document.getElementById('m_volets').value,
     robinets:'Non détecté',chauffageMixte:false,
+    mitoyennete:document.getElementById('m_mitoyennete')?.value||'Aucune',
+    regulation:document.getElementById('m_regulation')?.value||'Non détecté',
   };
   const surface=parseFloat(document.getElementById('m_surface').value)||100;
   const annee=parseInt(document.getElementById('m_annee').value)||null;
+
+  // ── Bonus mitoyenneté : réduction des déperditions latérales ──
+  // Un mur mitoyen = pas de déperdition sur ce pan → coefficient de réduction
+  const mitoCoeff = e.mitoyennete==='Deux côtés' ? 0.88 : e.mitoyennete==='Un côté' ? 0.94 : 1.0;
+
+  // ── Bonus régulation : réduction consommation chauffage ──
+  const regBonus = e.regulation==='Régulation complète' ? 0.88
+    : e.regulation==='Régulation globale' ? 0.92
+    : e.regulation==='Régulation par émetteurs' ? 0.95
+    : e.regulation==='Aucune régulation' ? 1.02 : 1.0;
+
   const num={ep:null,ges:null,classeDirecte:null,annee};
-  const{classe,ep,ges,score,methode}=determinerClasse(num,e,surface);
+  const res=determinerClasse(num,e,surface);
+  // Appliquer les coefficients mitoyenneté + régulation sur l'EP calculé
+  const epAjuste = res.ep !== null ? Math.round(res.ep * mitoCoeff * regBonus) : null;
+  const gesAjuste = res.ges !== null ? Math.round(res.ges * mitoCoeff * regBonus * 10)/10 : null;
+  const classeFinale = epAjuste !== null
+    ? (epAjuste<70?'A':epAjuste<110?'B':epAjuste<180?'C':epAjuste<250?'D':epAjuste<330?'E':epAjuste<420?'F':'G')
+    : res.classe;
+  const classe=classeFinale;
+  const ep=epAjuste||res.ep;
+  const ges=gesAjuste||res.ges;
+  const methode=res.methode;
   const niv=calculerNiveau(num,e,classe);
   document.getElementById('m_classeLetter').textContent=classe;
   document.getElementById('m_classeLetter').className='classe-letter cl-'+classe;
@@ -2754,8 +2773,76 @@ function analyserManuel(){
   document.getElementById('m_scenarioCard').classList.remove('hidden');
   renderSauts(classe,e,'m_');
   document.getElementById('m_sautsCard').classList.remove('hidden');
+  document.getElementById('m_synthesesBtnWrap').classList.remove('hidden');
   const nom=(document.getElementById('m_nom').value||'Inconnu')+' '+(document.getElementById('m_prenom').value||'');
   saveAnalyse({nom,classe,ep,ges});
+}
+
+/* ── Réinitialiser Saisie Manuelle ── */
+function reinitialiserManuel(){
+  if(!confirm('Réinitialiser l\'étude ? Toutes les données saisies seront effacées.')) return;
+  // Vider les champs texte / number
+  ['m_nom','m_prenom','m_tel','m_email','m_adresse','m_cp','m_ville','m_surface','m_annee','m_niveaux']
+    .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  // Remettre les selects à leur valeur par défaut
+  ['m_type','m_mitoyennete','m_chauffage','m_ecs','m_vmc','m_regulation','m_murs','m_combles','m_plancher','m_fenetres','m_volets']
+    .forEach(id=>{ const el=document.getElementById(id); if(el) el.selectedIndex=0; });
+  // Masquer les blocs résultats
+  ['m_resultCard','m_scenarioCard','m_sautsCard','m_synthesesBtnWrap']
+    .forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.add('hidden'); });
+  // Remettre la lettre de classe à ?
+  const cl=document.getElementById('m_classeLetter');
+  if(cl){ cl.textContent='?'; cl.className='classe-letter'; }
+  // Scroll vers le haut de l'onglet
+  document.getElementById('tab-manuel').scrollIntoView({behavior:'smooth'});
+}
+function genererSyntheseManuel(){
+  if(!document.getElementById('m_resultCard').classList.contains('hidden')){
+    // Injecter temporairement les données manuelles dans analysisResult
+    const e={
+      ch:document.getElementById('m_chauffage').value,
+      murs:document.getElementById('m_murs').value,
+      combles:document.getElementById('m_combles').value,
+      fen:document.getElementById('m_fenetres').value,
+      vmc:document.getElementById('m_vmc').value,
+      plancher:document.getElementById('m_plancher').value,
+      ecs:document.getElementById('m_ecs').value,
+      volets:document.getElementById('m_volets').value,
+      robinets:'Non détecté',chauffageMixte:false,
+    };
+    const surface=parseFloat(document.getElementById('m_surface').value)||100;
+    const annee=parseInt(document.getElementById('m_annee').value)||null;
+    const ep=parseFloat(document.getElementById('m_numEP').textContent)||null;
+    const ges=parseFloat(document.getElementById('m_numGES').textContent)||null;
+    const classe=document.getElementById('m_classeLetter').textContent||'?';
+    const num={ep:null,ges:null,classeDirecte:null,annee};
+    const res=determinerClasse(num,e,surface);
+
+    // Sauvegarder l'état actuel et injecter les données manuelles
+    const prevResult=analysisResult;
+    const prevBenef=beneficiaireData;
+    analysisResult={
+      classe,ep,ges,score:0,
+      methode:'3CL-2021 (Arrêté du 31 mars 2021)',
+      detail3CL:res.detail3CL,ep3CL:res.ep3CL||ep,ges3CL:res.ges3CL||ges,
+      num,equip:e
+    };
+    beneficiaireData={
+      nom:document.getElementById('m_nom').value||'—',
+      prenom:document.getElementById('m_prenom').value||'',
+      adresse:document.getElementById('m_adresse').value||'—',
+      cp:document.getElementById('m_cp').value||'—',
+      ville:document.getElementById('m_ville').value||'—',
+      surface:surface+' m²',
+      typeBien:document.getElementById('m_type').value||'—',
+    };
+    genererSynthese();
+    // Restaurer l'état précédent
+    analysisResult=prevResult;
+    beneficiaireData=prevBenef;
+  } else {
+    alert('Veuillez d\'abord calculer la classe énergétique.');
+  }
 }
 
 /* ══════════════════════════════════════════════════════
@@ -4098,30 +4185,61 @@ function genererSynthese(){
   const ep1 = Math.round(epBase*(1-g1/100));
   const ep2 = Math.round(epBase*(1-g2/100));
 
-  // Sauts de classes HTML
+  // Sauts de classes HTML — travaux progressifs cohérents
   const ORDER=['A','B','C','D','E','F','G'];
   const idx = ORDER.indexOf(cl);
-  const SAUT_LIST = [
-    {icon:'🏠',label:'Isolation combles perdus',gain:2,cout:2000,cond:e=>['Non isolés','Non détecté'].includes(e.combles)},
-    {icon:'🔥',label:'PAC air/eau',gain:3,cout:13000,cond:e=>['Fioul','Gaz ancien','Électrique'].includes(e.ch)},
-    {icon:'🧱',label:'ITE murs extérieurs',gain:2,cout:15000,cond:e=>['Non isolés','ITI'].includes(e.murs)},
-    {icon:'💨',label:'VMC double flux',gain:1,cout:4500,cond:e=>e.vmc!=='VMC double flux'},
-    {icon:'💧',label:'Chauffe-eau thermodynamique',gain:1,cout:2500,cond:e=>e.ecs==='Électrique'},
-    {icon:'🪟',label:'Remplacement fenêtres',gain:1,cout:5000,cond:e=>['Simple vitrage','Double vitrage ancien'].includes(e.fen)},
+
+  // Catalogue complet trié par impact croissant (petits travaux d'abord)
+  const SAUT_CATALOGUE = [
+    {icon:'🌡️',label:'Robinets thermostatiques',     gain:1, cout:600,   cond:e=>['Gaz ancien','Gaz condensation','Fioul'].includes(e.ch)},
+    {icon:'💧',label:'Chauffe-eau thermodynamique',   gain:1, cout:2500,  cond:e=>e.ecs==='Électrique'||e.ecs==='Gaz'},
+    {icon:'🏠',label:'Isolation combles perdus',       gain:2, cout:3000,  cond:e=>['Non isolés','Non détecté'].includes(e.combles)},
+    {icon:'🏠',label:'Renforcement isolation combles', gain:1, cout:1500,  cond:e=>e.combles==='Isolés'},
+    {icon:'🏚️',label:'Isolation plancher bas',         gain:1, cout:4000,  cond:e=>e.plancher==='Non isolé'||e.plancher==='Non détecté'},
+    {icon:'🪟',label:'Remplacement fenêtres SV→DV',   gain:2, cout:5000,  cond:e=>e.fen==='Simple vitrage'},
+    {icon:'🪟',label:'Remplacement double vitrage',    gain:1, cout:4000,  cond:e=>e.fen==='Double vitrage ancien'},
+    {icon:'💨',label:'VMC simple flux hygroreglable',  gain:1, cout:800,   cond:e=>e.vmc==='Naturelle'||e.vmc==='Non détecté'},
+    {icon:'💨',label:'VMC double flux',                gain:2, cout:4000,  cond:e=>e.vmc==='VMC simple flux'||e.vmc==='Naturelle'},
+    {icon:'🧱',label:'Isolation murs ITE',             gain:2, cout:15000, cond:e=>e.murs==='Non isolés'},
+    {icon:'🧱',label:'Renforcement isolation murs ITI',gain:1, cout:8000,  cond:e=>e.murs==='ITI'},
+    {icon:'🔥',label:'PAC air/eau (remplacement)',     gain:3, cout:13000, cond:e=>['Fioul','Gaz ancien','Gaz condensation','Électrique'].includes(e.ch)},
   ];
-  const applicable = SAUT_LIST.filter(t=>t.cond(eq));
+
+  // Pour chaque saut, on sélectionne les N premiers travaux applicables
+  // nécessaires pour atteindre la classe cible, en ajoutant travail par travail
+  const applicable2 = SAUT_CATALOGUE.filter(t=>t.cond(eq));
   let sautsHtml = '';
+  // On affiche de la classe juste en dessous jusqu'à 4 sauts max
   for(let target=Math.max(0,idx-4); target<idx; target++){
-    const needed = idx-target;
-    let sel=[],gainAcc=0,cout=0;
-    for(const w of applicable){sel.push(w);gainAcc+=w.gain;cout+=w.cout;if(gainAcc>=needed*2.5)break;}
+    const needed = idx - target; // nb de classes à gagner
+    // Sélection cumulative : on prend les travaux dans l'ordre jusqu'à gain suffisant
+    // Pour +1 classe : on prend le 1er travail applicable
+    // Pour +2 classes : on prend les 2 premiers, etc.
+    let sel=[], gainAcc=0, cout=0;
+    // Trier par gain décroissant pour les gros sauts, croissant pour les petits
+    const sorted = needed <= 1
+      ? [...applicable2].sort((a,b)=>a.gain-b.gain)   // petits travaux en premier
+      : [...applicable2].sort((a,b)=>b.gain-a.gain);  // gros travaux en premier
+    for(const w of sorted){
+      sel.push(w);
+      gainAcc = gainCombine(sel.map(s=>s.gain));
+      cout += w.cout;
+      // On a assez de gain pour cette classe cible
+      const epCible = Math.round(epBase*(1-gainAcc/100));
+      const classeCible = epToClasse(epCible);
+      const classeAtteinte = ORDER.indexOf(classeCible) <= target;
+      if(classeAtteinte) break;
+      // Sécurité : max 4 travaux par ligne
+      if(sel.length >= 4) break;
+    }
+    const epFinal = Math.round(epBase*(1-gainCombine(sel.map(s=>s.gain))/100));
     sautsHtml += `<tr style="border-bottom:1px solid #eee;">
       <td style="padding:8px;font-weight:700;color:${CLASSE_COLOR[cl]}">${cl}</td>
       <td style="padding:8px;text-align:center;color:#555;">→</td>
       <td style="padding:8px;font-weight:700;color:${CLASSE_COLOR[ORDER[target]]}">${ORDER[target]}</td>
       <td style="padding:8px;font-size:12px;">${sel.map(w=>w.icon+' '+w.label).join('<br>')}</td>
       <td style="padding:8px;text-align:right;font-weight:700;">~${cout.toLocaleString('fr-FR')} €</td>
-    </tr>`;
+    </tr>`; 
   }
 
   // Équipements diagnostic
@@ -4239,7 +4357,7 @@ function genererSynthese(){
       <div class="info-item"><div class="info-key">Adresse</div><div class="info-val">${b.adresse||'—'}</div></div>
       <div class="info-item"><div class="info-key">Code postal / Ville</div><div class="info-val">${(b.cp||'—')+' '+(b.ville||'')}</div></div>
       <div class="info-item"><div class="info-key">Surface habitable</div><div class="info-val">${b.surface||'—'}</div></div>
-      <div class="info-item"><div class="info-key">Méthode d'analyse</div><div class="info-val" style="font-size:11px;">${r.methode||'3CL-2021 + Th-CE-Ex'}</div></div>
+      <div class="info-item"><div class="info-key">Méthode d'analyse</div><div class="info-val" style="font-size:11px;">3CL-2021 (Arrêté du 31 mars 2021)</div></div>
     </div>
   </div>
 
@@ -4282,123 +4400,109 @@ function genererSynthese(){
     </div>
   </div>
 
-  <!-- 3. CROISEMENT 3CL + Th-CE-Ex -->
+  <!-- 3. DÉTAIL 3CL-2021 -->
   <div class="section">
-    <div class="section-title">3 — Croisement 3CL-2021 + Th-CE-Ex</div>
+    <div class="section-title">3 — Résultat Méthode 3CL-2021</div>
     <div class="methods">
-      <div class="meth-box"><div class="meth-name">3CL-2021</div><div class="meth-val">${r.ep3CL||'—'} kWh EP/m²</div><div style="font-size:10px;color:#aaa;">${r.ges3CL||'—'} kg CO₂/m²</div></div>
+      <div class="meth-box"><div class="meth-name">Énergie Primaire</div><div class="meth-val">${r.ep3CL||r.ep||'—'} kWh EP/m²</div><div style="font-size:10px;color:#aaa;">${r.ges3CL||r.ges||'—'} kg CO₂/m²</div></div>
       <div style="color:#10B981;font-size:18px;">⟶</div>
-      <div class="meth-box"><div class="meth-name">Th-CE-Ex</div><div class="meth-val">${r.epThCEEx||'—'} kWh EP/m²</div><div style="font-size:10px;color:#aaa;">${r.gesThCEEx||'—'} kg CO₂/m²</div></div>
-      <div style="color:#10B981;font-size:18px;">⟶</div>
-      <div class="meth-box result"><div class="meth-name">Résultat croisé</div><div class="meth-val">${r.ep||'—'} kWh EP/m²</div><div style="font-size:10px;color:#555;">${r.ges||'—'} kg CO₂/m²</div></div>
+      <div class="meth-box result"><div class="meth-name">Classe 3CL-2021</div><div class="meth-val" style="font-size:22px;">${r.classe||'—'}</div><div style="font-size:10px;color:#555;">${CLASSE_LABEL[r.classe]||'—'}</div></div>
     </div>
-    ${r.detailThCEEx ? `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;">
-      <div class="info-item"><div class="info-key">Bbio (besoin bioclimatique)</div><div class="info-val">${r.detailThCEEx.Bbio||'—'} kWh/m²/an</div></div>
-      <div class="info-item"><div class="info-key">Ponts thermiques ψ</div><div class="info-val">${r.detailThCEEx.psi||'—'} W/m.K</div></div>
-      <div class="info-item"><div class="info-key">Perméabilité n50</div><div class="info-val">${r.detailThCEEx.n50||'—'} vol/h à 50Pa</div></div>
-      <div class="info-item"><div class="info-key">Rendement saisonnier η</div><div class="info-val">${r.detailThCEEx.eta_sais||'—'}</div></div>
-      <div class="info-item"><div class="info-key">Besoins chauffage nets</div><div class="info-val">${r.detailThCEEx.Bch_net||'—'} kWh/an</div></div>
-      <div class="info-item"><div class="info-key">Surface / Occupants</div><div class="info-val">${r.detailThCEEx.surface||'—'} m² / ${r.detailThCEEx.nOcc||'—'} occ.</div></div>
+    ${r.detail3CL ? `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;">
+      <div class="info-item"><div class="info-key">Surface / Occupants</div><div class="info-val">${r.detail3CL.surface||'—'} m² / ${r.detail3CL.nOcc||'—'} occ.</div></div>
+      <div class="info-item"><div class="info-key">Besoins chauffage</div><div class="info-val">${r.detail3CL.Bch_therm||'—'} kWh/an</div></div>
+      <div class="info-item"><div class="info-key">EP Chauffage</div><div class="info-val">${r.detail3CL.Ep_ch||'—'} kWh EP/m²/an</div></div>
+      <div class="info-item"><div class="info-key">EP Eau chaude</div><div class="info-val">${r.detail3CL.Ep_ecs||'—'} kWh EP/m²/an</div></div>
+      <div class="info-item"><div class="info-key">Ubat (déperditions)</div><div class="info-val">${r.detail3CL.Ubat||'—'} W/m².K</div></div>
+      <div class="info-item"><div class="info-key">Zone climatique</div><div class="info-val">${zoneLib}</div></div>
     </div>` : ''}
-    <div style="font-size:11px;color:#aaa;margin-top:8px;">Pondération : 3CL-2021 (40%) + Th-CE-Ex (60%). Zone ${zoneLib}. Valeurs indicatives — un DPE certifié reste nécessaire.</div>
+    <div style="font-size:11px;color:#aaa;margin-top:8px;">Calcul 3CL-2021 (Arrêté du 31 mars 2021). Valeurs indicatives — un DPE certifié par un diagnostiqueur accrédité reste nécessaire.</div>
   </div>
 
-  <!-- 4. NIVEAU D'ANALYSE -->
+  <!-- 4. DIAGNOSTIC ÉQUIPEMENTS -->
   <div class="section">
-    <div class="section-title">4 — Niveau d'Analyse</div>
-    <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:#f9f9f9;border-radius:8px;">
-      <span class="niveau-badge ${niv.cssClass==='niveau-or'?'badge-or':niv.cssClass==='niveau-argent'?'badge-argent':'badge-bronze'}">${niv.etoiles} ${niv.niveau}</span>
-      <div>
-        <div style="font-size:12px;font-weight:700;margin-bottom:2px;">${niv.urgence}</div>
-        <div style="font-size:11px;color:#666;">${niv.description.replace(/<[^>]+>/g,'')}</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 5. DIAGNOSTIC ÉQUIPEMENTS -->
-  <div class="section">
-    <div class="section-title">5 — Diagnostic des Équipements</div>
+    <div class="section-title">4 — Diagnostic des Équipements</div>
     <div class="equip-grid">
       ${EQ_ITEMS.map(e=>`<div class="equip-item"><div class="equip-icon">${e.icon}</div><div class="equip-lbl">${e.lbl}</div><div class="equip-val">${e.val}</div></div>`).join('')}
     </div>
   </div>
 
-  <!-- 6. SCÉNARIO DE RÉNOVATION -->
+  <!-- 5. SCÉNARIO COMPLET VERS MEILLEURE CLASSE -->
   <div class="section">
-    <div class="section-title">6 — Scénario de Rénovation Suggéré</div>
-    <div style="margin-bottom:10px;font-size:12px;color:#555;">Zone ${zoneLib} · Coefficient ×${coeff} · Gain combiné (synergie) : <strong>${gainComb}%</strong></div>
-    ${oblig.length > 0 ? `<div style="margin-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;color:#10B981;letter-spacing:0.08em;">Travaux obligatoires</div>
-    ${oblig.map(t=>`<div class="travail-row">
-      <div class="travail-titre">${t.icon} ${t.titre}</div>
-      <div style="font-size:11px;color:#666;margin-top:2px;">${t.desc}</div>
-      <div class="travail-meta">
-        <span class="meta-tag">🎯 ${t.gainClasse}</span>
-        <span class="meta-tag">💰 ${t.cout}</span>
-        <span class="meta-tag">🏦 ${t.aide}</span>
-      </div>
-    </div>`).join('')}` : ''}
-    ${reco.length > 0 ? `<div style="margin:10px 0 8px 0;font-size:11px;font-weight:700;text-transform:uppercase;color:#FFD740;letter-spacing:0.08em;">Travaux recommandés</div>
-    ${reco.slice(0,4).map(t=>`<div class="travail-row reco">
-      <div class="travail-titre">${t.icon} ${t.titre}</div>
-      <div class="travail-meta"><span class="meta-tag">💰 ${t.cout}</span><span class="meta-tag">🏦 ${t.aide}</span></div>
-    </div>`).join('')}` : ''}
-  </div>
+    <div class="section-title">5 — Scénario pour atteindre la meilleure classe possible</div>
 
-  <!-- 7. SCÉNARIO OPTIMAL -->
-  <div class="section">
-    <div class="section-title">7 — Scénario de Rénovation Optimal</div>
-    <div style="border:2px solid #10B981;border-radius:10px;padding:16px;background:#f0fdf4;">
-      <!-- Saut classe -->
+    <!-- Saut de classe visé -->
+    <div style="border:2px solid #10B981;border-radius:10px;padding:16px;background:#f0fdf4;margin-bottom:16px;">
       <div style="display:flex;align-items:center;gap:20px;margin-bottom:16px;justify-content:center;">
         <div style="text-align:center;">
           <div style="font-size:11px;color:#666;text-transform:uppercase;">Classe actuelle</div>
-          <div style="font-size:48px;font-weight:900;color:${CLASSE_COLOR[cl]||'#888'};line-height:1.1;">${cl}</div>
+          <div style="font-size:56px;font-weight:900;color:${CLASSE_COLOR[cl]||'#888'};line-height:1.1;">${cl}</div>
           <div style="font-size:11px;color:#888;">${epBase} kWh/m²/an</div>
         </div>
-        <div style="font-size:28px;color:#10B981;">→</div>
+        <div style="font-size:32px;color:#10B981;">→</div>
         <div style="text-align:center;">
           <div style="font-size:11px;color:#666;text-transform:uppercase;">Objectif atteignable</div>
-          <div style="font-size:48px;font-weight:900;color:${CLASSE_COLOR[classeVisee]||'#10B981'};line-height:1.1;">${classeVisee}</div>
+          <div style="font-size:56px;font-weight:900;color:${CLASSE_COLOR[classeVisee]||'#10B981'};line-height:1.1;">${classeVisee}</div>
           <div style="font-size:11px;color:#888;">~${epApres} kWh/m²/an</div>
         </div>
       </div>
-      <!-- Chiffres clés -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">
         <div style="text-align:center;background:#fff;border-radius:8px;padding:10px;">
           <div style="font-size:10px;color:#888;text-transform:uppercase;">Gain CEP</div>
           <div style="font-size:20px;font-weight:700;color:#B8860B;">${gainComb}%</div>
         </div>
         <div style="text-align:center;background:#fff;border-radius:8px;padding:10px;">
-          <div style="font-size:10px;color:#888;text-transform:uppercase;">Investissement estimé</div>
+          <div style="font-size:10px;color:#888;text-transform:uppercase;">Investissement brut</div>
           <div style="font-size:16px;font-weight:700;">${coutMin(oblig).toLocaleString('fr-FR')} €</div>
-          <div style="font-size:10px;color:#888;">brut avant aides</div>
+          <div style="font-size:10px;color:#888;">avant aides</div>
         </div>
         <div style="text-align:center;background:#fff;border-radius:8px;padding:10px;">
-          <div style="font-size:10px;color:#10B981;text-transform:uppercase;">Après aides (~55%)</div>
+          <div style="font-size:10px;color:#10B981;text-transform:uppercase;">Reste à charge (~45%)</div>
           <div style="font-size:16px;font-weight:700;color:#10B981;">~${Math.round(coutMin(oblig)*0.45).toLocaleString('fr-FR')} €</div>
-          <div style="font-size:10px;color:#888;">reste à charge</div>
+          <div style="font-size:10px;color:#888;">après aides MaPrimeRénov' + CEE</div>
         </div>
       </div>
-      <!-- Travaux tags -->
-      <div style="display:flex;flex-wrap:wrap;gap:6px;">
-        ${oblig.map(t=>`<span style="font-size:11px;padding:3px 10px;background:#dcfce7;border:1px solid #10B981;border-radius:100px;color:#065f46;">${t.icon} ${t.titre.split('(')[0].trim().substring(0,35)}</span>`).join('')}
-      </div>
     </div>
-    <div style="margin-top:8px;font-size:10px;color:#aaa;">Formule synergie 3CL-2021 : G_A + G_B − (0.15×G_A×G_B)/100. Aides : MaPrimeRénov' + CEE + éco-PTZ + TVA 5.5%. Valeurs indicatives.</div>
-  </div>
 
-  <!-- 8. SAUTS DE CLASSES -->
-  <div class="section">
-    <div class="section-title">8 — Sauts de Classes — Par Étapes</div>
-    ${sautsHtml ? `<table>
+    <!-- Étapes détaillées -->
+    <div style="margin-bottom:10px;font-size:12px;color:#555;font-weight:600;">Étapes détaillées par ordre de priorité :</div>
+    ${oblig.length > 0 ? `
+    <div style="margin-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;color:#10B981;letter-spacing:0.08em;">Travaux obligatoires</div>
+    ${oblig.map((t,i)=>`<div class="travail-row">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <span style="background:#10B981;color:white;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${i+1}</span>
+        <div class="travail-titre">${t.icon} ${t.titre}</div>
+      </div>
+      <div style="font-size:11px;color:#666;margin-top:2px;padding-left:28px;">${t.desc}</div>
+      <div class="travail-meta" style="padding-left:28px;">
+        <span class="meta-tag">🎯 ${t.gainClasse}</span>
+        <span class="meta-tag">💰 ${t.cout}</span>
+        <span class="meta-tag">🏦 ${t.aide}</span>
+      </div>
+    </div>`).join('')}` : ''}
+    ${reco.length > 0 ? `
+    <div style="margin:12px 0 8px 0;font-size:11px;font-weight:700;text-transform:uppercase;color:#FFD740;letter-spacing:0.08em;">Travaux recommandés</div>
+    ${reco.slice(0,4).map((t,i)=>`<div class="travail-row reco">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <span style="background:#FFD740;color:#1a1a00;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${oblig.length+i+1}</span>
+        <div class="travail-titre">${t.icon} ${t.titre}</div>
+      </div>
+      <div class="travail-meta" style="padding-left:28px;"><span class="meta-tag">💰 ${t.cout}</span><span class="meta-tag">🏦 ${t.aide}</span></div>
+    </div>`).join('')}` : ''}
+
+    <!-- Sauts par étapes -->
+    ${sautsHtml ? `
+    <div style="margin:16px 0 10px 0;font-size:12px;color:#555;font-weight:600;">Progression classe par classe :</div>
+    <table>
       <thead><tr><th>De</th><th></th><th>À</th><th>Travaux principaux</th><th style="text-align:right">Coût est.</th></tr></thead>
       <tbody>${sautsHtml}</tbody>
-    </table>` : '<div style="font-size:12px;color:#888;">Aucun saut calculé — logement déjà en classe A.</div>'}
+    </table>` : ''}
+    <div style="margin-top:10px;font-size:10px;color:#aaa;">Formule synergie 3CL-2021 : G_A + G_B − (0.15×G_A×G_B)/100. Aides : MaPrimeRénov' + CEE + éco-PTZ + TVA 5.5%. Valeurs indicatives.</div>
   </div>
 
   <!-- FOOTER -->
   <div class="footer">
-    Synthèse générée le ${now} · Méthode 3CL-2021 + Th-CE-Ex (Arrêté du 31/03/2021) · Valeurs indicatives — un DPE certifié par un professionnel accrédité reste nécessaire.<br>
+    Synthèse générée le ${now} · Méthode 3CL-2021 (Arrêté du 31/03/2021) · Valeurs indicatives — un DPE certifié par un professionnel accrédité reste nécessaire.<br>
     © 2026 Droits Réservés à AYOUB TARHI — NYX Plateforme Énergétique
   </div>
 
