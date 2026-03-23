@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -481,6 +482,9 @@ body::after{
       </div>
     </div>
     <div style="margin-top:20px;text-align:center;font-size:11px;color:#333;">© 2026 Droits Réservés à AYOUB TARHI</div>
+    <div style="margin-top:8px;text-align:center;">
+      <span onclick="resetLocalStorage()" style="font-size:10px;color:#2a2a2a;cursor:pointer;" title="Réinitialiser si problème de connexion">⚙ réinitialiser</span>
+    </div>
   </div>
 </div>
 
@@ -602,6 +606,17 @@ body::after{
       <button class="btn btn-ghost hidden" id="btnActualiser" onclick="actualiserAnalyse()" style="border:1px solid rgba(16,185,129,0.3);">
         🔃 Actualiser
       </button>
+      <button class="btn btn-ghost hidden" id="btnDebug" onclick="afficherDebugTexte()" style="border:1px solid rgba(255,215,64,0.3);color:#FFD740;font-size:11px;">
+        🔬 Debug texte extrait
+      </button>
+    </div>
+    <!-- Panel debug -->
+    <div id="debugPanel" style="display:none;margin-top:16px;background:#0a0a0a;border:1px solid rgba(255,215,64,0.2);border-radius:10px;padding:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <span style="font-size:11px;font-family:'Space Mono',monospace;color:#FFD740;text-transform:uppercase;letter-spacing:0.1em;">🔬 Texte extrait autour des champs clés</span>
+        <span onclick="document.getElementById('debugPanel').style.display='none'" style="cursor:pointer;color:#666;font-size:16px;">✕</span>
+      </div>
+      <div id="debugContent" style="font-family:'Space Mono',monospace;font-size:11px;color:#aaa;white-space:pre-wrap;max-height:400px;overflow-y:auto;line-height:1.6;"></div>
     </div>
   </div>
 
@@ -1199,8 +1214,39 @@ body::after{
 // Base utilisateurs — stockée en localStorage
 const ADMIN_DEFAULT = {id:'admin-ayoub', login:'AYOUB', pwd:'Nyx@2026!Tarhi', nom:'Ayoub Tarhi', role:'admin', actif:true, created:'2026'};
 
+function resetLocalStorage(){
+  if(!confirm('⚠️ Réinitialiser NYX ?
+
+Cela supprime les utilisateurs locaux et remet l'admin par défaut.
+Les données Firebase (VT, dossiers) ne sont pas affectées.
+
+Continuer ?')) return;
+  lsRemove('nyx_users');
+  lsRemove('nyx_session');
+  lsRemove('nyx_clients');
+  lsRemove('nyx_analyses');
+  lsRemove('nyx_devis');
+  document.getElementById('loginError').style.display='none';
+  document.getElementById('loginUser').value='AYOUB';
+  document.getElementById('loginPass').value='';
+  document.getElementById('loginPass').focus();
+  // Petit feedback
+  const msg = document.createElement('div');
+  msg.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#10B981;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:9999;';
+  msg.textContent='✅ Réinitialisé — connectez-vous avec AYOUB / Nyx@2026!Tarhi';
+  document.body.appendChild(msg);
+  setTimeout(()=>msg.remove(), 4000);
+}
+
+// Stockage en mémoire (fallback si localStorage indisponible - ex: file://)
+const _memStore = {};
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return _memStore[k]||null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){ _memStore[k]=v; } }
+function lsRemove(k){ try{ localStorage.removeItem(k); }catch(e){ delete _memStore[k]; } }
+
 function getUsers(){
-  const u = localStorage.getItem('nyx_users');
+  try { JSON.parse(lsGet('nyx_users')||'[]'); } catch(e) { lsRemove('nyx_users'); }
+  const u = lsGet('nyx_users');
   if(!u) return [ADMIN_DEFAULT];
   try {
     const arr = JSON.parse(u);
@@ -1212,14 +1258,14 @@ function getUsers(){
     } else {
       arr.unshift(ADMIN_DEFAULT);
     }
-    localStorage.setItem('nyx_users', JSON.stringify(arr));
+    lsSet('nyx_users', JSON.stringify(arr));
     return arr;
   } catch(e) {
-    localStorage.removeItem('nyx_users');
+    lsRemove('nyx_users');
     return [ADMIN_DEFAULT];
   }
 }
-function saveUsers(arr){ localStorage.setItem('nyx_users', JSON.stringify(arr)); }
+function saveUsers(arr){ lsSet('nyx_users', JSON.stringify(arr)); }
 
 let currentUser = null;
 
@@ -1229,8 +1275,22 @@ async function doLogin(){
 
   // Récupérer l'utilisateur NYX (pour rôle et nom)
   const users = getUsers();
+  // Debug: log pour diagnostic
+  console.log('[NYX LOGIN] login:', login, '| users count:', users.length, '| user found:', !!users.find(u=>u.login===login));
   const found = users.find(u => u.login === login && u.pwd === pwd && u.actif !== false);
   if(!found){
+    // Tentative insensible à la casse pour l'identifiant
+    const foundNoCase = users.find(u => u.login.toLowerCase() === login.toLowerCase() && u.pwd === pwd && u.actif !== false);
+    if(foundNoCase){
+      // Trouver avec casse différente → connecter quand même
+      currentUser = foundNoCase;
+      lsSet('nyx_session', JSON.stringify({login: foundNoCase.login, role: foundNoCase.role}));
+      document.getElementById('loginScreen').style.display='none';
+      applyRole(foundNoCase.role);
+      refreshUsers();
+      refreshCRM();
+      return;
+    }
     document.getElementById('loginError').style.display='block';
     document.getElementById('loginPass').value='';
     return;
@@ -1264,7 +1324,7 @@ async function doLogin(){
 
   // Connexion NYX locale (toujours)
   currentUser = found;
-  localStorage.setItem('nyx_session', JSON.stringify({login: found.login, role: found.role}));
+  lsSet('nyx_session', JSON.stringify({login: found.login, role: found.role}));
   document.getElementById('loginScreen').style.display='none';
   applyRole(found.role);
   refreshUsers();
@@ -1310,7 +1370,7 @@ function doLogout(){
   // Déconnexion Firebase
   if(auth) auth.signOut().catch(()=>{});
   // Supprimer la session sauvegardée
-  localStorage.removeItem('nyx_session');
+  lsRemove('nyx_session');
   // Réafficher l'écran de login sans recharger la page
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('loginUser').value = '';
@@ -1480,9 +1540,9 @@ function switchTab(name){
    CRM
 ══════════════════════════════════════════════════════ */
 let crmOpen=false;
-let clients=JSON.parse(localStorage.getItem('nyx_clients')||'[]');
-let analyses=JSON.parse(localStorage.getItem('nyx_analyses')||'[]');
-let devisList=JSON.parse(localStorage.getItem('nyx_devis')||'[]');
+let clients=JSON.parse(lsGet('nyx_clients')||'[]');
+let analyses=JSON.parse(lsGet('nyx_analyses')||'[]');
+let devisList=JSON.parse(lsGet('nyx_devis')||'[]');
 
 function toggleCRM(){
   crmOpen=!crmOpen;
@@ -1511,7 +1571,7 @@ function saveClient(){
   };
   if(!c.nom){alert('Le nom est obligatoire.');return;}
   clients.push(c);
-  localStorage.setItem('nyx_clients',JSON.stringify(clients));
+  lsSet('nyx_clients',JSON.stringify(clients));
   hideAddClient();
   refreshCRM();
 }
@@ -1519,13 +1579,13 @@ function saveClientFromAnalysis(){
   if(!beneficiaireData||!beneficiaireData.nom){alert('Aucun bénéficiaire détecté dans l\'analyse.');return;}
   const c={id:Date.now(),...beneficiaireData,date:new Date().toLocaleDateString('fr-FR')};
   clients.push(c);
-  localStorage.setItem('nyx_clients',JSON.stringify(clients));
+  lsSet('nyx_clients',JSON.stringify(clients));
   alert('✅ Client enregistré dans le CRM !');
   refreshCRM();
 }
 function saveAnalyse(data){
   analyses.push({id:Date.now(),date:new Date().toLocaleDateString('fr-FR'),...data});
-  localStorage.setItem('nyx_analyses',JSON.stringify(analyses));
+  lsSet('nyx_analyses',JSON.stringify(analyses));
   refreshCRM();
 }
 function refreshCRM(){
@@ -1604,6 +1664,73 @@ const VT_KEYWORDS = [
 ];
 const VT_REQUIRED = 4; // Minimum 4 mots-clés pour valider
 
+function afficherDebugTexte(){
+  const panel = document.getElementById('debugPanel');
+  const content = document.getElementById('debugContent');
+  if(panel.style.display === 'block'){ panel.style.display='none'; return; }
+
+  const KEYS = [
+    {label:'🧱 MURS', kws:['murs sont ils isol','isoles ?','type de mur','isolation mur']},
+    {label:'🪟 FENÊTRES', kws:['vitre :','vitrage','simple vitrage','double vitrage']},
+    {label:'💨 VENTILATION', kws:['ventilation','système de ventilation','vmc']},
+    {label:'🏠 COMBLES', kws:['combles','isolation existante','epaisseur','isolant']},
+    {label:'🏚️ PLANCHER BAS', kws:['plancher bas','isolant au plafond','sous-sol','garage']},
+  ];
+
+  let html = '';
+  const t = _debugFullText.toLowerCase();
+  KEYS.forEach(({label, kws}) => {
+    html += '
+══ ' + label + ' ══
+';
+    let found = false;
+    kws.forEach(kw => {
+      const idx = t.indexOf(kw.toLowerCase());
+      if(idx >= 0){
+        const extract = _debugFullText.substring(Math.max(0,idx-20), idx+120).replace(/
+/g,' ↵ ');
+        html += '  [' + kw + '] → ...' + extract + '...
+';
+        found = true;
+      }
+    });
+    if(!found) html += '  ⚠️ Aucun mot-clé trouvé pour ce bloc
+';
+  });
+
+  html += '
+══ RÉSULTAT DÉTECTION ══
+';
+  if(equip){
+    html += '  Murs     : ' + (equip.murs||'?') + '
+';
+    html += '  Fenêtres : ' + (equip.fen||'?') + '
+';
+    html += '  VMC      : ' + (equip.vmc||'?') + '
+';
+    html += '  Combles  : ' + (equip.combles||'?') + '
+';
+    html += '  Plancher : ' + (equip.plancher||'?') + '
+';
+    html += '  Chauffage: ' + (equip.ch||'?') + '
+';
+    html += '  ECS      : ' + (equip.ecs||'?') + '
+';
+  }
+
+  html += '
+══ PAGES LUES ══
+';
+  html += '  Total chars extraits : ' + _debugFullText.length + '
+';
+  html += '  Lignes               : ' + _debugFullText.split('
+').length + '
+';
+
+  content.textContent = html;
+  panel.style.display = 'block';
+}
+
 function actualiserAnalyse(){
   // Remettre à zéro tout l'onglet DPE proprement
   const ids = ['beneficiaireCard','resultCard','scenarioCard','sautsCard','orientationCard','synthesesBtnWrap','detail3CLPanel','numPanel'];
@@ -1672,7 +1799,7 @@ async function handleFileSelect(file){
       const ab  = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({data: ab}).promise;
       let fullText = '';
-      const pages = Math.min(pdf.numPages, 8);
+      const pages = pdf.numPages;
       for(let i=1; i<=pages; i++){
         const page = await pdf.getPage(i);
         const c    = await page.getTextContent();
@@ -1945,54 +2072,177 @@ function detecterEquipements(text){
   else if(hasGaz)      ch = 'Gaz ancien';     // → remplacer PAC recommandée
   else if(hasBois)     ch = 'Bois/granulés';
 
-  /* ── MURS ── */
-  const mursON = text.match(/murs?\s*isol[eé]s?\s*\??\s*[:\-]?\s*(OUI|NON|oui|non)/i)
-    || text.match(/isolation\s*(?:des\s*)?murs?\s*[:\-]\s*(OUI|NON|oui|non)/i);
-  const typeIso = text.match(/type\s*d.isolation\s*(?:des\s*murs?)?\s*[:\-]\s*([^\r\n]{3,40})/i);
-  if(mursON){
-    if(mursON[1].match(/oui/i)){
-      if(typeIso&&typeIso[1].match(/ext[eé]rieur|ite/i)) murs='ITE';
-      else if(typeIso&&typeIso[1].match(/int[eé]rieur|iti|laine/i)) murs='ITI';
-      else murs='Isolés';
-    } else { murs='Non isolés'; }
+  /* ════════════════════════════════════════
+     MURS — lecture champs structurés VT
+  ════════════════════════════════════════ */
+  // Priorité 1 — Champ direct "Les murs sont ils isolés ?"
+  const mursIsoleON = text.match(/les?[\s\S]{0,5}murs?[\s\S]{0,10}sont[\s\S]{0,10}ils?[\s\S]{0,5}isol[eé]s?[\s\S]{0,10}(OUI|NON|oui|non)/i)
+    || text.match(/murs?[\s\S]{0,5}isol[eé]s?[\s\S]{0,10}(OUI|NON|oui|non)/i)
+    || text.match(/isolation[\s\S]{0,15}murs?[\s\S]{0,10}(OUI|NON|oui|non)/i);
+
+  // Champ "Type d'isolation"
+  const typeIsoText = text.match(/type\s*d.isolation\s*(?:des\s*murs?)?\s*[:\-]\s*([^\r\n]{2,40})/i)?.[1]||'';
+
+  // Champ "Epaisseur de l'isolation en mm"
+  const epaisseурIsoMatch = text.match(/[eé]paisseur\s*(?:de\s*l.isolation|isolant|iso)\s*(?:en\s*mm)?\s*[:\-]\s*(\d+)/i);
+  const epaisseurIso = epaisseурIsoMatch ? parseInt(epaisseурIsoMatch[1]) : null;
+
+  // Champ "Année de l'isolation"
+  const anneeIsoMatch = text.match(/ann[eé]e\s*(?:de\s*l.isolation|isolant)\s*[:\-]\s*(\d{4})/i);
+  const anneeIso = anneeIsoMatch ? parseInt(anneeIsoMatch[1]) : null;
+  const isoAncienne = anneeIso && anneeIso < 2000; // isolation avant 2000 → performance dégradée
+
+  if(mursIsoleON){
+    if(mursIsoleON[1].match(/oui/i)){
+      // Déterminer type depuis "Type d'isolation"
+      if(typeIsoText.match(/ext[eé]rieur|ite\b/i)){
+        murs = 'ITE';
+      } else if(typeIsoText.match(/int[eé]rieur|iti\b/i)){
+        // Affiner selon épaisseur : < 80mm = ITI moyenne
+        murs = (epaisseurIso !== null && epaisseurIso < 80) ? 'ITI_MOY' : 'ITI';
+      } else if(epaisseurIso !== null){
+        // Pas de type précisé mais épaisseur connue
+        murs = epaisseurIso >= 120 ? 'ITE' : epaisseurIso >= 80 ? 'ITI' : 'ITI_MOY';
+      } else {
+        murs = isoAncienne ? 'ITI_MOY' : 'Isolés';
+      }
+    } else {
+      murs = 'Non isolés';
+    }
   } else {
+    // Fallback regex génériques
     if(t.match(/\bite\b|isolation.*ext[eé]rieur/)) murs='ITE';
-    else if(t.match(/\biti\b|isolation.*int[eé]rieur|laine\s*de\s*verre.*mur/)) murs='ITI';
+    else if(t.match(/\biti\b|isolation.*int[eé]rieur|laine\s*de\s*verre.*mur/)){
+      murs = (epaisseurIso !== null && epaisseurIso < 80) ? 'ITI_MOY' : 'ITI';
+    }
     else if(t.match(/murs?\s*(?:bien\s*)?isol[eé]s?/)) murs='Isolés';
     else if(t.match(/murs?\s*non\s*isol[eé]s?|sans\s*isolation.*mur/)) murs='Non isolés';
+    // Type de mur seul (brique, béton, pierre) → chercher isolation MUR spécifiquement
+    else if(text.match(/type\s*de\s*mur\s*[:\-]\s*(brique|b[eé]ton|pierre|parpaing|ma[çc]onnerie)/i)){
+      // Vérifier uniquement si les MURS sont isolés (pas les combles/plancher)
+      const mursIsoleContext = text.match(/murs?[\s\S]{0,30}isol[eé]/i);
+      if(!mursIsoleContext) murs='Non isolés';
+    }
   }
 
-  /* ── COMBLES ── */
-  const combON = text.match(/combles?\s*isol[eé]s?\s*\??\s*[:\-]?\s*(OUI|NON|oui|non)/i)
+  /* ════════════════════════════════════════
+     COMBLES / TOITURE — lecture champs structurés VT
+  ════════════════════════════════════════ */
+  // Priorité 1 — "Isolation existante dans les combles ?"
+  const combIsoleON = text.match(/isolation\s*existante\s*(?:dans\s*les?\s*combles?)?\s*\??\s*[:\-]\s*(OUI|NON|oui|non)/i)
+    || text.match(/combles?\s*isol[eé]s?\s*\??\s*[:\-]?\s*(OUI|NON|oui|non)/i)
     || text.match(/isolation.*combles?\s*[:\-]\s*(OUI|NON|oui|non)/i);
-  if(combON){
-    combles = combON[1].match(/oui/i) ? 'Isolés' : 'Non isolés';
+
+  // Champ "Epaisseur et année de l'isolant" / "Epaisseur de l'isolant"
+  const epCombleMatch = text.match(/[eé]paisseur\s*(?:et\s*ann[eé]e\s*de\s*l.isolant|isolant|iso)\s*[:\-]\s*(\d+)/i)
+    || text.match(/[eé]paisseur\s*[:\-]\s*(\d+)/i);
+  const epaisseurComble = epCombleMatch ? parseInt(epCombleMatch[1]) : null;
+
+  // "Comble Accessible ?"
+  const combAccessible = text.match(/combles?\s*[àa]ccessible[s]?\s*\??\s*[:\-]\s*(OUI|NON|oui|non)/i);
+  // "Y a-t-il des pièces chauffées sous les combles ?"
+  const piecesChauffeesCombles = text.match(/pi[eè]ces?\s*chauff[eé]es?\s*(?:sous\s*les?\s*combles?|dans\s*les?\s*combles?)\s*\??\s*[:\-]\s*(OUI|NON|oui|non)/i);
+  // "Type de combles"
+  const typeCombleMatch = text.match(/type\s*(?:de\s*)?combles?\s*[:\-]\s*([^\r\n]{3,40})/i)?.[1]||'';
+
+  // Logique de classification combles
+  function classerCombles(epaisseur, isolOui, ancienne){
+    if(!isolOui) return 'Non isolés';
+    if(epaisseur === null) return ancienne ? 'Isolés' : 'Isolés';
+    if(epaisseur >= 300) return 'Très bien isolés'; // R≥7.5
+    if(epaisseur >= 200) return 'Très bien isolés'; // R≥5 → considéré très bien
+    if(epaisseur >= 100) return 'Isolés';
+    return 'Isolés'; // < 10cm = isolation partielle mais présente
+  }
+
+  if(combIsoleON){
+    const isolOui = combIsoleON[1].match(/oui/i);
+    combles = classerCombles(epaisseurComble, !!isolOui, isoAncienne);
+  } else if(text.match(/pourquoi\s*les?\s*combles?\s*(?:ne\s*sont\s*pas\s*accessibles?|non\s*accessibles?)/i)){
+    // Section "Pourquoi non accessible" → présence d'une mention d'isolation ancienne
+    if(t.match(/isol[eé]\s*il\s*y.a\s*(?:plusieur|plusieurs|quelques|des)/i)
+      || t.match(/isol[eé]\s*(?:depuis|il\s*y\s*a)/i))
+      combles = 'Isolés';
+    else combles = 'Non isolés';
   } else {
+    // Fallback regex génériques
     if(t.match(/combles?.*tr[eè]s\s*bien|r\s*[≥>]\s*[78]/)) combles='Très bien isolés';
+    else if(epaisseurComble !== null) combles = classerCombles(epaisseurComble, true, false);
     else if(t.match(/combles?\s*isol[eé]s?|isolation.*combles?|laine.*souffl|souffl.*combles/)) combles='Isolés';
     else if(t.match(/combles?\s*non\s*isol[eé]s?|sans\s*isolation.*combles?|combles?\s*perdus?\s*(?:non|sans)/)) combles='Non isolés';
   }
 
-  /* ── FENÊTRES ── */
-  if(t.match(/simple\s*vitrage|sv\b/)) fen='Simple vitrage';
-  else if(t.match(/double\s*vitrage.*(?:\+20|\+\s*20|vieux|ancien|avant\s*20)/i)) fen='Double vitrage ancien';
-  else if(t.match(/triple\s*vitrage|tv\b/)) fen='Triple vitrage';
-  else if(t.match(/double\s*vitrage\s*récent|double\s*vitrage.*(-\s*10|moins\s*10)/i)) fen='Double vitrage récent';
-  else if(t.match(/double\s*vitrage|dv\b|double-vitrage/)) fen='Double vitrage ancien';
+  /* ── VENTILATION — lecture champ structuré ── */
+  // Cherche toutes les formes : tableau récap, champ toiture, mentions diverses
+  const ventSystON = text.match(/syst[eè]me[\s\S]{0,10}ventilation[\s\S]{0,15}(OUI|NON|oui|non)/i)
+    || text.match(/ventilation[\s\S]{0,5}[:\-][\s\S]{0,5}(OUI|NON|oui|non)/i)
+    || text.match(/(?:^|[\n\r])[ \t]*ventilation[ \t]+(OUI|NON|oui|non)[ \t]*(?:[\n\r]|$)/im);
+  const vmcNon = ventSystON?.[1]?.match(/non/i)
+    || text.match(/pas[\s\S]{0,10}(?:vmc|ventilation)/i);
 
-  /* ── VENTILATION ── */
-  const vmcNon = text.match(/ventilation\s*[:\-]\s*(NON|aucune|naturelle)/i)
-    || text.match(/pas\s*de\s*(?:vmc|ventilation)/i);
   if(vmcNon) vmc='Naturelle';
   else if(t.match(/vmc\s*double\s*flux|double\s*flux|vmr/)) vmc='VMC double flux';
-  else if(t.match(/vmc\s*hygror[eé]glable|hygro/)) vmc='VMC simple flux';
+  else if(t.match(/vmc\s*(?:simple\s*flux\s*)?(?:auto|hygro)/i)||t.match(/hygror[eé]glable/)) vmc='VMC simple flux';
   else if(t.match(/\bvmc\b|ventilation\s*m[eé]canique/)) vmc='VMC simple flux';
-  else if(t.match(/ventilation\s*naturelle|aération\s*naturelle/)) vmc='Naturelle';
+  else if(t.match(/ventilation\s*naturelle|a[eé]ration\s*naturelle/)) vmc='Naturelle';
+  else if(ventSystON?.[1]?.match(/oui/i)) vmc='VMC simple flux'; // présence confirmée sans précision
 
-  /* ── PLANCHER BAS ── */
-  if(t.match(/plancher\s*(?:bas\s*)?isol[eé]|isolation.*plancher/)) plancher='Isolé';
-  else if(t.match(/\bgarage\b|sous[\s-]sol|cave|vide\s*sanitaire|sur\s*terre[\s-]plein/)) plancher='Non isolé';
-  else if(t.match(/plancher.*non\s*isol[eé]|sans\s*isolation.*plancher/)) plancher='Non isolé';
+  /* ════════════════════════════════════════
+     PLANCHER BAS — lecture champs structurés VT
+  ════════════════════════════════════════ */
+  // Priorité 1 — "Le plancher bas a-t-il déjà un isolant au plafond ?"
+  const plancherIsoON = text.match(/plancher\s*bas\s*a[\s\-]t[\s\-]il\s*(?:d[eé]j[àa]\s*)?(?:un\s*)?isolant\s*(?:au\s*plafond)?\s*\??\s*[:\-]\s*(OUI|NON|oui|non)/i)
+    || text.match(/isolant\s*au\s*plafond\s*(?:du\s*(?:sous[\s-]sol|vide\s*sanitaire))?\s*\??\s*[:\-]\s*(OUI|NON|oui|non)/i);
+
+  // "Infos du sous-sol" — présence/absence
+  const sousSolInfo = text.match(/infos?\s*(?:du\s*)?sous[\s\-]sol\s*[:\-]\s*([^\r\n]{2,60})/i)?.[1]||'';
+  const pasDeSousSol = sousSolInfo.match(/pas\s*de\s*sous[\s\-]sol|aucun|rien|néant|—/i)
+    || text.match(/pas\s*de\s*sous[\s\-]sol/i);
+
+  // "Y'a-t-il un garage attenant ?"
+  const garageAtt = text.match(/garage\s*attenant\s*\??\s*[:\-]\s*(OUI|NON|oui|non)/i);
+  const garageOui = garageAtt?.[1]?.match(/oui/i);
+
+  // "Y'a-t-il des pièces chauffées au-dessus du garage ?"
+  const piecesGarage = text.match(/pi[eè]ces?\s*chauff[eé]es?\s*(?:au[\s\-]dessus\s*du\s*garage|dessus\s*(?:du\s*)?garage)\s*\??\s*[:\-]\s*(OUI|NON|oui|non)/i);
+  const piecesGarageOui = piecesGarage?.[1]?.match(/oui/i);
+
+  // "Y'a-t-il une véranda ?" + "La véranda est-elle chauffée ?"
+  const verandaOui = text.match(/v[eé]randa\s*[:\-]\s*(OUI|oui)/i)
+    || text.match(/y.a[\s\-]t[\s\-]il\s*une?\s*v[eé]randa\s*\??\s*[:\-]\s*(OUI|oui)/i);
+
+  if(plancherIsoON){
+    plancher = plancherIsoON[1].match(/oui/i) ? 'Isolé' : 'Non isolé';
+  } else if(pasDeSousSol && !garageOui){
+    // Pas de sous-sol, pas de garage → plancher sur terre-plein = non isolé par défaut
+    plancher = 'Non isolé';
+  } else if(garageOui && piecesGarageOui){
+    // Pièces chauffées au-dessus du garage → plancher non isolé
+    plancher = 'Non isolé';
+  } else {
+    // Fallback regex génériques
+    if(t.match(/plancher\s*(?:bas\s*)?isol[eé]|isolation.*plancher/)) plancher='Isolé';
+    else if(t.match(/sous[\s-]sol|cave|vide\s*sanitaire|sur\s*terre[\s-]plein/)) plancher='Non isolé';
+    else if(t.match(/plancher.*non\s*isol[eé]|sans\s*isolation.*plancher/)) plancher='Non isolé';
+    else if(garageOui) plancher='Non isolé';
+  }
+  /* ── FENÊTRES — lecture champ structuré 'Vitre :' en priorité ── */
+  // Collecte TOUTES les valeurs de vitre trouvées, retient le pire vitrage
+  const allVitres = [...text.matchAll(/vitre\s*[:\-]\s*([^\r\n]{3,40})/gi)].map(m=>m[1].trim());
+  const hasSV = allVitres.some(v=>/simple\s*vitrage/i.test(v)) || t.match(/simple\s*vitrage\s*\+?20/i);
+  const hasDV20 = allVitres.some(v=>/double\s*vitrage\s*\+10/i.test(v)) || t.match(/double\s*vitrage\s*\+10/i);
+  const hasDVnew = allVitres.some(v=>/double\s*vitrage\s*-\s*10/i.test(v)) || t.match(/double\s*vitrage\s*-\s*10/i);
+  const hasTV = allVitres.some(v=>/triple\s*vitrage/i.test(v));
+
+  if(hasSV) fen='Simple vitrage';                                   // pire vitrage → priorité max
+  else if(hasDV20) fen='Double vitrage ancien';                     // DV +10 ans
+  else if(hasDVnew) fen='Double vitrage récent';                    // DV -10 ans
+  else if(hasTV) fen='Triple vitrage';
+  else if(t.match(/simple\s*vitrage|sv\b/)) fen='Simple vitrage';
+  else if(t.match(/double\s*vitrage.*(?:\+20|\+\s*20|vieux|ancien|avant\s*20)/i)) fen='Double vitrage ancien';
+  else if(t.match(/triple\s*vitrage|tv\b/)) fen='Triple vitrage';
+  else if(t.match(/double\s*vitrage\s*r[eé]cent|double\s*vitrage.*(-\s*10|moins\s*10)/i)) fen='Double vitrage récent';
+  else if(t.match(/double\s*vitrage|dv\b|double-vitrage/)) fen='Double vitrage ancien';
 
   /* ── EAU CHAUDE ── */
   if(t.match(/ballon\s*thermodynamique|chauffe[\s-]eau\s*thermodynamique|cet\b/)) ecs='Thermodynamique';
@@ -2591,6 +2841,7 @@ function renderNiveau(niv,badgeId='niveauBadge',methodeId='niveauMethode',equips
    ANALYSE PDF
 ══════════════════════════════════════════════════════ */
 let equip={};
+let _debugFullText=''; // stocke le texte extrait pour le debug
 async function analyserDocument(){
   if(!currentFile){alert('Veuillez sélectionner un fichier.');return;}
   const btn=document.getElementById('btnAnalyser');
@@ -2603,13 +2854,29 @@ async function analyserDocument(){
     else{
       const ab=await currentFile.arrayBuffer();
       const pdf=await pdfjsLib.getDocument({data:ab}).promise;
-      for(let i=1;i<=Math.min(pdf.numPages,20);i++){
+      for(let i=1;i<=pdf.numPages;i++){
         const page=await pdf.getPage(i);
         const c=await page.getTextContent();
-        fullText+=c.items.map(x=>x.str).join(' ')+'\n';
+        // Reconstruction intelligente : saut de ligne si Y change (items sur lignes différentes)
+        let pageText='';
+        let lastY=null;
+        for(const item of c.items){
+          if(lastY!==null && Math.abs(item.transform[5]-lastY)>3) pageText+='\n';
+          pageText+=item.str+' ';
+          lastY=item.transform[5];
+        }
+        fullText+=pageText+'\n';
       }
     }
 
+    // Debug console
+    ['murs sont','isol','ventilation','vitre','vitrage'].forEach(k=>{
+      const idx=fullText.toLowerCase().indexOf(k);
+      if(idx>=0) console.log('[NYX] '+k+': ...'+fullText.substring(Math.max(0,idx-40),idx+100)+'...');
+    });
+
+    _debugFullText = fullText; // pour debug
+    document.getElementById('btnDebug').classList.remove('hidden');
     beneficiaireData=extraireBeneficiaire(fullText);
     document.getElementById('beneGrid').innerHTML=[
       {k:'Nom',v:beneficiaireData.nom||'—'},{k:'Prénom',v:beneficiaireData.prenom||'—'},
@@ -2925,7 +3192,7 @@ async function verifierEtChargerAudit(file){
     const ab = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({data: ab}).promise;
     let fullText = '';
-    const pagesToRead = Math.min(pdf.numPages, 10);
+    const pagesToRead = pdf.numPages;
     for(let i = 1; i <= pagesToRead; i++){
       const page = await pdf.getPage(i);
       const c = await page.getTextContent();
@@ -3934,7 +4201,7 @@ function sauvegarderDevis(){
     savedAt: new Date().toLocaleDateString('fr-FR'),
   };
   devisList.push(devis);
-  localStorage.setItem('nyx_devis', JSON.stringify(devisList));
+  lsSet('nyx_devis', JSON.stringify(devisList));
   // Firebase
   saveDossier_Firebase({
     type, num, clientNom, clientAdr, total,
@@ -3971,7 +4238,7 @@ function chargerDevis(id){
 function supprimerDevis(id){
   if(!confirm('Supprimer ce devis ?')) return;
   devisList = devisList.filter(x=>x.id!==id);
-  localStorage.setItem('nyx_devis', JSON.stringify(devisList));
+  lsSet('nyx_devis', JSON.stringify(devisList));
   refreshCRM();
 }
 
@@ -4561,19 +4828,19 @@ document.getElementById('d_date').value=new Date().toISOString().split('T')[0];
 // Restaurer la session si existante
 (function restoreSession(){
   try {
-    const sess = localStorage.getItem('nyx_session');
+    const sess = lsGet('nyx_session');
     if(!sess) return;
     const {login, role} = JSON.parse(sess);
     const users = getUsers();
     const found = users.find(u => u.login === login && u.actif !== false);
-    if(!found) { localStorage.removeItem('nyx_session'); return; }
+    if(!found) { lsRemove('nyx_session'); return; }
     currentUser = found;
     document.getElementById('loginScreen').style.display = 'none';
     applyRole(found.role);
     refreshUsers();
     refreshCRM();
   } catch(e) {
-    localStorage.removeItem('nyx_session');
+    lsRemove('nyx_session');
   }
 })();
 addLigne('Isolation des combles perdus (30-40 cm)',1,2000,'');
@@ -4593,11 +4860,27 @@ const firebaseConfig = {
 
 let db   = null;
 let auth = null;
+// Détection protocole file:// (ouverture locale sans serveur)
+const isFileProtocol = window.location.protocol === 'file:';
+if(isFileProtocol){
+  console.warn('[NYX] Ouverture locale (file://) — Firebase désactivé, mode hors-ligne');
+  // Afficher un avertissement discret dans l'UI après chargement
+  setTimeout(()=>{
+    const warn = document.createElement('div');
+    warn.style.cssText='position:fixed;bottom:12px;right:12px;background:rgba(255,215,64,0.12);border:1px solid rgba(255,215,64,0.3);color:#FFD740;font-size:11px;padding:8px 14px;border-radius:8px;z-index:9999;font-family:monospace;max-width:320px;';
+    warn.innerHTML='⚠️ <b>Mode local</b> — Firebase désactivé.<br>Les données sont sauvegardées en mémoire uniquement.<br><span style="color:#aaa;">Pour activer Firebase, hébergez sur un serveur.</span>';
+    document.body.appendChild(warn);
+    setTimeout(()=>warn.remove(), 8000);
+  }, 1500);
+}
+
 try {
-  firebase.initializeApp(firebaseConfig);
-  db   = firebase.firestore();
-  auth = firebase.auth();
-  console.log("✅ Firebase connecté");
+  if(!isFileProtocol){
+    firebase.initializeApp(firebaseConfig);
+    db   = firebase.firestore();
+    auth = firebase.auth();
+    console.log("✅ Firebase connecté");
+  }
 } catch(e) {
   console.warn("Firebase non disponible:", e);
 }
