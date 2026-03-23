@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -739,6 +738,14 @@ body::after{
       <div class="form-group"><label class="form-label">Type de bien</label>
         <select class="form-select" id="m_type"><option value="">Sélectionner</option><option>Maison individuelle</option><option>Appartement</option><option>Immeuble</option></select></div>
       <div class="form-group"><label class="form-label">Nombre de niveaux chauffés</label><input class="form-input" id="m_niveaux" type="number" placeholder="2"></div>
+      <div class="form-group"><label class="form-label">Type de sous-sol</label>
+        <select class="form-select" id="m_sousSol">
+          <option value="vide_sanitaire">Vide sanitaire</option>
+          <option value="cave_enterree">Cave enterrée</option>
+          <option value="cave_semi">Cave semi-enterrée</option>
+          <option value="terre_plein">Dalle sur terre-plein</option>
+          <option value="aucun">Aucun (plancher sur extérieur)</option>
+        </select></div>
       <div class="form-group"><label class="form-label">Mitoyenneté</label>
         <select class="form-select" id="m_mitoyennete">
           <option value="Aucune">Aucune — maison isolée</option>
@@ -754,7 +761,9 @@ body::after{
       <div class="form-group"><label class="form-label">Chauffage principal</label>
         <select class="form-select" id="m_chauffage">
           <option value="Non détecté">Non renseigné</option>
-          <option value="PAC">Pompe à chaleur (PAC)</option>
+          <option value="PAC air/eau">PAC air/eau</option>
+          <option value="PAC air/air">PAC air/air (réversible)</option>
+          <option value="Géothermie">Géothermie</option>
           <option value="Gaz condensation">Gaz condensation</option>
           <option value="Bois/granulés">Poêle à bois / Granulés</option>
           <option value="Gaz ancien">Chaudière gaz ancienne</option>
@@ -2001,7 +2010,10 @@ function detecterEquipements(text){
   let rampants='Non détecté';
 
   /* ── CHAUFFAGE ── */
-  const hasPAC     = t.match(/pompe\s*[àa]\s*chaleur|\bpac\b|air[\s\-\/]eau|g[eé]otherm|a[eé]rotherm|thermodynamique.*chauffage/);
+  const hasPAC_aireau  = t.match(/pompe\s*[àa]\s*chaleur\s*air[\s\/\-]eau|pac\s*air[\s\/\-]eau|a[eé]rotherm|air[\s\/\-]eau/);
+  const hasPAC_airair  = t.match(/pac\s*air[\s\/\-]air|pompe\s*[àa]\s*chaleur\s*air[\s\/\-]air|climatiseur\s*r[eé]versible|split.*r[eé]versible|r[eé]versible.*split/);
+  const hasPAC_geo     = t.match(/g[eé]otherm|eau[\s\/\-]eau.*pac|pac.*eau[\s\/\-]eau/);
+  const hasPAC_generic = t.match(/\bpac\b|pompe\s*[àa]\s*chaleur|thermodynamique.*chauffage/);
   const hasCond    = t.match(/(?:chaudi[eè]re|chaudière)\s*[àa]\s*gaz\s*[àa]\s*condensation|condensation/);
   const hasBois    = t.match(/po[eê]le[\s\-àa]*(?:bois|granul)|granul[eé]s|pellets?|insert.*(?:bois|granul)|bois\s*(?:bûche|énergie)/);
   const hasGaz     = t.match(/(?:chaudi[eè]re|chaudière)\s*[àa]\s*gaz(?!\s*condensation)|gaz\s*naturel|chaud.*gaz|gaz.*chaud|\bgaz\b.*chauffage|chauffage.*\bgaz\b|gpl\b|combustible.*gaz/);
@@ -2010,14 +2022,17 @@ function detecterEquipements(text){
   const hasElec    = t.match(/radiateur[s]?\s*[eé]lectrique|convecteur[s]?|panneau[x]?\s*rayonnant|chauffage\s*[eé]lectrique|grille[\s-]pain|effet\s*joule|chaleur\s*douce|[eé]lectrique.*radiateur/)
     || text.match(/radiateur\s*[eé]lectrique[^:]*:\s*[1-9]/i);
 
-  if(hasPAC)           ch = 'PAC';
-  else if(hasCond)     ch = 'Gaz condensation';
+  if(hasPAC_geo)           ch = 'Géothermie';
+  else if(hasPAC_aireau)   ch = 'PAC air/eau';
+  else if(hasPAC_airair)   ch = 'PAC air/air';
+  else if(hasPAC_generic)  ch = 'PAC air/eau';  // générique → air/eau par défaut
+  else if(hasCond)         ch = 'Gaz condensation';
   else if(hasElec&&hasBois){ ch='Électrique'; chauffageMixte=true; }
-  else if(hasElec)     ch = 'Électrique';     // → remplacer PAC recommandée
-  else if(hasFioul)    ch = 'Fioul';          // → remplacer PAC recommandée
-  else if(hasPropane)  ch = 'Fioul';          // propane/butane → traité fioul
-  else if(hasGaz)      ch = 'Gaz ancien';     // → remplacer PAC recommandée
-  else if(hasBois)     ch = 'Bois/granulés';
+  else if(hasElec)         ch = 'Électrique';
+  else if(hasFioul)        ch = 'Fioul';
+  else if(hasPropane)      ch = 'Fioul';
+  else if(hasGaz)          ch = 'Gaz ancien';
+  else if(hasBois)         ch = 'Bois/granulés';
 
   /* ════════════════════════════════════════
      MURS — lecture champs structurés VT
@@ -2279,9 +2294,38 @@ function detecterEquipements(text){
   const piecesGarage = text.match(/pi[eè]ces?\s*chauff[eé]es?\s*(?:au[\s\-]dessus\s*du\s*garage|dessus\s*(?:du\s*)?garage)\s*\??\s*[:\-]\s*(OUI|NON|oui|non)/i);
   const piecesGarageOui = piecesGarage?.[1]?.match(/oui/i);
 
-  // "Y'a-t-il une véranda ?" + "La véranda est-elle chauffée ?"
-  const verandaOui = text.match(/v[eé]randa\s*[:\-]\s*(OUI|oui)/i)
-    || text.match(/y.a[\s\-]t[\s\-]il\s*une?\s*v[eé]randa\s*\??\s*[:\-]\s*(OUI|oui)/i);
+  /* ── TYPE DE SOUS-SOL — pour coefficient b (Tableau 5, arrêté 31/03/2021) ── */
+  let sousSolType = 'vide_sanitaire'; // défaut si sous-sol présent mais type inconnu
+
+  // Format HC RENO : HAUTEUR <1.8m + valeur > 0 = cave enterrée
+  const hcRenoSousSolM = text.match(/HAUTEUR\s*<1\.8m[\s\S]{0,30}?(\d+[,.]\d+|\d+)/i);
+  const hcRenoVal = hcRenoSousSolM ? parseFloat(hcRenoSousSolM[1].replace(',','.')) : 0;
+
+  // caveSemi AVANT caveEnterree — "cave semi-enterrée" contient "enterr"
+  const caveSemi     = t.match(/cave\s*semi[\s\-]ent[eé]rr[eé]|demi[\s\-]sous[\s\-]sol/i);
+  const caveEnterree = t.match(/cave\s*ent[eé]rr[eé]e?|emplacement\s*sous[\s\-]sol\s*[:\-]\s*ent[eé]rr[eé]|enterr[eé]/i);
+  const videSanitaire= t.match(/vide\s*sanitaire/i);
+  const terraPlein   = t.match(/terre[\s\-]plein|sur\s*terre[\s\-]plein/i);
+  const caveOui      = text.match(/infos?\s*(?:du\s*)?sous[\s\-]sol\s*[:\-]\s*cave/i)
+    || (sousSolInfo && sousSolInfo.match(/cave/i));
+
+  if     (caveSemi)      sousSolType = 'cave_semi';
+  else if(caveEnterree)  sousSolType = 'cave_enterree';
+  else if(caveOui)       sousSolType = 'cave_enterree';
+  else if(hcRenoVal > 0) sousSolType = 'cave_enterree'; // format HC RENO
+  else if(videSanitaire) sousSolType = 'vide_sanitaire';
+  else if(terraPlein)    sousSolType = 'terre_plein';
+  else if(pasDeSousSol)  sousSolType = 'aucun';
+
+  /* ── VÉRANDA — surface et état chauffé/non chauffé ── */
+  const verandaChauffeeMatch = text.match(/v[eé]randa\s*est[\s\-]elle\s*chauff[eé]e?\s*\??\s*[:\-]\s*(OUI|NON|oui|non)/i);
+  const verandaChauffee = verandaChauffeeMatch ? !!verandaChauffeeMatch[1].match(/oui/i) : null;
+  const verandaSurfMatch = text.match(/superficie\s*de\s*la\s*v[eé]randa\s*[:\-]\s*(\d+(?:[.,]\d+)?)/i)
+    || text.match(/longueur\s*de\s*la\s*v[eé]randa\s*[:\-]\s*(\d+(?:[.,]\d+)?)[^\r\n]*largeur\s*de\s*la\s*v[eé]randa\s*[:\-]\s*(\d+(?:[.,]\d+)?)/i);
+  const verandaSurface = verandaSurfMatch ? parseFloat(verandaSurfMatch[1]) : null;
+  // Longueur véranda pour estimer le mur tampon
+  const verandaLongueurMatch = text.match(/longueur\s*de\s*la\s*v[eé]randa\s*[:\-]\s*(\d+(?:[.,]\d+)?)/i);
+  const verandaLongueur = verandaLongueurMatch ? parseFloat(verandaLongueurMatch[1]) : null;
 
   if(plancherIsoON){
     if(plancherIsoON[1].match(/oui/i)){
@@ -2388,6 +2432,7 @@ function detecterEquipements(text){
   return {ch, murs, combles, rampants, fen, vmc, plancher, ecs, chauffageMixte, volets, robinets,
     typeMur, mitoyennete, niveauxChauffes, hauteurPlafond,
     _typeComble: _forceRampants ? 'amenage' : (isComblePerdu ? 'perdu' : null),
+    sousSolType, verandaChauffee, verandaLongueur, verandaSurface,
     _ep: {
       murs: epaisseurMursCm || _epaisseurMursAffiche,
       combles: epaisseurCombleCm,
@@ -2399,29 +2444,71 @@ function detecterEquipements(text){
 
 /* Tables physiques */
 const R_PAROI={
-  murs:{'ITE':3.7,'ITI':2.5,'ITI_MOY':1.8,'Isolés':1.5,'Non isolés':0.2,'Non détecté':0.3},
-  combles:{'Très bien isolés':7.0,'Isolés':4.0,'Non isolés':0.2,'Non détecté':0.3},
-  rampants:{'Bonne isolation':3.5,'Moyen':2.0,'Insuffisant':1.0,'Isolés':2.0,'Non isolés':0.2,'Non détecté':0.3},
-  fenetres:{'Triple vitrage':0.8,'Double vitrage récent':1.2,'Double vitrage ancien':2.5,'Simple vitrage':4.5,'Non détecté':3.0},
-  plancher:{'Bonne isolation':3.5,'Moyen':2.0,'Insuffisant':1.0,'Isolé':3.0,'Non isolé':0.2,'Non détecté':0.5},
+  // Résistances thermiques avec revêtements (R_si + R_se inclus dans le calcul U)
+  // Valeurs conformes Tableau 3 arrêté 31/03/2021
+  murs:{
+    'ITE':3.70,'ITI':2.50,'ITI_MOY':1.80,'Isolés':1.50,
+    'Non isolés':0.42,   // brique creuse 20cm : U≈1.7 W/m².K  → R=0.59-0.17=0.42
+    'Non détecté':0.35,
+  },
+  combles:{
+    'Très bien isolés':7.00,'Isolés':4.00,
+    'Non isolés':0.20,   // combles perdus non isolés : U≈2.7 W/m².K → R=0.37-0.17=0.20
+    'Non détecté':0.25,
+  },
+  rampants:{
+    'Bonne isolation':3.50,'Moyen':2.00,'Insuffisant':1.00,'Isolés':2.00,
+    'Non isolés':0.25,   // rampants non isolés : U≈2.5 W/m².K
+    'Non détecté':0.30,
+  },
+  fenetres:{
+    'Triple vitrage':0.80,'Double vitrage récent':1.20,
+    'Double vitrage ancien':2.50,'Simple vitrage':4.50,'Non détecté':3.00,
+  },
+  plancher:{
+    'Bonne isolation':3.50,'Moyen':2.00,'Insuffisant':1.00,
+    'Isolé':3.00,
+    'Non isolé':0.39,    // vide sanitaire non isolé : U≈1.8 W/m².K → R=0.56-0.17=0.39
+    'Non détecté':0.50,
+  },
 };
-const ETA_CHAUFFAGE={'PAC':3.2,'Gaz condensation':1.05,'Bois/granulés':0.80,'Gaz ancien':0.82,'Fioul':0.80,'Électrique':1.00,'Non détecté':0.85};
-const EP_COEFF={'PAC':2.3,'Gaz condensation':1.0,'Bois/granulés':0.6,'Gaz ancien':1.0,'Fioul':1.0,'Électrique':2.3,'Non détecté':1.0};
-const CO2_COEFF={'PAC':0.064,'Gaz condensation':0.227,'Bois/granulés':0.030,'Gaz ancien':0.227,'Fioul':0.324,'Électrique':0.064,'Non détecté':0.200};
-const ETA_ECS={'Thermodynamique':2.5,'Solaire':3.0,'Électrique':0.90,'Gaz':0.85,'Non détecté':0.85};
-const EP_ECS={'Thermodynamique':2.3,'Solaire':0.5,'Électrique':2.3,'Gaz':1.0,'Non détecté':1.0};
-const CO2_ECS={'Thermodynamique':0.064,'Solaire':0.010,'Électrique':0.064,'Gaz':0.227,'Non détecté':0.200};
-const DJU_REF=2501;
 
-/* ══════════════════════════════════════════════════════════════════
-   CALCUL 3CL-2021 AMÉLIORÉ
-   Améliorations vs version précédente :
-   1. Ponts thermiques ψ×L (Tableau 11 arrêté 31/03/2021)
-   2. Perméabilité à l'air n50 forfaitaire selon année construction (Tableau 6)
-   3. Apports solaires par orientation (IS×S×g×Fe)
-   4. Coefficient b — locaux non chauffés (garage, sous-sol, véranda)
-   Source : Arrêté du 31 mars 2021 relatif au DPE
-══════════════════════════════════════════════════════════════════ */
+// DJU (Degrés-Jours Unifiés) par zone climatique — valeurs 3CL-2021
+// Source : Tableau 2 annexe I de l'arrêté du 31 mars 2021
+const DJU_ZONE = {
+  'H1a': 3000,  // Nord/Est — très froid
+  'H1b': 2800,  // Île-de-France
+  'H1c': 2600,  // Centre-Est / Bourgogne
+  'H2':  2300,  // Centre / Ouest (ancienne référence)
+  'H2d': 2100,  // Pyrénées / Corse
+  'H3':  1500,  // Méditerranée
+};
+const DJU_REF = 2300;
+/* COP / η_sais : PAC air/eau=3.40 | PAC air/air=2.80 | Géothermie=4.50 */
+const ETA_CHAUFFAGE = {
+  'PAC air/eau':3.40,'PAC air/air':2.80,'PAC':3.40,'Géothermie':4.50,
+  'Gaz condensation':1.05,'Bois/granulés':0.78,'Gaz ancien':0.82,
+  'Fioul':0.80,'Électrique':1.00,'Non détecté':0.85,
+};
+const EP_COEFF = {
+  'PAC air/eau':2.30,'PAC air/air':2.30,'PAC':2.30,'Géothermie':2.30,
+  'Gaz condensation':1.00,'Bois/granulés':0.60,'Gaz ancien':1.00,
+  'Fioul':1.00,'Électrique':2.30,'Non détecté':1.00,
+};
+const CO2_COEFF = {
+  'PAC air/eau':0.064,'PAC air/air':0.064,'PAC':0.064,'Géothermie':0.064,
+  'Gaz condensation':0.227,'Bois/granulés':0.030,'Gaz ancien':0.227,
+  'Fioul':0.324,'Électrique':0.064,'Non détecté':0.200,
+};
+const ETA_ECS = {
+  'Thermodynamique':2.50,'Solaire':3.00,'Électrique':0.90,'Gaz':0.85,'Non détecté':0.85,
+};
+const EP_ECS = {
+  'Thermodynamique':2.30,'Solaire':0.50,'Électrique':2.30,'Gaz':1.00,'Non détecté':1.00,
+};
+const CO2_ECS = {
+  'Thermodynamique':0.064,'Solaire':0.010,'Électrique':0.064,'Gaz':0.227,'Non détecté':0.200,
+};
 
 /* ── 1. PONTS THERMIQUES ψ (W/m.K) — Tableau 11 de l'arrêté ──
    Valeurs ψ linéiques selon type d'isolation des murs
@@ -2436,21 +2523,198 @@ const PSI_PT = {
   'Non détecté':{ plancherBas:0.60, plancherHaut:0.60, refend:0.15, menuiserie:0.35 },
 };
 
-/* ── 2. PERMÉABILITÉ À L'AIR n50 (vol/h) — Tableau 6 de l'arrêté ──
-   Valeur forfaitaire selon année de construction */
-function n50Forfaitaire(annee, vmc) {
-  let n50;
-  if      (!annee)        n50 = 1.5;   // inconnu → valeur médiane
-  else if (annee < 1948)  n50 = 3.0;   // avant 1948 — très perméable
-  else if (annee < 1975)  n50 = 2.5;   // 1948-1974
-  else if (annee < 1989)  n50 = 2.0;   // 1975-1988
-  else if (annee < 2000)  n50 = 1.5;   // 1989-1999
-  else if (annee < 2006)  n50 = 1.2;   // 2000-2005
-  else if (annee < 2013)  n50 = 1.0;   // 2006-2012 (RT 2005)
-  else                    n50 = 0.6;   // 2013+ (RT 2012)
-  // Correction VMC : double flux → étanchéité renforcée
-  if (vmc === 'VMC double flux') n50 = Math.min(n50, 0.8);
-  return n50;
+/* ══════════════════════════════════════════════════════════════════
+   CALCUL 3CL-2021 — Calibré sur Liciel/TribuEnergie
+   Corrections appliquées depuis analyse fichier Liciel réel :
+   1. Surfaces : Scombles = Sh/niv | Smurs ratio selon niveaux
+   2. Ventilation : formule Q4Pa (Table 13 arrêté) × Sdep × kv
+   3. Nadeq ECS : Sh/66.1 (formule Liciel confirmée)
+   4. Facteur η apports : dynamique selon inertie (formule 3CL §6.5)
+   5. Inertie thermique : Lourde/Moyenne/Légère
+   6. Ponts thermiques, b plancher, véranda : inchangés
+══════════════════════════════════════════════════════════════════ */
+
+/* ── TABLE Q4Pa CONVENTIONNEL — Table tv_q4pa_conv, arrêté 31/03/2021 ──
+   Perméabilité à l'air par période de construction (m³/h.m²)
+   Source : Annexe 1 §8.2, validée sur fichier Liciel réel (Q4Pa=2.2 pour 1948)
+   kv = 0.75 (plusieurs façades exposées) | 0.50 (une façade) */
+function q4paConventionnel(annee, vmc) {
+  let q4pa;
+  if      (!annee || annee < 1948) q4pa = 2.20;  // avant 1948 — maçonnerie massive (pierre/brique)
+  else if (annee < 1975)  q4pa = 2.20;  // 1948-1974
+  else if (annee < 1982)  q4pa = 1.50;  // 1975-1981
+  else if (annee < 1989)  q4pa = 1.50;  // 1982-1988
+  else if (annee < 2001)  q4pa = 1.10;  // 1989-2000
+  else if (annee < 2006)  q4pa = 0.95;  // 2001-2005
+  else if (annee < 2013)  q4pa = 0.75;  // 2006-2012 (RT 2005)
+  else                    q4pa = 0.30;  // 2013+ (RT 2012)
+  // VMC double flux → étanchéité renforcée
+  if (vmc === 'VMC double flux') q4pa = Math.min(q4pa, 0.30);
+  return q4pa;
+}
+
+/* ── FACTEUR η UTILISATION DES APPORTS — formule 3CL §6.5 ──
+   Dépend du rapport γ = apports/besoins et de l'inertie (τ en heures)
+   Inertie lourde  : τ = 70h → a = 1 + 70/15 = 5.67
+   Inertie moyenne : τ = 40h → a = 1 + 40/15 = 3.67
+   Inertie légère  : τ = 15h → a = 1 + 15/15 = 2.00 */
+function facteurEtaApports(gamma, inertie) {
+  const tau  = inertie === 'lourde' ? 70 : inertie === 'legere' ? 15 : 40;
+  const a    = 1 + tau / 15;
+  if (gamma <= 0) return 1.0;
+  if (gamma >= 1) return 1.0 / gamma;
+  return (1 - Math.pow(gamma, a)) / (1 - Math.pow(gamma, a + 1));
+}
+
+/* ── INERTIE THERMIQUE depuis type de construction ──
+   Détectée depuis le type de mur et la période de construction */
+function detecterInertie(equip, annee) {
+  // Pierre, béton, brique pleine → lourde
+  if (['Pierre','Béton','Brique'].includes(equip.typeMur)) return 'lourde';
+  // Ossature bois → légère
+  if (equip.typeMur === 'Ossature bois') return 'legere';
+  // Avant 1975 : maisons massives → lourde
+  if (annee && annee < 1975) return 'lourde';
+  // 1975-2000 : parpaing → moyenne
+  if (annee && annee < 2000) return 'moyenne';
+  return 'moyenne'; // défaut
+}
+
+function calculer3CL(equip, surfaceM2, annee) {
+  const Sh  = surfaceM2 || 100;
+  const hsp = equip.hauteurPlafond || 2.5;
+  const niv = equip.niveauxChauffes || 2;
+
+  /* ── SURFACES CORRIGÉES ──
+     Scombles = surface au sol dernier niveau = Sh / niv  (Liciel mesure)
+     Splancher = surface au sol RDC = Sh / niv  (idem)
+     Smurs ratio selon niveaux (calibré sur Liciel) :
+       R+1 (2 niv) : 0.80 × Sh | R+2 (3 niv) : 0.95 × Sh | R+3+ : 1.10 × Sh
+     Sfenetres = 0.15 × Sh  (ratio standard 3CL, inchangé)
+     Sdep = Smurs + Scombles + Sfenetres  (surface déperditive hors plancher bas)
+  */
+  const Sfenetres = Sh * 0.15;
+  const Smurs     = Sh * (niv >= 3 ? 0.95 : niv === 2 ? 0.80 : 0.65);
+  const Scombles  = Sh / niv;          // surface au sol dernier niveau ✅ Liciel
+  const Splancher = Sh / niv;          // surface au sol RDC ✅ Liciel
+  const Sdep      = Smurs + Scombles + Sfenetres; // surface déperditive (hors PB)
+  const R_se = 0.04, R_si = 0.13;
+
+  // ── U-valeurs parois ──
+  const R_MUR_NATIF = {
+    'Brique':0.35,'Pierre':0.20,'Parpaing':0.15,'Béton':0.08,
+    'Ossature bois':0.60,'Pisé / Terre':0.30,'Non détecté':0.20
+  };
+  const R_mur_natif = R_MUR_NATIF[equip.typeMur] || 0.20;
+  const R_mur_iso   = R_PAROI.murs[equip.murs] || 0.3;
+  const R_mur_total = R_mur_iso > 0.3 ? R_mur_iso : R_mur_iso + R_mur_natif;
+  const Umurs     = 1 / (R_mur_total + R_si + R_se);
+  const Ufenetres = R_PAROI.fenetres[equip.fen] || 3.0;
+  const R_combles  = R_PAROI.combles[equip.combles]   || 0.3;
+  const R_rampants = R_PAROI.rampants[equip.rampants] || 0.3;
+  const Ucombles   = 1 / (Math.min(R_combles, R_rampants) + R_si + R_se);
+
+  // ── Coefficient b plancher bas ──
+  const bCoeffs   = coefficientB(equip);
+  const Uplancher = 1 / ((R_PAROI.plancher[equip.plancher] || 0.5) + R_si + R_se);
+
+  // ── Mitoyenneté ──
+  const mitoCoeff = equip.mitoyennete === 'Deux côtés' ? 0.85
+    : equip.mitoyennete === 'Un côté' ? 0.92 : 1.0;
+
+  // ── Véranda non chauffée — tampon mur adjacent ──
+  const S_mur_veranda = (equip.verandaChauffee === false && equip.verandaLongueur)
+    ? equip.verandaLongueur * hsp : 0;
+  const HT_murs    = (Smurs - S_mur_veranda) * Umurs * mitoCoeff
+                   + S_mur_veranda * Umurs * bCoeffs.veranda * mitoCoeff;
+  const HT_fen     = Sfenetres * Ufenetres;
+  const HT_combles = Scombles  * Ucombles;
+  const HT_plancher= Splancher * Uplancher * bCoeffs.plancher;
+  const HT_trans   = HT_murs + HT_fen + HT_combles + HT_plancher;
+
+  // ── PONTS THERMIQUES ψ×L ──
+  const surface_sol = Sh / niv;
+  const perimetre   = 4 * Math.sqrt(surface_sol * 1.1);
+  const psi = PSI_PT[equip.murs] || PSI_PT['Non détecté'];
+  const HT_pt = psi.plancherBas  * perimetre
+              + psi.plancherHaut * perimetre
+              + psi.refend       * perimetre * 0.3 * niv
+              + psi.menuiserie   * (Sfenetres / 1.2 * 4);
+
+  // ── VENTILATION — Formule Q4Pa (Table 13, arrêté 31/03/2021) ──
+  // Hvent = 0.34 × Q4Pa_conv × Sdep × kv
+  // kv = 0.75 (plusieurs façades exposées — cas général maison individuelle)
+  // kv = 0.50 (une seule façade exposée — appartement)
+  // kv × 0 = VMC double flux (débit hygiénique contrôlé seulement)
+  const Q4Pa = q4paConventionnel(annee, equip.vmc);
+  const kv   = equip.vmc === 'VMC double flux' ? 0.20
+             : equip.vmc === 'VMC simple flux'  ? 0.50
+             : 0.75; // naturelle ou non détectée
+  const Hvent = 0.34 * Q4Pa * Sdep * kv;
+
+  // ── Hglobal total ──
+  const Hglobal = HT_trans + HT_pt + Hvent;
+
+  // ── APPORTS SOLAIRES & INTERNES avec facteur η dynamique ──
+  const apportsSol = apportsSolaires(Sh, equip.orientation);
+  const apportsInt = 4.17 * Sh; // §6.3 arrêté — apports internes conventionnels
+  const apportsBruts = apportsSol + apportsInt;
+
+  // ── Besoins bruts (avant déduction apports) ──
+  const zoneEl = typeof document !== 'undefined'
+    ? (document.getElementById('dpe_zone') || document.getElementById('m_zone'))
+    : null;
+  const zone = (zoneEl && zoneEl.value) ? zoneEl.value : 'H2';
+  const DJU = DJU_ZONE[zone] || DJU_REF;
+  const Bch_brut = Hglobal * DJU * 24 / 1000;
+
+  // ── Facteur η dynamique selon inertie (formule 3CL §6.5) ──
+  const inertie = detecterInertie(equip, annee);
+  const gamma   = Bch_brut > 0 ? apportsBruts / Bch_brut : 0;
+  const eta     = facteurEtaApports(gamma, inertie);
+  const apportsTotal = apportsBruts * eta;
+  const Bch = Math.max(0, Bch_brut - apportsTotal);
+
+  // ── ECS — Nadeq = Sh/66.1 (formule Liciel/3CL confirmée) ──
+  // Nadeq = nombre d'équivalents adultes (occupants conventionnels)
+  // Formule 3CL : Nadeq = Sh / 66.1  (validée sur fichier Liciel réel)
+  const Nadeq = Math.max(1.0, Math.min(6.0, Sh / 66.1));
+  const V40_j = Nadeq * 56;   // volume ECS journalier (L/j)  — 56 L/j/Nadeq
+  const Besoins_ECS = V40_j * 365 * 30 * 1.16 / 1000; // kWh/an (ΔT=30°C, ρCp=1.16)
+
+  // ── Calcul EP ──
+  const Ech  = Bch / (ETA_CHAUFFAGE[equip.ch] || 0.85);
+  const Eecs = Besoins_ECS / (ETA_ECS[equip.ecs] || 0.85);
+  const Eaux = 3 * Sh, Eecl = 3.5 * Sh;
+  const Ep_ch  = Ech  * (EP_COEFF[equip.ch]  || 1.0) / Sh;
+  const Ep_ecs = Eecs * (EP_ECS[equip.ecs]   || 1.0) / Sh;
+  const Ep_aux = (Eaux + Eecl) * 2.3 / Sh;
+  const Ep_total = Ep_ch + Ep_ecs + Ep_aux;
+
+  const GES_total = Ech  * (CO2_COEFF[equip.ch]  || 0.2) / Sh
+                  + Eecs * (CO2_ECS[equip.ecs]    || 0.2) / Sh
+                  + (Eaux + Eecl) * 0.064 / Sh;
+
+  return {
+    ep:  Math.round(Ep_total),
+    ges: Math.round(GES_total * 10) / 10,
+    detail: {
+      Ubat:       Math.round((Hglobal / Sh) * 100) / 100,
+      HT_trans:   Math.round(HT_trans),
+      HT_pt:      Math.round(HT_pt),
+      Hvent:      Math.round(Hvent),
+      Q4Pa, kv, inertie, gamma: Math.round(gamma * 100) / 100, eta: Math.round(eta * 100) / 100,
+      apportsSol: Math.round(apportsSol),
+      apportsInt: Math.round(apportsInt),
+      Bch_therm:  Math.round(Bch),
+      Bch_brut:   Math.round(Bch_brut),
+      Ep_ch:      Math.round(Ep_ch),
+      Ep_ecs:     Math.round(Ep_ecs),
+      Ep_aux:     Math.round(Ep_aux),
+      surface: Sh, Nadeq: Math.round(Nadeq * 10) / 10,
+      mitoCoeff, b_plancher: bCoeffs.plancher,
+    }
+  };
 }
 
 /* ── 3. APPORTS SOLAIRES (kWh/an) — IS×S×g×Fe ──
@@ -2471,142 +2735,37 @@ function apportsSolaires(Sh, orientation) {
 /* ── 4. COEFFICIENT b — Locaux non chauffés (§5.3 de l'arrêté) ──
    b = réduction des déperditions vers locaux non chauffés
    0 = local chauffé (pas de déperditions), 1 = extérieur */
+/* ══════════════════════════════════════════════════════
+   COEFFICIENT b — Locaux non chauffés (Tableau 5, arrêté 31/03/2021)
+   b = ratio de déperditions vers local non chauffé vs extérieur
+   Plus b est bas, moins le plancher perd de chaleur
+══════════════════════════════════════════════════════ */
 function coefficientB(equip) {
-  // Coefficient b plancher bas selon sous-sol
-  let b_plancher = 1.0; // défaut : pleine déperdition
-  if (equip.plancher === 'Isolé' || equip.plancher === 'Bonne isolation' || equip.plancher === 'Moyen') {
-    // Vide sanitaire ou sous-sol non chauffé
-    b_plancher = 0.85; // b = 0.85 pour vide sanitaire (Tableau 5)
+  // ── b plancher bas selon type de sous-sol ──
+  let b_plancher;
+  switch(equip.sousSolType) {
+    case 'cave_enterree':  b_plancher = 0.40; break; // cave complètement enterrée — sol = tampon
+    case 'cave_semi':      b_plancher = 0.50; break; // cave semi-enterrée
+    case 'vide_sanitaire': b_plancher = 0.60; break; // vide sanitaire fermé
+    case 'terre_plein':    b_plancher = 0.80; break; // dalle sur terre-plein
+    case 'aucun':          b_plancher = 1.00; break; // pas de sous-sol → plancher sur ext
+    default:
+      // Déduire depuis l'état du plancher si type non détecté
+      if(equip.plancher === 'Non isolé') b_plancher = 0.75;      // vide sanitaire probable
+      else if(equip.plancher === 'Non détecté') b_plancher = 0.80;
+      else b_plancher = 0.85; // isolé → vide sanitaire avec isolation
   }
-  if (equip.plancher === 'Non détecté') b_plancher = 0.90;
 
-  // Coefficient b garage attenant (si détecté)
+  // ── b garage attenant non chauffé ──
   const b_garage = equip.garageAttenant ? 0.70 : 1.0;
 
-  // Coefficient b veranda non chauffée
-  const b_veranda = equip.verandaChauffee === false ? 0.75 : 1.0;
+  // ── b véranda non chauffée — tampon sur le mur adjacent ──
+  // La véranda réduit les déperditions du mur qu'elle couvre
+  const b_veranda = (equip.verandaChauffee === false) ? 0.70 : 1.0;
 
   return { plancher: b_plancher, garage: b_garage, veranda: b_veranda };
 }
 
-function calculer3CL(equip, surfaceM2, annee) {
-  const Sh  = surfaceM2 || 100;
-  const hsp = equip.hauteurPlafond || 2.5;
-  const vol = Sh * hsp;
-
-  // ── Surfaces estimées (proportions standard 3CL) ──
-  const Smurs    = Sh * 1.4;
-  const Sfenetres= Sh * 0.15;
-  const Scombles = Sh * 0.55;
-  const Splancher= Sh * 0.50;
-  const R_se = 0.04, R_si = 0.13;
-
-  // ── U-valeurs parois ──
-  const R_MUR_NATIF = {
-    'Brique':0.35,'Pierre':0.20,'Parpaing':0.15,'Béton':0.08,
-    'Ossature bois':0.60,'Pisé / Terre':0.30,'Non détecté':0.20
-  };
-  const R_mur_natif = R_MUR_NATIF[equip.typeMur] || 0.20;
-  const R_mur_iso   = R_PAROI.murs[equip.murs] || 0.3;
-  const R_mur_total = R_mur_iso > 0.3 ? R_mur_iso : R_mur_iso + R_mur_natif;
-  const Umurs     = 1 / (R_mur_total + R_si + R_se);
-  const Ufenetres = R_PAROI.fenetres[equip.fen] || 3.0;
-  const R_combles  = R_PAROI.combles[equip.combles]   || 0.3;
-  const R_rampants = R_PAROI.rampants[equip.rampants] || 0.3;
-  const Ucombles   = 1 / (Math.min(R_combles, R_rampants) + R_si + R_se);
-
-  // ── [4] Coefficient b plancher bas ──
-  const bCoeffs    = coefficientB(equip);
-  const Uplancher  = 1 / ((R_PAROI.plancher[equip.plancher] || 0.5) + R_si + R_se);
-
-  // ── Mitoyenneté ──
-  const mitoCoeff = equip.mitoyennete === 'Deux côtés' ? 0.85
-    : equip.mitoyennete === 'Un côté' ? 0.92 : 1.0;
-
-  // ── HT — Déperditions par transmission ──
-  const HT_murs    = Smurs    * Umurs    * mitoCoeff;
-  const HT_fen     = Sfenetres* Ufenetres;
-  const HT_combles = Scombles * Ucombles;
-  const HT_plancher= Splancher* Uplancher * bCoeffs.plancher;
-  const HT_trans   = HT_murs + HT_fen + HT_combles + HT_plancher;
-
-  // ── [1] PONTS THERMIQUES ψ×L ──
-  // Linéaires estimés depuis la géométrie (périmètre approximé)
-  const perimetre = 2 * Math.sqrt(Sh * 1.1) * 2; // périmètre approximé
-  const niv = equip.niveauxChauffes || 2;
-  const psi = PSI_PT[equip.murs] || PSI_PT['Non détecté'];
-  const L_plancherBas  = perimetre;                  // jonction mur/plancher bas
-  const L_plancherHaut = perimetre;                  // jonction mur/toiture
-  const L_refends      = perimetre * 0.3 * niv;     // refends intérieurs
-  const L_menuiseries  = Sfenetres / 1.2 * 4;       // périmètre des menuiseries
-  const HT_pt = psi.plancherBas  * L_plancherBas
-              + psi.plancherHaut * L_plancherHaut
-              + psi.refend       * L_refends
-              + psi.menuiserie   * L_menuiseries;
-
-  // ── [2] PERMÉABILITÉ À L'AIR — n50 forfaitaire ──
-  const n50 = n50Forfaitaire(annee, equip.vmc);
-  // Débit de fuite q4Pa-surf (lié à n50) selon 3CL
-  // Hvent = 0.34 × q_v (m3/h) avec q_v selon VMC + infiltrations
-  const q_v_vmc = { 'VMC double flux':0.3, 'VMC simple flux':0.7, 'Naturelle':1.2, 'Non détecté':1.0 }[equip.vmc] || 1.0;
-  // Débit infiltrations depuis n50 (formule 3CL : Qinf = n50/20 × vol)
-  const q_inf = (n50 / 20) * vol;
-  const Hvent = 0.34 * (q_v_vmc * Sh + q_inf); // W/K
-
-  // ── Hglobal total ──
-  const Hglobal = HT_trans + HT_pt + Hvent;
-
-  // ── [3] APPORTS SOLAIRES & INTERNES ──
-  const apportsSol = apportsSolaires(Sh, equip.orientation);
-  const apportsInt = 4.17 * Sh;  // apports internes (occupants + appareils) — valeur 3CL §6.3
-  const apportsTotal = (apportsSol + apportsInt) * 0.80; // facteur utilisation η=0.80
-
-  // ── Besoins de chauffage nets ──
-  const DJU = DJU_REF;
-  const Bch_brut = Hglobal * DJU * 24 / 1000; // kWh/an
-  const Bch = Math.max(0, Bch_brut - apportsTotal);
-
-  // ── Calcul EP ──
-  const nOcc = Math.max(1, Math.round(Sh / 25));
-  const Ech  = Bch / (ETA_CHAUFFAGE[equip.ch] || 0.85);
-  const Eecs = (1000 * nOcc) / (ETA_ECS[equip.ecs] || 0.85);
-  const Eaux = 3 * Sh, Eecl = 3.5 * Sh;
-  const Ep_ch  = Ech  * (EP_COEFF[equip.ch]  || 1.0) / Sh;
-  const Ep_ecs = Eecs * (EP_ECS[equip.ecs]   || 1.0) / Sh;
-  const Ep_aux = (Eaux + Eecl) * 2.3 / Sh;
-  const Ep_total = Ep_ch + Ep_ecs + Ep_aux;
-
-  const GES_total = Ech  * (CO2_COEFF[equip.ch]  || 0.2) / Sh
-                  + Eecs * (CO2_ECS[equip.ecs]    || 0.2) / Sh
-                  + (Eaux + Eecl) * 0.064 / Sh;
-
-  return {
-    ep:  Math.round(Ep_total),
-    ges: Math.round(GES_total * 10) / 10,
-    detail: {
-      // Déperditions détaillées
-      Ubat:       Math.round((Hglobal / Sh) * 100) / 100,
-      HT_trans:   Math.round(HT_trans),
-      HT_pt:      Math.round(HT_pt),
-      Hvent:      Math.round(Hvent),
-      n50,
-      // Apports
-      apportsSol: Math.round(apportsSol),
-      apportsInt: Math.round(apportsInt),
-      // Besoins
-      Bch_therm:  Math.round(Bch),
-      Bch_brut:   Math.round(Bch_brut),
-      // EP détaillé
-      Ep_ch:  Math.round(Ep_ch),
-      Ep_ecs: Math.round(Ep_ecs),
-      Ep_aux: Math.round(Ep_aux),
-      surface: Sh,
-      nOcc,
-      // Coefficients
-      mitoCoeff, b_plancher: bCoeffs.plancher,
-    }
-  };
-}
 
 const ETA_SAIS_THCEX={'PAC':3.40,'Gaz condensation':1.09,'Bois/granulés':0.78,'Gaz ancien':0.78,'Fioul':0.76,'Électrique':1.00,'Non détecté':0.80};
 const PSI_THCEX={'ITE':0.05,'ITI':0.35,'Isolés':0.50,'Non isolés':0.75,'Non détecté':0.60};
@@ -2645,7 +2804,9 @@ function calculerThCEEx(equip,surfaceM2,annee){
 
 function scoreEquipements(e){
   let s=30;
-  s+=({'PAC':30,'Gaz condensation':18,'Bois/granulés':8,'Gaz ancien':2,'Fioul':-8,'Électrique':-15}[e.ch]??0);
+  s+=({'PAC air/eau':35,'PAC air/air':28,'PAC':35,'Géothermie':40,
+       'Gaz condensation':20,'Bois/granulés':10,'Gaz ancien':2,
+       'Fioul':-8,'Électrique':-20}[e.ch]??0);
   s+=({'ITE':22,'ITI':14,'ITI_MOY':8,'Isolés':10,'Non isolés':-15}[e.murs]??0);
   s+=({'Très bien isolés':20,'Isolés':14,'Non isolés':-20}[e.combles]??0);
   s+=({'Bonne isolation':12,'Moyen':6,'Insuffisant':2,'Isolés':6,'Non isolés':-8,'Non détecté':0}[e.rampants]??0);
@@ -2664,21 +2825,9 @@ function determinerClasse(num,equip,surfaceM2){
   if(num.classeDirecte){return{classe:num.classeDirecte,ep:null,ges:null,score:classeToScore(num.classeDirecte),methode:'Classe lue dans le document',detail3CL:null,detailThCEEx:null,ep3CL:null,epThCEEx:null,ges3CL:null,gesThCEEx:null};}
   const surface=surfaceM2||100;
   const calc=calculer3CL(equip, surface, num.annee);
-  let epAdj=calc.ep;
-  // Correction année construction sur EP (facteur global bâti ancien)
-  // Note : la perméabilité n50 intègre déjà l'année, ici on corrige le reste (ponts therm. supplémentaires, infiltrations joints vieux)
-  if(num.annee){
-    if     (num.annee < 1948) epAdj=Math.round(epAdj*1.12);
-    else if(num.annee < 1975) epAdj=Math.round(epAdj*1.06);
-    else if(num.annee >= 2021) epAdj=Math.round(epAdj*0.75);
-    else if(num.annee >= 2012) epAdj=Math.round(epAdj*0.90);
-  }
+  const epAdj = calc.ep;   // n50 forfaitaire intègre déjà l'année de construction
   const gesAdj=Math.round((calc.ges*epAdj/calc.ep)*10)/10;
   const classe3CL=classeMax(classeEP(epAdj),classeGES(gesAdj));
-  // ── Th-CE-Ex désactivé pour logements individuels (réservé projets futurs) ──
-  // const thcex=calculerThCEEx(equip,surface,num.annee);
-  // const epCroise=Math.round(epAdj*0.40+thcex.ep*0.60);
-  // const gesCroise=Math.round((gesAdj*0.40+thcex.ges*0.60)*10)/10;
   return{classe:classe3CL,ep:epAdj,ges:gesAdj,score:classeToScore(classe3CL),methode:'3CL-2021 (Arrêté du 31 mars 2021)',detail3CL:{...calc.detail,epAdj,gesAdj},detailThCEEx:null,ep3CL:epAdj,epThCEEx:null,ges3CL:gesAdj,gesThCEEx:null};
 }
 
@@ -2741,13 +2890,14 @@ const MATRICE = {
    Source : Arrêté du 31 mars 2021 (annexe I)
 ══════════════════════════════════════════════════════ */
 const DEPT_ZONE = {
-  // H1a — Nord/Est (très froid)
+  // H1a — Nord-Est très froid (Alsace, Lorraine, Champagne-Ardenne, Aisne)
   '02':'H1a','08':'H1a','10':'H1a','51':'H1a','52':'H1a','54':'H1a','55':'H1a',
-  '57':'H1a','59':'H1a','60':'H1a','62':'H1a','67':'H1a','68':'H1a','88':'H1a',
-  // H1b — Île-de-France + Oise + Eure-et-Loir + Yonne
+  '57':'H1a','67':'H1a','68':'H1a','88':'H1a',
+  // H1b — Nord, Picardie, Normandie, Île-de-France, Bourgogne nord
+  '59':'H1b','60':'H1b','62':'H1b','80':'H1b',
   '75':'H1b','77':'H1b','78':'H1b','91':'H1b','92':'H1b','93':'H1b','94':'H1b',
   '95':'H1b','28':'H1b','45':'H1b','89':'H1b','21':'H1b','58':'H1b','71':'H1b',
-  '27':'H1b','76':'H1b','80':'H1b',
+  '27':'H1b','76':'H1b',
   // H1c — Centre-Est / Bourgogne / Rhône-Alpes nord
   '01':'H1c','03':'H1c','15':'H1c','18':'H1c','23':'H1c','36':'H1c','37':'H1c',
   '38':'H1c','39':'H1c','41':'H1c','42':'H1c','43':'H1c','44':'H1c','49':'H1c',
@@ -3253,7 +3403,13 @@ function renderDPE(classe,containerId='dpeMeter'){
     </div>`).join('');
 }
 function renderDet(equip,containerId='detGrid'){
-  const stCh=v=>v==='PAC'?{c:'st-good',t:'✓ Excellent'}:v==='Gaz condensation'?{c:'st-warn',t:'~ Correct'}:v==='Non détecté'?{c:'st-nd',t:'? Non détecté'}:{c:'st-bad',t:'✗ À remplacer'};
+  const stCh=v=>{
+    if(['PAC air/eau','Géothermie'].includes(v)) return {c:'st-good',t:'✓ Excellent'};
+    if(v==='PAC air/air'||v==='PAC') return {c:'st-good',t:'✓ Très bien'};
+    if(v==='Gaz condensation') return {c:'st-warn',t:'~ Correct'};
+    if(v==='Non détecté') return {c:'st-nd',t:'? Non détecté'};
+    return {c:'st-bad',t:'✗ À remplacer'};
+  };
   const stFen=v=>(v==='Triple vitrage'||v==='Double vitrage récent')?{c:'st-good',t:'✓ Bon'}:v==='Double vitrage ancien'?{c:'st-warn',t:'~ À améliorer'}:v==='Non détecté'?{c:'st-nd',t:'? Non détecté'}:{c:'st-bad',t:'✗ À remplacer'};
   const stVmc=v=>v==='VMC double flux'?{c:'st-good',t:'✓ Optimal'}:v==='VMC simple flux'?{c:'st-warn',t:'~ Correct'}:v==='Non détecté'?{c:'st-nd',t:'? Non détecté'}:{c:'st-bad',t:'✗ À installer'};
   const stEcs=v=>(v==='Thermodynamique'||v==='Solaire')?{c:'st-good',t:'✓ Excellent'}:v==='Gaz'?{c:'st-warn',t:'~ Correct'}:v==='Non détecté'?{c:'st-nd',t:'? Non détecté'}:{c:'st-bad',t:'✗ À remplacer'};
@@ -3564,39 +3720,40 @@ function analyserManuel(){
     plancher:document.getElementById('m_plancher').value,
     ecs:document.getElementById('m_ecs').value,
     volets:document.getElementById('m_volets').value,
-    robinets:'Non détecté',chauffageMixte:false,
+    robinets:'Non détecté', chauffageMixte:false,
     mitoyennete:document.getElementById('m_mitoyennete')?.value||'Aucune',
     regulation:document.getElementById('m_regulation')?.value||'Non détecté',
-    typeMur:'Non détecté', // non disponible en saisie manuelle
-    niveauxChauffes:parseInt(document.getElementById('m_niveaux')?.value)||null,
-    hauteurPlafond:null, // non disponible en saisie manuelle
+    typeMur:'Non détecté',
+    niveauxChauffes:parseInt(document.getElementById('m_niveaux')?.value)||2,
+    hauteurPlafond:null,
+    sousSolType: document.getElementById('m_sousSol')?.value || 'vide_sanitaire',
+    verandaChauffee: null,
+    verandaLongueur: null,
   };
-  const surface=parseFloat(document.getElementById('m_surface').value)||100;
-  const annee=parseInt(document.getElementById('m_annee').value)||null;
+  const surface = parseFloat(document.getElementById('m_surface').value)||100;
+  const annee   = parseInt(document.getElementById('m_annee').value)||null;
 
-  // ── Bonus mitoyenneté : réduction des déperditions latérales ──
-  // Un mur mitoyen = pas de déperdition sur ce pan → coefficient de réduction
-  const mitoCoeff = e.mitoyennete==='Deux côtés' ? 0.88 : e.mitoyennete==='Un côté' ? 0.94 : 1.0;
+  // ── Bonus régulation — appliqué sur EP final (non géré dans calculer3CL)
+  const regBonus = e.regulation==='Régulation complète' ? 0.90
+    : e.regulation==='Régulation globale' ? 0.94
+    : e.regulation==='Régulation par émetteurs' ? 0.97
+    : e.regulation==='Aucune régulation' ? 1.03 : 1.0;
 
-  // ── Bonus régulation : réduction consommation chauffage ──
-  const regBonus = e.regulation==='Régulation complète' ? 0.88
-    : e.regulation==='Régulation globale' ? 0.92
-    : e.regulation==='Régulation par émetteurs' ? 0.95
-    : e.regulation==='Aucune régulation' ? 1.02 : 1.0;
+  const num = {ep:null, ges:null, classeDirecte:null, annee};
+  const res  = determinerClasse(num, e, surface);
 
-  const num={ep:null,ges:null,classeDirecte:null,annee};
-  const res=determinerClasse(num,e,surface);
-  // Appliquer les coefficients mitoyenneté + régulation sur l'EP calculé
-  const epAjuste = res.ep !== null ? Math.round(res.ep * mitoCoeff * regBonus) : null;
-  const gesAjuste = res.ges !== null ? Math.round(res.ges * mitoCoeff * regBonus * 10)/10 : null;
-  const classeFinale = epAjuste !== null
-    ? (epAjuste<70?'A':epAjuste<110?'B':epAjuste<180?'C':epAjuste<250?'D':epAjuste<330?'E':epAjuste<420?'F':'G')
+  // Appliquer uniquement le bonus régulation (mitoyenneté déjà dans calculer3CL)
+  const epFinal  = res.ep  !== null ? Math.round(res.ep  * regBonus) : null;
+  const gesFinal = res.ges !== null ? Math.round(res.ges * regBonus * 10)/10 : null;
+  const classeFin = epFinal !== null
+    ? (epFinal<70?'A':epFinal<110?'B':epFinal<180?'C':epFinal<250?'D':epFinal<330?'E':epFinal<420?'F':'G')
     : res.classe;
-  const classe=classeFinale;
-  const ep=epAjuste||res.ep;
-  const ges=gesAjuste||res.ges;
-  const methode=res.methode;
-  const niv=calculerNiveau(num,e,classe);
+
+  const classe = classeFin;
+  const ep  = epFinal  || res.ep;
+  const ges = gesFinal || res.ges;
+  const methode = res.methode;
+  const niv = calculerNiveau(num, e, classe);
   document.getElementById('m_classeLetter').textContent=classe;
   document.getElementById('m_classeLetter').className='classe-letter cl-'+classe;
   const qualiteM = getQualiteDonnees(num, e);
@@ -3637,7 +3794,7 @@ function reinitialiserManuel(){
   ['m_nom','m_prenom','m_tel','m_email','m_adresse','m_cp','m_ville','m_surface','m_annee','m_niveaux']
     .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   // Remettre les selects à leur valeur par défaut
-  ['m_type','m_mitoyennete','m_chauffage','m_ecs','m_vmc','m_regulation','m_murs','m_combles','m_rampants','m_plancher','m_fenetres','m_volets']
+  ['m_type','m_mitoyennete','m_sousSol','m_chauffage','m_ecs','m_vmc','m_regulation','m_murs','m_combles','m_rampants','m_plancher','m_fenetres','m_volets']
     .forEach(id=>{ const el=document.getElementById(id); if(el) el.selectedIndex=0; });
   // Masquer les blocs résultats
   ['m_resultCard','m_scenarioCard','m_sautsCard','m_synthesesBtnWrap']
