@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -1215,12 +1214,7 @@ body::after{
 const ADMIN_DEFAULT = {id:'admin-ayoub', login:'AYOUB', pwd:'Nyx@2026!Tarhi', nom:'Ayoub Tarhi', role:'admin', actif:true, created:'2026'};
 
 function resetLocalStorage(){
-  if(!confirm('⚠️ Réinitialiser NYX ?
-
-Cela supprime les utilisateurs locaux et remet l'admin par défaut.
-Les données Firebase (VT, dossiers) ne sont pas affectées.
-
-Continuer ?')) return;
+  if(!confirm('Reinitialiser NYX ?\n\nCela supprime les utilisateurs locaux et remet l\'admin par defaut.\nLes donnees Firebase (VT, dossiers) ne sont pas affectees.\n\nContinuer ?')) return;
   lsRemove('nyx_users');
   lsRemove('nyx_session');
   lsRemove('nyx_clients');
@@ -1273,62 +1267,40 @@ async function doLogin(){
   const login = document.getElementById('loginUser').value.trim();
   const pwd   = document.getElementById('loginPass').value;
 
-  // Récupérer l'utilisateur NYX (pour rôle et nom)
   const users = getUsers();
-  // Debug: log pour diagnostic
-  console.log('[NYX LOGIN] login:', login, '| users count:', users.length, '| user found:', !!users.find(u=>u.login===login));
-  const found = users.find(u => u.login === login && u.pwd === pwd && u.actif !== false);
+  console.log('[NYX] Login attempt:', login, '| users:', users.length);
+
+  // Recherche insensible à la casse
+  const found = users.find(u =>
+    u.login.toLowerCase() === login.toLowerCase() &&
+    u.pwd === pwd &&
+    u.actif !== false
+  );
+
   if(!found){
-    // Tentative insensible à la casse pour l'identifiant
-    const foundNoCase = users.find(u => u.login.toLowerCase() === login.toLowerCase() && u.pwd === pwd && u.actif !== false);
-    if(foundNoCase){
-      // Trouver avec casse différente → connecter quand même
-      currentUser = foundNoCase;
-      lsSet('nyx_session', JSON.stringify({login: foundNoCase.login, role: foundNoCase.role}));
-      document.getElementById('loginScreen').style.display='none';
-      applyRole(foundNoCase.role);
-      refreshUsers();
-      refreshCRM();
-      return;
-    }
     document.getElementById('loginError').style.display='block';
     document.getElementById('loginPass').value='';
+    console.warn('[NYX] Login failed — identifiants incorrects');
     return;
   }
 
-  // Construire l'email Firebase depuis le login NYX
-  // Format : login@nyx-plateforme.app
-  const email = found.email || (login.toLowerCase().replace(/[^a-z0-9]/g,'') + '@nyx-plateforme.app');
-
-  try {
-    // Tentative connexion Firebase Auth
-    if(auth){
-      try {
-        await auth.signInWithEmailAndPassword(email, pwd);
-      } catch(authErr){
-        // Si utilisateur n'existe pas encore dans Firebase → le créer
-        if(authErr.code === 'auth/user-not-found' || authErr.code === 'auth/invalid-credential'){
-          try {
-            await auth.createUserWithEmailAndPassword(email, pwd);
-            console.log("Compte Firebase créé pour", login);
-          } catch(createErr){
-            console.warn("Firebase create error:", createErr.message);
-            // Continuer sans Firebase Auth (dégradé)
-          }
-        } else {
-          console.warn("Firebase auth error:", authErr.message);
-        }
-      }
-    }
-  } catch(e){ console.warn("Firebase auth global error:", e); }
-
-  // Connexion NYX locale (toujours)
+  // ✅ Connexion locale validée — Firebase en arrière-plan uniquement
   currentUser = found;
   lsSet('nyx_session', JSON.stringify({login: found.login, role: found.role}));
   document.getElementById('loginScreen').style.display='none';
   applyRole(found.role);
   refreshUsers();
   refreshCRM();
+
+  // Firebase optionnel — jamais bloquant
+  if(auth){
+    const email = found.email || (found.login.toLowerCase().replace(/[^a-z0-9]/g,'') + '@nyx-plateforme.app');
+    auth.signInWithEmailAndPassword(email, pwd).catch(async err=>{
+      if(err.code==='auth/user-not-found'||err.code==='auth/invalid-credential'){
+        auth.createUserWithEmailAndPassword(email, pwd).catch(()=>{});
+      }
+    });
+  }
 }
 
 function togglePwd(){
@@ -1666,70 +1638,53 @@ const VT_REQUIRED = 4; // Minimum 4 mots-clés pour valider
 
 function afficherDebugTexte(){
   const panel = document.getElementById('debugPanel');
-  const content = document.getElementById('debugContent');
+  const cnt = document.getElementById('debugContent');
   if(panel.style.display === 'block'){ panel.style.display='none'; return; }
 
   const KEYS = [
-    {label:'🧱 MURS', kws:['murs sont ils isol','isoles ?','type de mur','isolation mur']},
-    {label:'🪟 FENÊTRES', kws:['vitre :','vitrage','simple vitrage','double vitrage']},
-    {label:'💨 VENTILATION', kws:['ventilation','système de ventilation','vmc']},
-    {label:'🏠 COMBLES', kws:['combles','isolation existante','epaisseur','isolant']},
-    {label:'🏚️ PLANCHER BAS', kws:['plancher bas','isolant au plafond','sous-sol','garage']},
+    {label:'MURS', kws:['murs sont ils isol','isoles','type de mur']},
+    {label:'FENETRES', kws:['vitre :','simple vitrage','double vitrage']},
+    {label:'VENTILATION', kws:['ventilation','systeme de ventilation','vmc']},
+    {label:'COMBLES', kws:['isolation existante','epaisseur','isolant']},
+    {label:'PLANCHER BAS', kws:['plancher bas','isolant au plafond']},
   ];
 
-  let html = '';
+  const lines = [];
   const t = _debugFullText.toLowerCase();
-  KEYS.forEach(({label, kws}) => {
-    html += '
-══ ' + label + ' ══
-';
+  KEYS.forEach(function(k){
+    lines.push('== ' + k.label + ' ==');
     let found = false;
-    kws.forEach(kw => {
-      const idx = t.indexOf(kw.toLowerCase());
+    k.kws.forEach(function(kw){
+      const idx = t.indexOf(kw);
       if(idx >= 0){
-        const extract = _debugFullText.substring(Math.max(0,idx-20), idx+120).replace(/
-/g,' ↵ ');
-        html += '  [' + kw + '] → ...' + extract + '...
-';
+        const extract = _debugFullText.substring(Math.max(0,idx-20), idx+100).replace(/\n/g,' | ');
+        lines.push('  [' + kw + '] -> ...' + extract + '...');
         found = true;
       }
     });
-    if(!found) html += '  ⚠️ Aucun mot-clé trouvé pour ce bloc
-';
+    if(!found) lines.push('  /!\\ Aucun mot-cle trouve');
   });
 
-  html += '
-══ RÉSULTAT DÉTECTION ══
-';
+  lines.push('');
+  lines.push('== RESULTATS ==');
   if(equip){
-    html += '  Murs     : ' + (equip.murs||'?') + '
-';
-    html += '  Fenêtres : ' + (equip.fen||'?') + '
-';
-    html += '  VMC      : ' + (equip.vmc||'?') + '
-';
-    html += '  Combles  : ' + (equip.combles||'?') + '
-';
-    html += '  Plancher : ' + (equip.plancher||'?') + '
-';
-    html += '  Chauffage: ' + (equip.ch||'?') + '
-';
-    html += '  ECS      : ' + (equip.ecs||'?') + '
-';
+    lines.push('  Murs     : ' + (equip.murs||'?'));
+    lines.push('  Fenetres : ' + (equip.fen||'?'));
+    lines.push('  VMC      : ' + (equip.vmc||'?'));
+    lines.push('  Combles  : ' + (equip.combles||'?'));
+    lines.push('  Plancher : ' + (equip.plancher||'?'));
+    lines.push('  Chauffage: ' + (equip.ch||'?'));
+    lines.push('  ECS      : ' + (equip.ecs||'?'));
   }
+  lines.push('');
+  lines.push('== EXTRACTION ==');
+  lines.push('  Chars: ' + _debugFullText.length);
+  lines.push('  Lignes: ' + _debugFullText.split('\n').length);
 
-  html += '
-══ PAGES LUES ══
-';
-  html += '  Total chars extraits : ' + _debugFullText.length + '
-';
-  html += '  Lignes               : ' + _debugFullText.split('
-').length + '
-';
-
-  content.textContent = html;
+  cnt.textContent = lines.join('\n');
   panel.style.display = 'block';
 }
+
 
 function actualiserAnalyse(){
   // Remettre à zéro tout l'onglet DPE proprement
@@ -4832,7 +4787,7 @@ document.getElementById('d_date').value=new Date().toISOString().split('T')[0];
     if(!sess) return;
     const {login, role} = JSON.parse(sess);
     const users = getUsers();
-    const found = users.find(u => u.login === login && u.actif !== false);
+    const found = users.find(u => u.login.toLowerCase() === login.toLowerCase() && u.actif !== false);
     if(!found) { lsRemove('nyx_session'); return; }
     currentUser = found;
     document.getElementById('loginScreen').style.display = 'none';
