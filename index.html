@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -605,17 +606,6 @@ body::after{
       <button class="btn btn-ghost hidden" id="btnActualiser" onclick="actualiserAnalyse()" style="border:1px solid rgba(16,185,129,0.3);">
         🔃 Actualiser
       </button>
-      <button class="btn btn-ghost hidden" id="btnDebug" onclick="afficherDebugTexte()" style="border:1px solid rgba(255,215,64,0.3);color:#FFD740;font-size:11px;">
-        🔬 Debug texte extrait
-      </button>
-    </div>
-    <!-- Panel debug -->
-    <div id="debugPanel" style="display:none;margin-top:16px;background:#0a0a0a;border:1px solid rgba(255,215,64,0.2);border-radius:10px;padding:16px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <span style="font-size:11px;font-family:'Space Mono',monospace;color:#FFD740;text-transform:uppercase;letter-spacing:0.1em;">🔬 Texte extrait autour des champs clés</span>
-        <span onclick="document.getElementById('debugPanel').style.display='none'" style="cursor:pointer;color:#666;font-size:16px;">✕</span>
-      </div>
-      <div id="debugContent" style="font-family:'Space Mono',monospace;font-size:11px;color:#aaa;white-space:pre-wrap;max-height:400px;overflow-y:auto;line-height:1.6;"></div>
     </div>
   </div>
 
@@ -655,11 +645,11 @@ body::after{
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;margin-top:10px;">
             <div style="color:var(--muted);">Surface / Occupants :</div><div id="d3cl_surface" style="font-weight:600;">—</div>
-            <div style="color:var(--muted);">Bbio :</div><div id="d3cl_Ubat" style="color:#FFAB40;font-weight:600;">—</div>
+            <div style="color:var(--muted);">Ubat (W/m².K) :</div><div id="d3cl_Ubat" style="color:#FFAB40;font-weight:600;">—</div>
             <div style="color:var(--muted);">Besoins chauffage nets :</div><div id="d3cl_Bch" style="color:#FFAB40;font-weight:600;">—</div>
-            <div style="color:var(--muted);">Ponts thermiques ψ :</div><div id="d3cl_psi" style="color:#FFAB40;font-weight:600;">—</div>
+            <div style="color:var(--muted);">Ponts thermiques HT_pt :</div><div id="d3cl_psi" style="color:#FFAB40;font-weight:600;">—</div>
             <div style="color:var(--muted);">Perméabilité n50 :</div><div id="d3cl_n50" style="color:#FFAB40;font-weight:600;">—</div>
-            <div style="color:var(--muted);">Rendement saisonnier η :</div><div id="d3cl_eta" style="color:#69F0AE;font-weight:600;">—</div>
+            <div style="color:var(--muted);">Apports solaires + internes :</div><div id="d3cl_eta" style="color:#69F0AE;font-weight:600;">—</div>
             <div style="color:var(--muted);">EP chauffage :</div><div id="d3cl_Ep_ch" style="color:var(--green2);font-weight:600;">—</div>
             <div style="color:var(--muted);">EP eau chaude :</div><div id="d3cl_Ep_ecs" style="color:var(--green2);font-weight:600;">—</div>
           </div>
@@ -705,6 +695,13 @@ body::after{
     </button>
   </div>
 
+  <!-- Zone climatique auto-détectée (cachée, utilisée par getZone()) -->
+  <select id="dpe_zone" style="display:none">
+    <option value="H1a">H1a</option><option value="H1b">H1b</option>
+    <option value="H1c">H1c</option><option value="H2" selected>H2</option>
+    <option value="H2d">H2d</option><option value="H3">H3</option>
+  </select>
+
 </div><!-- /tab-dpe -->
 
 <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -719,7 +716,7 @@ body::after{
       <div class="form-group"><label class="form-label">Téléphone</label><input class="form-input" id="m_tel" placeholder="06 00 00 00 00"></div>
       <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="m_email" placeholder="email@exemple.fr"></div>
       <div class="form-group" style="grid-column:span 2;"><label class="form-label">Adresse</label><input class="form-input" id="m_adresse" placeholder="1 rue de la Paix"></div>
-      <div class="form-group"><label class="form-label">Code Postal</label><input class="form-input" id="m_cp" placeholder="75001"></div>
+      <div class="form-group"><label class="form-label">Code Postal</label><input class="form-input" id="m_cp" placeholder="75001" oninput="autoDetectZoneManuel(this.value)"></div>
       <div class="form-group"><label class="form-label">Ville</label><input class="form-input" id="m_ville" placeholder="Paris"></div>
     </div>
   </div>
@@ -729,7 +726,7 @@ body::after{
     <div class="form-grid">
       <div class="form-group"><label class="form-label">Surface habitable (m²)</label><input class="form-input" id="m_surface" type="number" placeholder="100"></div>
       <div class="form-group"><label class="form-label">Année de construction</label><input class="form-input" id="m_annee" type="number" placeholder="1975"></div>
-      <div class="form-group"><label class="form-label">Zone climatique (3CL)</label>
+      <div class="form-group"><label class="form-label">Zone climatique (3CL) <span id="zone_auto_badge" style="font-size:10px;color:#10B981;display:none;">✓ Auto-détectée</span></label>
         <select class="form-select" id="m_zone">
           <option value="">-- Sélectionner votre zone --</option>
           <option value="H1a">H1a — Nord / Est (très froid) ×1.15</option>
@@ -806,6 +803,14 @@ body::after{
           <option value="Non détecté">Non renseigné</option>
           <option value="Très bien isolés">Très bien isolés (R≥7)</option>
           <option value="Isolés">Isolés</option>
+          <option value="Non isolés">Non isolés</option>
+        </select></div>
+      <div class="form-group"><label class="form-label">Rampants</label>
+        <select class="form-select" id="m_rampants">
+          <option value="Non détecté">Non renseigné</option>
+          <option value="Bonne isolation">Bonne isolation (&gt;14cm)</option>
+          <option value="Moyen">Moyen (11–14cm)</option>
+          <option value="Insuffisant">Insuffisant (&lt;11cm)</option>
           <option value="Non isolés">Non isolés</option>
         </select></div>
       <div class="form-group"><label class="form-label">Plancher bas</label>
@@ -1636,56 +1641,6 @@ const VT_KEYWORDS = [
 ];
 const VT_REQUIRED = 4; // Minimum 4 mots-clés pour valider
 
-function afficherDebugTexte(){
-  const panel = document.getElementById('debugPanel');
-  const cnt = document.getElementById('debugContent');
-  if(panel.style.display === 'block'){ panel.style.display='none'; return; }
-
-  const KEYS = [
-    {label:'MURS', kws:['murs sont ils isol','isoles','type de mur']},
-    {label:'FENETRES', kws:['vitre :','simple vitrage','double vitrage']},
-    {label:'VENTILATION', kws:['ventilation','systeme de ventilation','vmc']},
-    {label:'COMBLES', kws:['isolation existante','epaisseur','isolant']},
-    {label:'PLANCHER BAS', kws:['plancher bas','isolant au plafond']},
-  ];
-
-  const lines = [];
-  const t = _debugFullText.toLowerCase();
-  KEYS.forEach(function(k){
-    lines.push('== ' + k.label + ' ==');
-    let found = false;
-    k.kws.forEach(function(kw){
-      const idx = t.indexOf(kw);
-      if(idx >= 0){
-        const extract = _debugFullText.substring(Math.max(0,idx-20), idx+100).replace(/\n/g,' | ');
-        lines.push('  [' + kw + '] -> ...' + extract + '...');
-        found = true;
-      }
-    });
-    if(!found) lines.push('  /!\\ Aucun mot-cle trouve');
-  });
-
-  lines.push('');
-  lines.push('== RESULTATS ==');
-  if(equip){
-    lines.push('  Murs     : ' + (equip.murs||'?'));
-    lines.push('  Fenetres : ' + (equip.fen||'?'));
-    lines.push('  VMC      : ' + (equip.vmc||'?'));
-    lines.push('  Combles  : ' + (equip.combles||'?'));
-    lines.push('  Plancher : ' + (equip.plancher||'?'));
-    lines.push('  Chauffage: ' + (equip.ch||'?'));
-    lines.push('  ECS      : ' + (equip.ecs||'?'));
-  }
-  lines.push('');
-  lines.push('== EXTRACTION ==');
-  lines.push('  Chars: ' + _debugFullText.length);
-  lines.push('  Lignes: ' + _debugFullText.split('\n').length);
-
-  cnt.textContent = lines.join('\n');
-  panel.style.display = 'block';
-}
-
-
 function actualiserAnalyse(){
   // Remettre à zéro tout l'onglet DPE proprement
   const ids = ['beneficiaireCard','resultCard','scenarioCard','sautsCard','orientationCard','synthesesBtnWrap','detail3CLPanel','numPanel'];
@@ -2002,11 +1957,48 @@ function extraireBeneficiaire(text){
   return r;
 }
 
+/* ══════════════════════════════════════════════════════
+   CLASSIFICATION ISOLATION PAR ÉPAISSEUR (cm)
+   Règles métier :
+   Murs    : <8cm=Insuffisant | 8–14cm=Moyen | >14cm=Bonne isolation
+   Combles : <10cm=Insuffisant | 10–18cm=Moyen | >18cm=Bonne isolation
+   Rampants: <11cm=Insuffisant | 11–14cm=Moyen | >14cm=Bonne isolation
+   Plancher: <4cm=Insuffisant  | 4–7cm=Moyen   | >7cm=Bonne isolation
+   Si épaisseur absente → "Non isolé" (pas de valeur = pas isolé)
+══════════════════════════════════════════════════════ */
+function classerIsolationParEpaisseur(cm, type){
+  if(cm === null || isNaN(cm)) return null; // Pas d'épaisseur → on laisse la logique OUI/NON décider
+  const seuils = {
+    murs:    {insuf:8,  moyen:14},
+    combles: {insuf:10, moyen:18},
+    rampants:{insuf:11, moyen:14},
+    plancher:{insuf:4,  moyen:7},
+  };
+  const s = seuils[type];
+  if(!s) return null;
+  if(cm < s.insuf) return 'Insuffisant';
+  if(cm <= s.moyen) return 'Moyen';
+  return 'Bonne isolation';
+}
+
+// Extraction d'épaisseur en cm depuis un texte contextuel
+// Gère mm (si >30 → converti en cm) et cm directement
+function extraireEpaisseurCm(contextText){
+  // Cherche un nombre dans le contexte
+  const m = contextText.match(/(\d+(?:[.,]\d+)?)\s*(?:cm|mm)?/i);
+  if(!m) return null;
+  let val = parseFloat(m[1].replace(',','.'));
+  // Si unité explicitement mm ou valeur > 30 sans unité → diviser par 10
+  if(contextText.match(/\bmm\b/i) || val > 30) val = val / 10;
+  return Math.round(val * 10) / 10;
+}
+
 function detecterEquipements(text){
   const t = text.toLowerCase();
   let ch='Non détecté', murs='Non détecté', combles='Non détecté', fen='Non détecté';
   let vmc='Non détecté', plancher='Non détecté', ecs='Non détecté';
   let chauffageMixte=false, volets='Non détecté', robinets='Non détecté';
+  let rampants='Non détecté';
 
   /* ── CHAUFFAGE ── */
   const hasPAC     = t.match(/pompe\s*[àa]\s*chaleur|\bpac\b|air[\s\-\/]eau|g[eé]otherm|a[eé]rotherm|thermodynamique.*chauffage/);
@@ -2038,26 +2030,57 @@ function detecterEquipements(text){
   // Champ "Type d'isolation"
   const typeIsoText = text.match(/type\s*d.isolation\s*(?:des\s*murs?)?\s*[:\-]\s*([^\r\n]{2,40})/i)?.[1]||'';
 
-  // Champ "Epaisseur de l'isolation en mm"
-  const epaisseурIsoMatch = text.match(/[eé]paisseur\s*(?:de\s*l.isolation|isolant|iso)\s*(?:en\s*mm)?\s*[:\-]\s*(\d+)/i);
-  const epaisseurIso = epaisseурIsoMatch ? parseInt(epaisseурIsoMatch[1]) : null;
+  // Épaisseur isolant MURS — recherche contextuelle (priorité : champ "murs" puis générique)
+  // Pattern : ligne contenant "mur" + épaisseur, ou champ épaisseur dédié aux murs
+  const epMursContextPatterns = [
+    /[eé]paisseur\s*(?:de\s*l.isolation|isolant|iso)\s*(?:des?\s*murs?)?\s*[:\-]\s*(\d+(?:[.,]\d+)?)\s*(cm|mm)?/i,
+    /murs?\s*[:\-][^\r\n]{0,30}[eé]paisseur[^\r\n]{0,20}(\d+(?:[.,]\d+)?)\s*(cm|mm)?/i,
+    /isolation\s*(?:des?\s*)?murs?\s*[:\-][^\r\n]{0,30}(\d+(?:[.,]\d+)?)\s*(cm|mm)/i,
+  ];
+  let epaisseurMursCm = null;
+  for(const pat of epMursContextPatterns){
+    const m = text.match(pat);
+    if(m){
+      let val = parseFloat(m[1].replace(',','.'));
+      if(m[2]?.match(/mm/i) || val > 30) val = val / 10;
+      epaisseurMursCm = Math.round(val * 10) / 10;
+      break;
+    }
+  }
+  // Fallback : épaisseur générique si aucune épaisseur murs trouvée
+  if(epaisseurMursCm === null){
+    const epGen = text.match(/[eé]paisseur\s*(?:de\s*l.isolation|isolant|iso)\s*(?:en\s*mm)?\s*[:\-]\s*(\d+)/i);
+    if(epGen){
+      let val = parseInt(epGen[1]);
+      if(val > 30) val = val / 10;
+      epaisseurMursCm = val;
+    }
+  }
 
   // Champ "Année de l'isolation"
   const anneeIsoMatch = text.match(/ann[eé]e\s*(?:de\s*l.isolation|isolant)\s*[:\-]\s*(\d{4})/i);
   const anneeIso = anneeIsoMatch ? parseInt(anneeIsoMatch[1]) : null;
-  const isoAncienne = anneeIso && anneeIso < 2000; // isolation avant 2000 → performance dégradée
+  const isoAncienne = anneeIso && anneeIso < 2000;
 
   if(mursIsoleON){
     if(mursIsoleON[1].match(/oui/i)){
-      // Déterminer type depuis "Type d'isolation"
-      if(typeIsoText.match(/ext[eé]rieur|ite\b/i)){
+      // Classer selon épaisseur en cm si disponible
+      const niveauEp = classerIsolationParEpaisseur(epaisseurMursCm, 'murs');
+      if(niveauEp){
+        // Mapper vers les valeurs existantes du système
+        if(niveauEp === 'Bonne isolation'){
+          murs = typeIsoText.match(/ext[eé]rieur|ite\b/i) ? 'ITE' : 'ITI';
+        } else if(niveauEp === 'Moyen'){
+          murs = typeIsoText.match(/ext[eé]rieur|ite\b/i) ? 'ITI' : 'ITI_MOY';
+        } else { // Insuffisant
+          murs = 'ITI_MOY';
+        }
+      } else if(typeIsoText.match(/ext[eé]rieur|ite\b/i)){
         murs = 'ITE';
       } else if(typeIsoText.match(/int[eé]rieur|iti\b/i)){
-        // Affiner selon épaisseur : < 80mm = ITI moyenne
-        murs = (epaisseurIso !== null && epaisseurIso < 80) ? 'ITI_MOY' : 'ITI';
-      } else if(epaisseurIso !== null){
-        // Pas de type précisé mais épaisseur connue
-        murs = epaisseurIso >= 120 ? 'ITE' : epaisseurIso >= 80 ? 'ITI' : 'ITI_MOY';
+        murs = isoAncienne ? 'ITI_MOY' : 'ITI';
+      } else if(epaisseurMursCm !== null){
+        murs = epaisseurMursCm >= 14 ? 'ITE' : epaisseurMursCm >= 8 ? 'ITI' : 'ITI_MOY';
       } else {
         murs = isoAncienne ? 'ITI_MOY' : 'Isolés';
       }
@@ -2068,7 +2091,7 @@ function detecterEquipements(text){
     // Fallback regex génériques
     if(t.match(/\bite\b|isolation.*ext[eé]rieur/)) murs='ITE';
     else if(t.match(/\biti\b|isolation.*int[eé]rieur|laine\s*de\s*verre.*mur/)){
-      murs = (epaisseurIso !== null && epaisseurIso < 80) ? 'ITI_MOY' : 'ITI';
+      murs = (epaisseurMursCm !== null && epaisseurMursCm < 8) ? 'ITI_MOY' : 'ITI';
     }
     else if(t.match(/murs?\s*(?:bien\s*)?isol[eé]s?/)) murs='Isolés';
     else if(t.match(/murs?\s*non\s*isol[eé]s?|sans\s*isolation.*mur/)) murs='Non isolés';
@@ -2080,6 +2103,9 @@ function detecterEquipements(text){
     }
   }
 
+  // Stocker l'épaisseur murs pour affichage
+  const _epaisseurMursAffiche = epaisseurMursCm;
+
   /* ════════════════════════════════════════
      COMBLES / TOITURE — lecture champs structurés VT
   ════════════════════════════════════════ */
@@ -2088,33 +2114,55 @@ function detecterEquipements(text){
     || text.match(/combles?\s*isol[eé]s?\s*\??\s*[:\-]?\s*(OUI|NON|oui|non)/i)
     || text.match(/isolation.*combles?\s*[:\-]\s*(OUI|NON|oui|non)/i);
 
-  // Champ "Epaisseur et année de l'isolant" / "Epaisseur de l'isolant"
-  const epCombleMatch = text.match(/[eé]paisseur\s*(?:et\s*ann[eé]e\s*de\s*l.isolant|isolant|iso)\s*[:\-]\s*(\d+)/i)
-    || text.match(/[eé]paisseur\s*[:\-]\s*(\d+)/i);
-  const epaisseurComble = epCombleMatch ? parseInt(epCombleMatch[1]) : null;
+  // Épaisseur isolant COMBLES en cm — cherche spécifiquement dans le contexte combles
+  const epComblePatterns = [
+    /combles?[^\r\n]{0,60}[eé]paisseur[^\r\n]{0,20}(\d+(?:[.,]\d+)?)\s*(cm|mm)?/i,
+    /[eé]paisseur\s*(?:et\s*ann[eé]e\s*de\s*l.isolant|isolant\s*combles?|isolant\s*toiture)\s*[:\-]\s*(\d+(?:[.,]\d+)?)\s*(cm|mm)?/i,
+    /[eé]paisseur\s*(?:et\s*ann[eé]e\s*de\s*l.isolant|isolant|iso)\s*[:\-]\s*(\d+(?:[.,]\d+)?)\s*(cm|mm)?/i,
+    /[eé]paisseur\s*[:\-]\s*(\d+(?:[.,]\d+)?)\s*(cm|mm)?/i,
+  ];
+  let epaisseurCombleCm = null;
+  for(const pat of epComblePatterns){
+    const m = text.match(pat);
+    if(m){
+      let val = parseFloat(m[1].replace(',','.'));
+      if(m[2]?.match(/mm/i) || val > 30) val = val / 10;
+      epaisseurCombleCm = Math.round(val * 10) / 10;
+      break;
+    }
+  }
 
-  // "Comble Accessible ?"
-  const combAccessible = text.match(/combles?\s*[àa]ccessible[s]?\s*\??\s*[:\-]\s*(OUI|NON|oui|non)/i);
-  // "Y a-t-il des pièces chauffées sous les combles ?"
-  const piecesChauffeesCombles = text.match(/pi[eè]ces?\s*chauff[eé]es?\s*(?:sous\s*les?\s*combles?|dans\s*les?\s*combles?)\s*\??\s*[:\-]\s*(OUI|NON|oui|non)/i);
-  // "Type de combles"
+  // "Type de combles" — déterminer si perdu, aménagé ou aménageable
   const typeCombleMatch = text.match(/type\s*(?:de\s*)?combles?\s*[:\-]\s*([^\r\n]{3,40})/i)?.[1]||'';
 
-  // Logique de classification combles
-  function classerCombles(epaisseur, isolOui, ancienne){
+  // Détecter le type depuis le champ "Type de combles" OU depuis le texte général
+  const isCombleAmenage = typeCombleMatch.match(/am[eé]nag[eé](?:able)?/i)
+    || t.match(/combles?\s*am[eé]nag[eé]s?\b/i)
+    || t.match(/combles?\s*am[eé]nageables?\b/i)
+    || t.match(/type\s*(?:de\s*)?combles?\s*[:\-][^\r\n]*am[eé]nag/i);
+
+  const isComblePerdu = typeCombleMatch.match(/perdu[s]?/i)
+    || t.match(/combles?\s*perdus?\b/i)
+    || t.match(/type\s*(?:de\s*)?combles?\s*[:\-][^\r\n]*perdu/i);
+
+  // Si comble aménagé/aménageable détecté → basculer vers rampants automatiquement
+  // (comble aménagé = espace habitable sous toiture = isolation des rampants)
+  let _forceRampants = !!isCombleAmenage;
+
+  // Logique de classification combles par épaisseur (cm)
+  function classerCombles(epaisseurCm, isolOui, ancienne){
     if(!isolOui) return 'Non isolés';
-    if(epaisseur === null) return ancienne ? 'Isolés' : 'Isolés';
-    if(epaisseur >= 300) return 'Très bien isolés'; // R≥7.5
-    if(epaisseur >= 200) return 'Très bien isolés'; // R≥5 → considéré très bien
-    if(epaisseur >= 100) return 'Isolés';
-    return 'Isolés'; // < 10cm = isolation partielle mais présente
+    if(epaisseurCm === null) return ancienne ? 'Isolés' : 'Isolés'; // pas d'épaisseur → isolé simple
+    const niveau = classerIsolationParEpaisseur(epaisseurCm, 'combles');
+    if(niveau === 'Bonne isolation') return 'Très bien isolés';
+    if(niveau === 'Moyen') return 'Isolés';
+    return 'Isolés'; // Insuffisant mais isolé quand même
   }
 
   if(combIsoleON){
     const isolOui = combIsoleON[1].match(/oui/i);
-    combles = classerCombles(epaisseurComble, !!isolOui, isoAncienne);
+    combles = classerCombles(epaisseurCombleCm, !!isolOui, isoAncienne);
   } else if(text.match(/pourquoi\s*les?\s*combles?\s*(?:ne\s*sont\s*pas\s*accessibles?|non\s*accessibles?)/i)){
-    // Section "Pourquoi non accessible" → présence d'une mention d'isolation ancienne
     if(t.match(/isol[eé]\s*il\s*y.a\s*(?:plusieur|plusieurs|quelques|des)/i)
       || t.match(/isol[eé]\s*(?:depuis|il\s*y\s*a)/i))
       combles = 'Isolés';
@@ -2122,12 +2170,64 @@ function detecterEquipements(text){
   } else {
     // Fallback regex génériques
     if(t.match(/combles?.*tr[eè]s\s*bien|r\s*[≥>]\s*[78]/)) combles='Très bien isolés';
-    else if(epaisseurComble !== null) combles = classerCombles(epaisseurComble, true, false);
+    else if(epaisseurCombleCm !== null) combles = classerCombles(epaisseurCombleCm, true, false);
     else if(t.match(/combles?\s*isol[eé]s?|isolation.*combles?|laine.*souffl|souffl.*combles/)) combles='Isolés';
     else if(t.match(/combles?\s*non\s*isol[eé]s?|sans\s*isolation.*combles?|combles?\s*perdus?\s*(?:non|sans)/)) combles='Non isolés';
   }
 
-  /* ── VENTILATION — lecture champ structuré ── */
+  /* ════════════════════════════════════════
+     RAMPANTS — toiture rampante / sous-pente
+  ════════════════════════════════════════ */
+  const rampantsIsoleON = text.match(/rampants?\s*isol[eé]s?\s*\??\s*[:\-]?\s*(OUI|NON|oui|non)/i)
+    || text.match(/isolation\s*(?:des?\s*)?rampants?\s*[:\-]\s*(OUI|NON|oui|non)/i)
+    || text.match(/rampants?\s*[:\-]\s*(OUI|NON|oui|non)/i);
+
+  // Épaisseur rampants
+  const epRampPatterns = [
+    /rampants?[^\r\n]{0,60}[eé]paisseur[^\r\n]{0,20}(\d+(?:[.,]\d+)?)\s*(cm|mm)?/i,
+    /[eé]paisseur\s*(?:isolant\s*)?rampants?\s*[:\-]\s*(\d+(?:[.,]\d+)?)\s*(cm|mm)?/i,
+    /[eé]paisseur\s*(?:isolant\s*)?sous[\s\-]pente\s*[:\-]\s*(\d+(?:[.,]\d+)?)\s*(cm|mm)?/i,
+  ];
+  let epaisseurRampantsCm = null;
+  for(const pat of epRampPatterns){
+    const m = text.match(pat);
+    if(m){
+      let val = parseFloat(m[1].replace(',','.'));
+      if(m[2]?.match(/mm/i) || val > 30) val = val / 10;
+      epaisseurRampantsCm = Math.round(val * 10) / 10;
+      break;
+    }
+  }
+
+  if(rampantsIsoleON){
+    if(rampantsIsoleON[1].match(/oui/i)){
+      const niveau = classerIsolationParEpaisseur(epaisseurRampantsCm, 'rampants');
+      rampants = niveau || 'Isolés';
+    } else {
+      rampants = 'Non isolés';
+    }
+  } else if(epaisseurRampantsCm !== null){
+    const niveau = classerIsolationParEpaisseur(epaisseurRampantsCm, 'rampants');
+    rampants = niveau || 'Isolés';
+  } else if(t.match(/rampants?\s*isol[eé]|isolation.*rampants?|sous[\s\-]pente.*isol/)){
+    rampants = 'Isolés';
+  } else if(t.match(/rampants?\s*non\s*isol[eé]|sans\s*isolation.*rampants?/)){
+    rampants = 'Non isolés';
+  } else if(t.match(/\brampants?\b|\bsous[\s\-]pente\b/)){
+    rampants = 'Non isolés'; // Présence mentionnée mais pas d'épaisseur → considéré non isolé
+  }
+
+  // ── Si comble aménagé/aménageable détecté → transférer vers rampants ──
+  // Le niveau d'isolation des combles devient celui des rampants
+  // et combles passe à "Non détecté" pour éviter les doublons
+  if(_forceRampants && rampants === 'Non détecté'){
+    // Mapper l'état combles → équivalent rampants
+    if(combles === 'Très bien isolés') rampants = 'Bonne isolation';
+    else if(combles === 'Isolés')      rampants = 'Moyen';
+    else if(combles === 'Non isolés')  rampants = 'Non isolés';
+    else                               rampants = 'Non isolés'; // Non détecté → considéré non isolé
+    combles = 'Non détecté'; // effacer combles pour éviter les doubles préconisations
+  }
   // Cherche toutes les formes : tableau récap, champ toiture, mentions diverses
   const ventSystON = text.match(/syst[eè]me[\s\S]{0,10}ventilation[\s\S]{0,15}(OUI|NON|oui|non)/i)
     || text.match(/ventilation[\s\S]{0,5}[:\-][\s\S]{0,5}(OUI|NON|oui|non)/i)
@@ -2149,6 +2249,23 @@ function detecterEquipements(text){
   const plancherIsoON = text.match(/plancher\s*bas\s*a[\s\-]t[\s\-]il\s*(?:d[eé]j[àa]\s*)?(?:un\s*)?isolant\s*(?:au\s*plafond)?\s*\??\s*[:\-]\s*(OUI|NON|oui|non)/i)
     || text.match(/isolant\s*au\s*plafond\s*(?:du\s*(?:sous[\s-]sol|vide\s*sanitaire))?\s*\??\s*[:\-]\s*(OUI|NON|oui|non)/i);
 
+  // Épaisseur isolant PLANCHER en cm
+  const epPlancherPatterns = [
+    /plancher\s*(?:bas)?[^\r\n]{0,60}[eé]paisseur[^\r\n]{0,20}(\d+(?:[.,]\d+)?)\s*(cm|mm)?/i,
+    /[eé]paisseur\s*(?:isolant\s*)?plancher\s*(?:bas)?\s*[:\-]\s*(\d+(?:[.,]\d+)?)\s*(cm|mm)?/i,
+    /[eé]paisseur\s*(?:isolant\s*)?(?:sous[\s\-]sol|vide\s*sanitaire)\s*[:\-]\s*(\d+(?:[.,]\d+)?)\s*(cm|mm)?/i,
+  ];
+  let epaisseurPlancherCm = null;
+  for(const pat of epPlancherPatterns){
+    const m = text.match(pat);
+    if(m){
+      let val = parseFloat(m[1].replace(',','.'));
+      if(m[2]?.match(/mm/i) || val > 30) val = val / 10;
+      epaisseurPlancherCm = Math.round(val * 10) / 10;
+      break;
+    }
+  }
+
   // "Infos du sous-sol" — présence/absence
   const sousSolInfo = text.match(/infos?\s*(?:du\s*)?sous[\s\-]sol\s*[:\-]\s*([^\r\n]{2,60})/i)?.[1]||'';
   const pasDeSousSol = sousSolInfo.match(/pas\s*de\s*sous[\s\-]sol|aucun|rien|néant|—/i)
@@ -2167,7 +2284,16 @@ function detecterEquipements(text){
     || text.match(/y.a[\s\-]t[\s\-]il\s*une?\s*v[eé]randa\s*\??\s*[:\-]\s*(OUI|oui)/i);
 
   if(plancherIsoON){
-    plancher = plancherIsoON[1].match(/oui/i) ? 'Isolé' : 'Non isolé';
+    if(plancherIsoON[1].match(/oui/i)){
+      // Qualifier selon épaisseur si disponible
+      const niveau = classerIsolationParEpaisseur(epaisseurPlancherCm, 'plancher');
+      plancher = niveau ? niveau : 'Isolé';
+    } else {
+      plancher = 'Non isolé';
+    }
+  } else if(epaisseurPlancherCm !== null){
+    const niveau = classerIsolationParEpaisseur(epaisseurPlancherCm, 'plancher');
+    plancher = niveau || 'Isolé';
   } else if(pasDeSousSol && !garageOui){
     // Pas de sous-sol, pas de garage → plancher sur terre-plein = non isolé par défaut
     plancher = 'Non isolé';
@@ -2218,15 +2344,66 @@ function detecterEquipements(text){
   if(t.match(/robinets?\s*thermostatiques?|t[eé]te\s*thermostatique/)) robinets='Présents';
   else if(t.match(/radiateur\s*[eé]lectrique|convecteur/)) robinets='Absents';
 
-  return {ch,murs,combles,fen,vmc,plancher,ecs,chauffageMixte,volets,robinets};
+  /* ── TYPE DE MUR NATIF (matériau constructif) ── */
+  let typeMur = 'Non détecté';
+  const typeMurMatch = text.match(/type\s*(?:de\s*)?murs?\s*[:\-]\s*([^\r\n]{2,40})/i)?.[1]||'';
+  if(typeMurMatch.match(/brique/i)||t.match(/\bbrique\b/)) typeMur='Brique';
+  else if(typeMurMatch.match(/pierre/i)||t.match(/\bpierre\b.*mur|mur.*\bpierre\b/)) typeMur='Pierre';
+  else if(typeMurMatch.match(/parpaing|b[eé]ton\s*creux/i)||t.match(/parpaing/)) typeMur='Parpaing';
+  else if(typeMurMatch.match(/b[eé]ton|bba|ossature\s*b[eé]ton/i)) typeMur='Béton';
+  else if(typeMurMatch.match(/ossature\s*bois|pan\s*de\s*bois/i)) typeMur='Ossature bois';
+  else if(typeMurMatch.match(/pisé|terre\s*cuite/i)) typeMur='Pisé / Terre';
+
+  /* ── MITOYENNETÉ ── */
+  let mitoyennete = 'Aucune';
+  const mitoMatch = text.match(/mitoyenn?et[eé]\s*[:\-]\s*([^\r\n]{2,40})/i)?.[1]||'';
+  if(mitoMatch.match(/deux|2|double|les\s*deux/i)||t.match(/mitoyen.*deux\s*c[oô]t[eé]s?|deux\s*c[oô]t[eé]s?.*mitoyen/i))
+    mitoyennete='Deux côtés';
+  else if(mitoMatch.match(/oui|un|1|c[oô]t[eé]/i)||t.match(/\bmitoyen(ne)?\b/i))
+    mitoyennete='Un côté';
+  else if(mitoMatch.match(/non|aucun|isol[eé]e?/i))
+    mitoyennete='Aucune';
+
+  /* ── NIVEAUX CHAUFFÉS ── */
+  let niveauxChauffes = null;
+  const niveauxMatch = text.match(/(?:nombre\s*de\s*)?niveaux?\s*(?:chauff[eé]s?)?\s*[:\-]\s*(\d)/i)
+    || text.match(/(\d)\s*niveaux?\s*chauff[eé]s?/i)
+    || text.match(/(?:rdc|rez[\s\-]de[\s\-]chauss[eé]e?)\s*\+\s*(\d)/i);
+  if(niveauxMatch) niveauxChauffes = parseInt(niveauxMatch[1]) + (niveauxMatch[0].match(/rdc/i)?1:0);
+  else if(t.match(/\brdc\b|\brez[\s\-]de[\s\-]chauss[eé]e?\b/) && !t.match(/\b[eé]tage\b/)) niveauxChauffes=1;
+  else if(t.match(/rdc\s*\+\s*1|r\+1\b/i)) niveauxChauffes=2;
+  else if(t.match(/rdc\s*\+\s*2|r\+2\b/i)) niveauxChauffes=3;
+
+  /* ── HAUTEUR SOUS PLAFOND ── */
+  let hauteurPlafond = null;
+  const hspMatch = text.match(/hauteur\s*(?:sous\s*)?plafond\s*[:\-]\s*(\d+(?:[.,]\d+)?)\s*(m|cm)?/i)
+    || text.match(/hsp\s*[:\-]\s*(\d+(?:[.,]\d+)?)\s*(m|cm)?/i)
+    || text.match(/(\d+(?:[.,]\d+)?)\s*m\s*(?:de\s*)?(?:hauteur|haut)\s*(?:sous\s*plafond)?/i);
+  if(hspMatch){
+    let hval = parseFloat(hspMatch[1].replace(',','.'));
+    if(hspMatch[2]?.match(/cm/i)) hval = hval/100;
+    if(hval > 1.5 && hval < 6) hauteurPlafond = Math.round(hval*100)/100;
+  }
+
+  return {ch, murs, combles, rampants, fen, vmc, plancher, ecs, chauffageMixte, volets, robinets,
+    typeMur, mitoyennete, niveauxChauffes, hauteurPlafond,
+    _typeComble: _forceRampants ? 'amenage' : (isComblePerdu ? 'perdu' : null),
+    _ep: {
+      murs: epaisseurMursCm || _epaisseurMursAffiche,
+      combles: epaisseurCombleCm,
+      rampants: epaisseurRampantsCm,
+      plancher: epaisseurPlancherCm,
+    }
+  };
 }
 
 /* Tables physiques */
 const R_PAROI={
   murs:{'ITE':3.7,'ITI':2.5,'ITI_MOY':1.8,'Isolés':1.5,'Non isolés':0.2,'Non détecté':0.3},
   combles:{'Très bien isolés':7.0,'Isolés':4.0,'Non isolés':0.2,'Non détecté':0.3},
+  rampants:{'Bonne isolation':3.5,'Moyen':2.0,'Insuffisant':1.0,'Isolés':2.0,'Non isolés':0.2,'Non détecté':0.3},
   fenetres:{'Triple vitrage':0.8,'Double vitrage récent':1.2,'Double vitrage ancien':2.5,'Simple vitrage':4.5,'Non détecté':3.0},
-  plancher:{'Isolé':3.0,'Non isolé':0.2,'Non détecté':0.5},
+  plancher:{'Bonne isolation':3.5,'Moyen':2.0,'Insuffisant':1.0,'Isolé':3.0,'Non isolé':0.2,'Non détecté':0.5},
 };
 const ETA_CHAUFFAGE={'PAC':3.2,'Gaz condensation':1.05,'Bois/granulés':0.80,'Gaz ancien':0.82,'Fioul':0.80,'Électrique':1.00,'Non détecté':0.85};
 const EP_COEFF={'PAC':2.3,'Gaz condensation':1.0,'Bois/granulés':0.6,'Gaz ancien':1.0,'Fioul':1.0,'Électrique':2.3,'Non détecté':1.0};
@@ -2236,28 +2413,199 @@ const EP_ECS={'Thermodynamique':2.3,'Solaire':0.5,'Électrique':2.3,'Gaz':1.0,'N
 const CO2_ECS={'Thermodynamique':0.064,'Solaire':0.010,'Électrique':0.064,'Gaz':0.227,'Non détecté':0.200};
 const DJU_REF=2501;
 
-function calculer3CL(equip,surfaceM2){
-  const Sh=surfaceM2||100;
-  const Smurs=Sh*1.4,Sfenetres=Sh*0.15,Scombles=Sh*0.55,Splancher=Sh*0.50;
-  const R_se=0.04,R_si=0.13;
-  const Umurs=1/(R_PAROI.murs[equip.murs]+R_si+R_se);
-  const Ufenetres=R_PAROI.fenetres[equip.fen]||3.0;
-  const Ucombles=1/(R_PAROI.combles[equip.combles]+R_si+R_se);
-  const Uplancher=1/(R_PAROI.plancher[equip.plancher]+R_si+R_se);
-  const n_air={'VMC double flux':0.4,'VMC simple flux':0.6,'Naturelle':0.8,'Non détecté':0.9}[equip.vmc]||0.8;
-  const Hglobal=(Smurs*Umurs)+(Sfenetres*Ufenetres)+(Scombles*Ucombles)+(Splancher*Uplancher)+0.34*n_air*Sh*2.5;
-  const api=10*Sh*1800/1000;
-  const DJU_eff=Math.max(DJU_REF-(api*1000)/(Hglobal*24),DJU_REF*0.6);
-  const Bch=Hglobal*DJU_eff*24/1000;
-  const nOcc=Math.max(1,Math.round(Sh/25));
-  const Ech=Bch/(ETA_CHAUFFAGE[equip.ch]||0.85);
-  const Eecs=(1000*nOcc)/(ETA_ECS[equip.ecs]||0.85);
-  const Eaux=3*Sh,Eecl=3.5*Sh;
-  const Ep_ch=Ech*(EP_COEFF[equip.ch]||1.0)/Sh;
-  const Ep_ecs=Eecs*(EP_ECS[equip.ecs]||1.0)/Sh;
-  const Ep_total=Ep_ch+Ep_ecs+(Eaux+Eecl)*2.3/Sh;
-  const GES_total=Ech*(CO2_COEFF[equip.ch]||0.2)/Sh+Eecs*(CO2_ECS[equip.ecs]||0.2)/Sh+(Eaux+Eecl)*0.064/Sh;
-  return{ep:Math.round(Ep_total),ges:Math.round(GES_total*10)/10,detail:{Ubat:Math.round((Hglobal/Sh)*100)/100,Bch_therm:Math.round(Bch),Ep_ch:Math.round(Ep_ch),Ep_ecs:Math.round(Ep_ecs),Ep_aux:Math.round((Eaux+Eecl)*2.3/Sh),surface:Sh,nOcc}};
+/* ══════════════════════════════════════════════════════════════════
+   CALCUL 3CL-2021 AMÉLIORÉ
+   Améliorations vs version précédente :
+   1. Ponts thermiques ψ×L (Tableau 11 arrêté 31/03/2021)
+   2. Perméabilité à l'air n50 forfaitaire selon année construction (Tableau 6)
+   3. Apports solaires par orientation (IS×S×g×Fe)
+   4. Coefficient b — locaux non chauffés (garage, sous-sol, véranda)
+   Source : Arrêté du 31 mars 2021 relatif au DPE
+══════════════════════════════════════════════════════════════════ */
+
+/* ── 1. PONTS THERMIQUES ψ (W/m.K) — Tableau 11 de l'arrêté ──
+   Valeurs ψ linéiques selon type d'isolation des murs
+   Linéaires estimés depuis la surface habitable */
+const PSI_PT = {
+  // ψ plancher bas/haut (W/m.K) selon isolation mur
+  'ITE':    { plancherBas:0.10, plancherHaut:0.10, refend:0.05, menuiserie:0.10 },
+  'ITI':    { plancherBas:0.45, plancherHaut:0.45, refend:0.10, menuiserie:0.25 },
+  'ITI_MOY':{ plancherBas:0.55, plancherHaut:0.55, refend:0.15, menuiserie:0.30 },
+  'Isolés': { plancherBas:0.50, plancherHaut:0.50, refend:0.12, menuiserie:0.28 },
+  'Non isolés':{ plancherBas:0.70, plancherHaut:0.70, refend:0.20, menuiserie:0.40 },
+  'Non détecté':{ plancherBas:0.60, plancherHaut:0.60, refend:0.15, menuiserie:0.35 },
+};
+
+/* ── 2. PERMÉABILITÉ À L'AIR n50 (vol/h) — Tableau 6 de l'arrêté ──
+   Valeur forfaitaire selon année de construction */
+function n50Forfaitaire(annee, vmc) {
+  let n50;
+  if      (!annee)        n50 = 1.5;   // inconnu → valeur médiane
+  else if (annee < 1948)  n50 = 3.0;   // avant 1948 — très perméable
+  else if (annee < 1975)  n50 = 2.5;   // 1948-1974
+  else if (annee < 1989)  n50 = 2.0;   // 1975-1988
+  else if (annee < 2000)  n50 = 1.5;   // 1989-1999
+  else if (annee < 2006)  n50 = 1.2;   // 2000-2005
+  else if (annee < 2013)  n50 = 1.0;   // 2006-2012 (RT 2005)
+  else                    n50 = 0.6;   // 2013+ (RT 2012)
+  // Correction VMC : double flux → étanchéité renforcée
+  if (vmc === 'VMC double flux') n50 = Math.min(n50, 0.8);
+  return n50;
+}
+
+/* ── 3. APPORTS SOLAIRES (kWh/an) — IS×S×g×Fe ──
+   Valeurs IS (W/m²) par orientation — moyennes France métropolitaine
+   Source : BDREN / météo France */
+function apportsSolaires(Sh, orientation) {
+  // Surfaces vitrées estimées par orientation (sans info précise → répartition standard)
+  const Sfenetres = Sh * 0.15; // surface vitrée totale
+  // Répartition standard si orientation inconnue : 40% S, 20% N, 20% E, 20% O
+  const IS = { 'Sud':350, 'Nord':80, 'Est':180, 'Ouest':180, 'Non détecté':220 };
+  const g  = 0.60; // facteur solaire vitrage standard (DV récent)
+  const Fe = 0.90; // facteur d'ensoleillement (masques proches)
+  const is_val = IS[orientation || 'Non détecté'];
+  // Apports sur la saison de chauffe (6 mois ≈ 4380h)
+  return Sfenetres * is_val * g * Fe * 0.5; // kWh/an (0.5 = correction saison/an)
+}
+
+/* ── 4. COEFFICIENT b — Locaux non chauffés (§5.3 de l'arrêté) ──
+   b = réduction des déperditions vers locaux non chauffés
+   0 = local chauffé (pas de déperditions), 1 = extérieur */
+function coefficientB(equip) {
+  // Coefficient b plancher bas selon sous-sol
+  let b_plancher = 1.0; // défaut : pleine déperdition
+  if (equip.plancher === 'Isolé' || equip.plancher === 'Bonne isolation' || equip.plancher === 'Moyen') {
+    // Vide sanitaire ou sous-sol non chauffé
+    b_plancher = 0.85; // b = 0.85 pour vide sanitaire (Tableau 5)
+  }
+  if (equip.plancher === 'Non détecté') b_plancher = 0.90;
+
+  // Coefficient b garage attenant (si détecté)
+  const b_garage = equip.garageAttenant ? 0.70 : 1.0;
+
+  // Coefficient b veranda non chauffée
+  const b_veranda = equip.verandaChauffee === false ? 0.75 : 1.0;
+
+  return { plancher: b_plancher, garage: b_garage, veranda: b_veranda };
+}
+
+function calculer3CL(equip, surfaceM2, annee) {
+  const Sh  = surfaceM2 || 100;
+  const hsp = equip.hauteurPlafond || 2.5;
+  const vol = Sh * hsp;
+
+  // ── Surfaces estimées (proportions standard 3CL) ──
+  const Smurs    = Sh * 1.4;
+  const Sfenetres= Sh * 0.15;
+  const Scombles = Sh * 0.55;
+  const Splancher= Sh * 0.50;
+  const R_se = 0.04, R_si = 0.13;
+
+  // ── U-valeurs parois ──
+  const R_MUR_NATIF = {
+    'Brique':0.35,'Pierre':0.20,'Parpaing':0.15,'Béton':0.08,
+    'Ossature bois':0.60,'Pisé / Terre':0.30,'Non détecté':0.20
+  };
+  const R_mur_natif = R_MUR_NATIF[equip.typeMur] || 0.20;
+  const R_mur_iso   = R_PAROI.murs[equip.murs] || 0.3;
+  const R_mur_total = R_mur_iso > 0.3 ? R_mur_iso : R_mur_iso + R_mur_natif;
+  const Umurs     = 1 / (R_mur_total + R_si + R_se);
+  const Ufenetres = R_PAROI.fenetres[equip.fen] || 3.0;
+  const R_combles  = R_PAROI.combles[equip.combles]   || 0.3;
+  const R_rampants = R_PAROI.rampants[equip.rampants] || 0.3;
+  const Ucombles   = 1 / (Math.min(R_combles, R_rampants) + R_si + R_se);
+
+  // ── [4] Coefficient b plancher bas ──
+  const bCoeffs    = coefficientB(equip);
+  const Uplancher  = 1 / ((R_PAROI.plancher[equip.plancher] || 0.5) + R_si + R_se);
+
+  // ── Mitoyenneté ──
+  const mitoCoeff = equip.mitoyennete === 'Deux côtés' ? 0.85
+    : equip.mitoyennete === 'Un côté' ? 0.92 : 1.0;
+
+  // ── HT — Déperditions par transmission ──
+  const HT_murs    = Smurs    * Umurs    * mitoCoeff;
+  const HT_fen     = Sfenetres* Ufenetres;
+  const HT_combles = Scombles * Ucombles;
+  const HT_plancher= Splancher* Uplancher * bCoeffs.plancher;
+  const HT_trans   = HT_murs + HT_fen + HT_combles + HT_plancher;
+
+  // ── [1] PONTS THERMIQUES ψ×L ──
+  // Linéaires estimés depuis la géométrie (périmètre approximé)
+  const perimetre = 2 * Math.sqrt(Sh * 1.1) * 2; // périmètre approximé
+  const niv = equip.niveauxChauffes || 2;
+  const psi = PSI_PT[equip.murs] || PSI_PT['Non détecté'];
+  const L_plancherBas  = perimetre;                  // jonction mur/plancher bas
+  const L_plancherHaut = perimetre;                  // jonction mur/toiture
+  const L_refends      = perimetre * 0.3 * niv;     // refends intérieurs
+  const L_menuiseries  = Sfenetres / 1.2 * 4;       // périmètre des menuiseries
+  const HT_pt = psi.plancherBas  * L_plancherBas
+              + psi.plancherHaut * L_plancherHaut
+              + psi.refend       * L_refends
+              + psi.menuiserie   * L_menuiseries;
+
+  // ── [2] PERMÉABILITÉ À L'AIR — n50 forfaitaire ──
+  const n50 = n50Forfaitaire(annee, equip.vmc);
+  // Débit de fuite q4Pa-surf (lié à n50) selon 3CL
+  // Hvent = 0.34 × q_v (m3/h) avec q_v selon VMC + infiltrations
+  const q_v_vmc = { 'VMC double flux':0.3, 'VMC simple flux':0.7, 'Naturelle':1.2, 'Non détecté':1.0 }[equip.vmc] || 1.0;
+  // Débit infiltrations depuis n50 (formule 3CL : Qinf = n50/20 × vol)
+  const q_inf = (n50 / 20) * vol;
+  const Hvent = 0.34 * (q_v_vmc * Sh + q_inf); // W/K
+
+  // ── Hglobal total ──
+  const Hglobal = HT_trans + HT_pt + Hvent;
+
+  // ── [3] APPORTS SOLAIRES & INTERNES ──
+  const apportsSol = apportsSolaires(Sh, equip.orientation);
+  const apportsInt = 4.17 * Sh;  // apports internes (occupants + appareils) — valeur 3CL §6.3
+  const apportsTotal = (apportsSol + apportsInt) * 0.80; // facteur utilisation η=0.80
+
+  // ── Besoins de chauffage nets ──
+  const DJU = DJU_REF;
+  const Bch_brut = Hglobal * DJU * 24 / 1000; // kWh/an
+  const Bch = Math.max(0, Bch_brut - apportsTotal);
+
+  // ── Calcul EP ──
+  const nOcc = Math.max(1, Math.round(Sh / 25));
+  const Ech  = Bch / (ETA_CHAUFFAGE[equip.ch] || 0.85);
+  const Eecs = (1000 * nOcc) / (ETA_ECS[equip.ecs] || 0.85);
+  const Eaux = 3 * Sh, Eecl = 3.5 * Sh;
+  const Ep_ch  = Ech  * (EP_COEFF[equip.ch]  || 1.0) / Sh;
+  const Ep_ecs = Eecs * (EP_ECS[equip.ecs]   || 1.0) / Sh;
+  const Ep_aux = (Eaux + Eecl) * 2.3 / Sh;
+  const Ep_total = Ep_ch + Ep_ecs + Ep_aux;
+
+  const GES_total = Ech  * (CO2_COEFF[equip.ch]  || 0.2) / Sh
+                  + Eecs * (CO2_ECS[equip.ecs]    || 0.2) / Sh
+                  + (Eaux + Eecl) * 0.064 / Sh;
+
+  return {
+    ep:  Math.round(Ep_total),
+    ges: Math.round(GES_total * 10) / 10,
+    detail: {
+      // Déperditions détaillées
+      Ubat:       Math.round((Hglobal / Sh) * 100) / 100,
+      HT_trans:   Math.round(HT_trans),
+      HT_pt:      Math.round(HT_pt),
+      Hvent:      Math.round(Hvent),
+      n50,
+      // Apports
+      apportsSol: Math.round(apportsSol),
+      apportsInt: Math.round(apportsInt),
+      // Besoins
+      Bch_therm:  Math.round(Bch),
+      Bch_brut:   Math.round(Bch_brut),
+      // EP détaillé
+      Ep_ch:  Math.round(Ep_ch),
+      Ep_ecs: Math.round(Ep_ecs),
+      Ep_aux: Math.round(Ep_aux),
+      surface: Sh,
+      nOcc,
+      // Coefficients
+      mitoCoeff, b_plancher: bCoeffs.plancher,
+    }
+  };
 }
 
 const ETA_SAIS_THCEX={'PAC':3.40,'Gaz condensation':1.09,'Bois/granulés':0.78,'Gaz ancien':0.78,'Fioul':0.76,'Électrique':1.00,'Non détecté':0.80};
@@ -2298,11 +2646,12 @@ function calculerThCEEx(equip,surfaceM2,annee){
 function scoreEquipements(e){
   let s=30;
   s+=({'PAC':30,'Gaz condensation':18,'Bois/granulés':8,'Gaz ancien':2,'Fioul':-8,'Électrique':-15}[e.ch]??0);
-  s+=({'ITE':22,'ITI':14,'Isolés':10,'Non isolés':-15}[e.murs]??0);
+  s+=({'ITE':22,'ITI':14,'ITI_MOY':8,'Isolés':10,'Non isolés':-15}[e.murs]??0);
   s+=({'Très bien isolés':20,'Isolés':14,'Non isolés':-20}[e.combles]??0);
+  s+=({'Bonne isolation':12,'Moyen':6,'Insuffisant':2,'Isolés':6,'Non isolés':-8,'Non détecté':0}[e.rampants]??0);
   s+=({'Triple vitrage':16,'Double vitrage récent':12,'Double vitrage ancien':4,'Simple vitrage':-12}[e.fen]??0);
   s+=({'VMC double flux':10,'VMC simple flux':3,'Naturelle':-8}[e.vmc]??0);
-  s+=({'Isolé':10,'Non isolé':-8}[e.plancher]??0);
+  s+=({'Bonne isolation':12,'Moyen':6,'Insuffisant':2,'Isolé':10,'Non isolé':-8}[e.plancher]??0);
   s+=({'Thermodynamique':8,'Solaire':10,'Électrique':-6,'Gaz':2}[e.ecs]??0);
   return Math.max(0,Math.min(100,s));
 }
@@ -2314,9 +2663,16 @@ function determinerClasse(num,equip,surfaceM2){
   if(num.ges!==null){const c=classeGES(num.ges);return{classe:c,ep:null,ges:num.ges,score:classeToScore(c),methode:'Émissions GES extraites du PDF',detail3CL:null,detailThCEEx:null,ep3CL:null,epThCEEx:null,ges3CL:null,gesThCEEx:null};}
   if(num.classeDirecte){return{classe:num.classeDirecte,ep:null,ges:null,score:classeToScore(num.classeDirecte),methode:'Classe lue dans le document',detail3CL:null,detailThCEEx:null,ep3CL:null,epThCEEx:null,ges3CL:null,gesThCEEx:null};}
   const surface=surfaceM2||100;
-  const calc=calculer3CL(equip,surface);
+  const calc=calculer3CL(equip, surface, num.annee);
   let epAdj=calc.ep;
-  if(num.annee){if(num.annee<1948)epAdj=Math.round(epAdj*1.20);else if(num.annee<1975)epAdj=Math.round(epAdj*1.10);else if(num.annee>=2021)epAdj=Math.round(epAdj*0.65);else if(num.annee>=2012)epAdj=Math.round(epAdj*0.85);}
+  // Correction année construction sur EP (facteur global bâti ancien)
+  // Note : la perméabilité n50 intègre déjà l'année, ici on corrige le reste (ponts therm. supplémentaires, infiltrations joints vieux)
+  if(num.annee){
+    if     (num.annee < 1948) epAdj=Math.round(epAdj*1.12);
+    else if(num.annee < 1975) epAdj=Math.round(epAdj*1.06);
+    else if(num.annee >= 2021) epAdj=Math.round(epAdj*0.75);
+    else if(num.annee >= 2012) epAdj=Math.round(epAdj*0.90);
+  }
   const gesAdj=Math.round((calc.ges*epAdj/calc.ep)*10)/10;
   const classe3CL=classeMax(classeEP(epAdj),classeGES(gesAdj));
   // ── Th-CE-Ex désactivé pour logements individuels (réservé projets futurs) ──
@@ -2332,8 +2688,8 @@ function calculerNiveau(num,equip,classe){
   if(num.ges!==null)equipsDetectes.push('GES: '+num.ges+' kg CO₂/m²/an');
   if(num.classeDirecte)equipsDetectes.push('Classe: '+num.classeDirecte);
   if(num.annee)equipsDetectes.push('Année: '+num.annee);
-  [equip.ch,equip.murs,equip.combles,equip.fen,equip.vmc,equip.plancher,equip.ecs].forEach((v,i)=>{
-    if(v&&v!=='Non détecté')equipsDetectes.push(['Chauffage','Murs','Combles','Fenêtres','VMC','Plancher','ECS'][i]+': '+v);
+  [equip.ch,equip.murs,equip.combles,equip.rampants,equip.fen,equip.vmc,equip.plancher,equip.ecs].forEach((v,i)=>{
+    if(v&&v!=='Non détecté')equipsDetectes.push(['Chauffage','Murs','Combles','Rampants','Fenêtres','VMC','Plancher','ECS'][i]+': '+v);
   });
   let niveau,etoiles,cssClass,description,urgence;
   if(classe==='F'||classe==='G'){niveau='Or';etoiles='★★★';cssClass='niveau-or';urgence='🔴 URGENCE RÉNOVATION';description=`Logement classé <strong>${classe}</strong> — passoire thermique. Audit énergétique complet fortement recommandé. Accès aux aides maximales.`;}
@@ -2380,6 +2736,91 @@ const MATRICE = {
   'F→D':{budget:'10 000–15 000 €',travaux:'Combles + Murs + VMC'},
   'G→D':{budget:'12 000–18 000 €',travaux:'Combles + Murs + VMC + PAC'},
 };
+/* ══════════════════════════════════════════════════════
+   ZONES CLIMATIQUES 3CL — Mapping département → zone
+   Source : Arrêté du 31 mars 2021 (annexe I)
+══════════════════════════════════════════════════════ */
+const DEPT_ZONE = {
+  // H1a — Nord/Est (très froid)
+  '02':'H1a','08':'H1a','10':'H1a','51':'H1a','52':'H1a','54':'H1a','55':'H1a',
+  '57':'H1a','59':'H1a','60':'H1a','62':'H1a','67':'H1a','68':'H1a','88':'H1a',
+  // H1b — Île-de-France + Oise + Eure-et-Loir + Yonne
+  '75':'H1b','77':'H1b','78':'H1b','91':'H1b','92':'H1b','93':'H1b','94':'H1b',
+  '95':'H1b','28':'H1b','45':'H1b','89':'H1b','21':'H1b','58':'H1b','71':'H1b',
+  '27':'H1b','76':'H1b','80':'H1b',
+  // H1c — Centre-Est / Bourgogne / Rhône-Alpes nord
+  '01':'H1c','03':'H1c','15':'H1c','18':'H1c','23':'H1c','36':'H1c','37':'H1c',
+  '38':'H1c','39':'H1c','41':'H1c','42':'H1c','43':'H1c','44':'H1c','49':'H1c',
+  '53':'H1c','63':'H1c','69':'H1c','70':'H1c','72':'H1c','74':'H1c','85':'H1c',
+  '86':'H1c','87':'H1c','25':'H1c','90':'H1c',
+  // H2 — Centre / Ouest / Sud-Ouest (zone de référence)
+  '04':'H2','05':'H2','07':'H2','11':'H2','12':'H2','14':'H2','16':'H2',
+  '17':'H2','19':'H2','22':'H2','24':'H2','29':'H2','31':'H2','32':'H2',
+  '33':'H2','34':'H2','35':'H2','40':'H2','46':'H2','47':'H2','48':'H2',
+  '50':'H2','56':'H2','61':'H2','64':'H2','65':'H2','79':'H2','81':'H2',
+  '82':'H2','09':'H2',
+  // H2d — Pyrénées / Corse
+  '2A':'H2d','2B':'H2d','66':'H2d',
+  // H3 — Méditerranée / littoral sud
+  '06':'H3','13':'H3','30':'H3','83':'H3','84':'H3','26':'H3',
+  // DOM-TOM → H3 par défaut
+  '971':'H3','972':'H3','973':'H3','974':'H3','976':'H3',
+};
+
+// Départements à altitude significative → correction vers zone plus froide
+// Source : zonage climatique 3CL-2021
+const DEPT_ALTITUDE_CORRECTION = {
+  // Massif alpin → H1c voire H1a selon altitude
+  '05':'H1c','73':'H1c','74':'H1c',
+  // Massif central
+  '15':'H1c','43':'H1c','48':'H1c','63':'H1c',
+  // Vosges / Jura
+  '88':'H1a','39':'H1c','25':'H1c',
+  // Pyrénées → déjà H2d mais altitude peut pousser H1c
+  '09':'H1c','65':'H1c',
+  // Corse montagne → reste H2d
+};
+
+function cpToZone(cp){
+  if(!cp) return null;
+  const s = cp.toString().trim().replace(/\s/g,'');
+  if(s.length >= 3 && ['971','972','973','974','976'].includes(s.substring(0,3)))
+    return DEPT_ZONE[s.substring(0,3)] || null;
+  if(s.toUpperCase().startsWith('2A')) return 'H2d';
+  if(s.toUpperCase().startsWith('2B')) return 'H2d';
+  if(s.startsWith('20')) return 'H2d';
+  const dept = s.substring(0,2);
+  // Appliquer correction altitude si applicable
+  return DEPT_ALTITUDE_CORRECTION[dept] || DEPT_ZONE[dept] || null;
+}
+
+function autoDetectZone(cp, zoneSelectId){
+  const zone = cpToZone(cp);
+  if(!zone) return;
+  const el = document.getElementById(zoneSelectId);
+  if(!el) return;
+  for(let i=0;i<el.options.length;i++){
+    if(el.options[i].value === zone){ el.selectedIndex = i; break; }
+  }
+  return zone;
+}
+
+function autoDetectZoneManuel(cp){
+  const zone = autoDetectZone(cp, 'm_zone');
+  const badge = document.getElementById('zone_auto_badge');
+  if(!badge) return;
+  if(zone){
+    const ZONE_LABELS = {
+      'H1a':'H1a — Nord/Est','H1b':'H1b — Île-de-France','H1c':'H1c — Centre-Est',
+      'H2':'H2 — Centre/Ouest','H2d':'H2d — Pyrénées/Corse','H3':'H3 — Méditerranée'
+    };
+    badge.textContent = '✓ ' + (ZONE_LABELS[zone] || zone) + ' (auto)';
+    badge.style.display = 'inline';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
 function getZone(){
   const el=document.getElementById('dpe_zone')||document.getElementById('m_zone');
   return (el&&el.value)?el.value:'H2';
@@ -2390,16 +2831,43 @@ function genererScenario(equip,classeActuelle){
   const travaux=[], gl=[];
   function g(base){ return Math.round(base*coeff); }
 
-  if(equip.combles==='Non isolés'||equip.combles==='Non détecté'){
-    const gain=g(GT.combles_nus.moy); gl.push(gain);
-    travaux.push({section:'🏠 Isolation',icon:'🏠',titre:'Isolation combles perdus (R≥7 m².K/W)',priorite:'OBLIGATOIRE',
-      desc:'Gain CEP : '+gain+'% (zone '+zone+'). Priorité absolue — meilleur ROI. 30–32 cm laine minérale. Représente 25–30% des déperditions. Source: 3CL-2021.',
-      gainClasse:'+1 à 2 classes',cout:'2 500 – 3 500 €',aide:"MaPrimeRénov' + CEE + TVA 5.5%",impact:gain});
-  } else if(equip.combles==='Isolés'){
-    const gain=g(GT.combles_partiel.moy); gl.push(gain);
-    travaux.push({section:'🏠 Isolation',icon:'🏠',titre:'Renforcement isolation combles (R≥9 m².K/W)',priorite:'RECOMMANDÉ',
-      desc:'Gain CEP : '+gain+'%. Isolation existante insuffisante. R≥8 pour classe B, R≥9 pour classe A.',
-      gainClasse:'+0.5 à 1 classe',cout:'1 500 – 2 500 €',aide:"MaPrimeRénov' + CEE",impact:gain});
+  // ── Logique combles / rampants — mutuellement exclusifs ──
+  // Rampants présents = valeur détectée ET différente de Non détecté
+  // Si rampants présents  → traiter rampants, ignorer combles perdus
+  // Si combles présents   → traiter combles, ignorer rampants
+  // Si aucun détecté      → combles perdus par défaut
+  const aRampants = equip.rampants && equip.rampants !== 'Non détecté';
+  const aCombles  = equip.combles  && equip.combles  !== 'Non détecté';
+
+  if(aRampants){
+    // Logement avec toiture rampante — NE PAS proposer combles perdus
+    if(['Non isolés','Insuffisant'].includes(equip.rampants)){
+      const gain=g(GT.combles_nus.moy); gl.push(gain);
+      travaux.push({section:'🏔️ Isolation',icon:'🏔️',titre:'Isolation rampants (R≥6 m².K/W — 14 cm+)',priorite:'OBLIGATOIRE',
+        desc:'Gain CEP : '+gain+'% (zone '+zone+'). Rampants non/mal isolés = 25–30% des déperditions. 14–18 cm laine minérale entre chevrons + frein-vapeur.',
+        gainClasse:'+1 à 2 classes',cout:'30 – 70 €/m²',aide:"MaPrimeRénov' + CEE + TVA 5.5%",impact:gain});
+    } else if(equip.rampants==='Moyen'){
+      const gain=g(GT.combles_partiel.moy); gl.push(gain);
+      travaux.push({section:'🏔️ Isolation',icon:'🏔️',titre:'Renforcement isolation rampants (R≥8 m².K/W)',priorite:'RECOMMANDÉ',
+        desc:'Gain CEP : '+gain+'%. Isolation rampants insuffisante. Viser R≥8 pour classe B, R≥9 pour classe A.',
+        gainClasse:'+0.5 à 1 classe',cout:'25 – 55 €/m²',aide:"MaPrimeRénov' + CEE",impact:gain});
+    }
+    // Rampants bien isolés → rien à faire sur ce poste
+  } else {
+    // Logement avec combles perdus (ou aucun détecté → combles par défaut)
+    // NE PAS proposer rampants
+    if(!aCombles || equip.combles==='Non isolés'){
+      const gain=g(GT.combles_nus.moy); gl.push(gain);
+      travaux.push({section:'🏠 Isolation',icon:'🏠',titre:'Isolation combles perdus (R≥7 m².K/W)',priorite:'OBLIGATOIRE',
+        desc:'Gain CEP : '+gain+'% (zone '+zone+'). Priorité absolue — meilleur ROI. 30–32 cm laine minérale. Représente 25–30% des déperditions. Source: 3CL-2021.',
+        gainClasse:'+1 à 2 classes',cout:'2 500 – 3 500 €',aide:"MaPrimeRénov' + CEE + TVA 5.5%",impact:gain});
+    } else if(equip.combles==='Isolés'){
+      const gain=g(GT.combles_partiel.moy); gl.push(gain);
+      travaux.push({section:'🏠 Isolation',icon:'🏠',titre:'Renforcement isolation combles (R≥9 m².K/W)',priorite:'RECOMMANDÉ',
+        desc:'Gain CEP : '+gain+'%. Isolation existante insuffisante. R≥8 pour classe B, R≥9 pour classe A.',
+        gainClasse:'+0.5 à 1 classe',cout:'1 500 – 2 500 €',aide:"MaPrimeRénov' + CEE",impact:gain});
+    }
+    // Combles bien isolés (Très bien isolés) → rien à faire
   }
   if(equip.murs==='Non isolés'){
     const gain=g(GT.murs_ITE.moy); gl.push(gain);
@@ -2648,7 +3116,8 @@ function renderScenario(travaux,classeActuelle,prefix=''){
 
 
 const SAUT_TRAVAUX=[
-  {icon:'🏠',label:'Isolation combles perdus',gain:2,cout:2000,cond:e=>['Non isolés','Non détecté'].includes(e.combles)},
+  {icon:'🏠',label:'Isolation combles perdus',gain:2,cout:2000,cond:e=>['Non isolés','Non détecté'].includes(e.combles)&&(!e.rampants||e.rampants==='Non détecté')},
+  {icon:'🏔️',label:'Isolation rampants',gain:2,cout:3500,cond:e=>e.rampants&&e.rampants!=='Non détecté'&&['Non isolés','Insuffisant','Moyen'].includes(e.rampants)},
   {icon:'🔥',label:'PAC air/eau',gain:3,cout:13000,cond:e=>['Fioul','Gaz ancien','Gaz condensation','Électrique'].includes(e.ch)},
   {icon:'🧱',label:'ITE murs extérieurs',gain:2,cout:15000,cond:e=>['Non isolés','ITI'].includes(e.murs)},
   {icon:'💨',label:'VMC double flux',gain:1,cout:4500,cond:e=>e.vmc!=='VMC double flux'},
@@ -2667,53 +3136,73 @@ function renderSauts(classe,equip,prefix=''){
   }
 
   // Matrice de travaux par cible — chaque saut a ses propres travaux priorisés
-  // Plus le saut est grand, plus on ajoute de travaux
+  // Helper : isolation insuffisante ou absente
+  const isoInsuf = v => ['Non isolés','Non isolé','Insuffisant'].includes(v);  // PAS Non détecté
+  const isoMoyen = v => ['Moyen','Isolés','Isolé','ITI_MOY'].includes(v);
+
+  // Logique rampants vs combles — strictement mutuellement exclusifs
+  // aRampants = true  → logement avec toiture rampante → proposer RAMPANTS uniquement
+  // aRampants = false → logement avec combles perdus   → proposer COMBLES uniquement
+  const aRampants = equip.rampants && equip.rampants !== 'Non détecté';
+
+  const comblesLabel = aRampants ? 'Isolation rampants' : 'Isolation combles perdus';
+  const comblesIcon  = aRampants ? '🏔️' : '🏠';
+  const comblesCout  = aRampants ? 3500 : 3000;
+
+  // Condition : le poste concerné est-il à améliorer ?
+  const comblesOuRampantsCond = aRampants
+    ? e => isoInsuf(e.rampants) || isoMoyen(e.rampants)   // rampants mal/non isolés
+    : e => !e.combles || e.combles==='Non isolés' || e.combles==='Non détecté'; // combles absents ou non isolés
+  const comblesOuRampantsCondMoyen = aRampants
+    ? e => isoInsuf(e.rampants) || isoMoyen(e.rampants)   // rampants insuffisants ou moyens
+    : e => !e.combles || e.combles==='Non isolés' || e.combles==='Non détecté' || isoMoyen(e.combles); // combles non isolés ou moyens
+
   const SAUT_MATRICE = {
     1: [ // +1 classe — petits gestes
-      {icon:'🏠',label:'Isolation combles perdus',        gain:2, cout:3000,  cond:e=>['Non isolés','Non détecté'].includes(e.combles)},
-      {icon:'🌡️',label:'Robinets thermostatiques',        gain:1, cout:600,   cond:e=>e.robinets!=='Présents'},
-      {icon:'💨',label:'VMC simple flux hygroreglable',   gain:1, cout:800,   cond:e=>e.vmc==='Naturelle'||e.vmc==='Non détecté'},
-      {icon:'🪟',label:'Remplacement fenêtres (SV→DV)',   gain:1, cout:5000,  cond:e=>e.fen==='Simple vitrage'},
-      {icon:'💧',label:'Chauffe-eau thermodynamique',     gain:1, cout:2500,  cond:e=>e.ecs==='Électrique'},
+      {icon:comblesIcon, label:comblesLabel,               gain:2, cout:comblesCout, cond:comblesOuRampantsCond},
+      {icon:'🌡️',label:'Robinets thermostatiques',         gain:1, cout:600,         cond:e=>e.robinets!=='Présents'},
+      {icon:'💨',label:'VMC simple flux hygroreglable',    gain:1, cout:800,         cond:e=>e.vmc==='Naturelle'||e.vmc==='Non détecté'},
+      {icon:'🪟',label:'Remplacement fenêtres (SV→DV)',    gain:1, cout:5000,        cond:e=>e.fen==='Simple vitrage'},
+      {icon:'💧',label:'Chauffe-eau thermodynamique',      gain:1, cout:2500,        cond:e=>e.ecs==='Électrique'},
     ],
     2: [ // +2 classes — bouquet isolation
-      {icon:'🏠',label:'Isolation combles perdus (R≥7)',  gain:2, cout:3000,  cond:e=>['Non isolés','Non détecté'].includes(e.combles)},
-      {icon:'🏚️',label:'Isolation plancher bas',          gain:1, cout:4000,  cond:e=>e.plancher==='Non isolé'},
-      {icon:'💨',label:'VMC simple flux hygroreglable',   gain:1, cout:800,   cond:e=>e.vmc==='Naturelle'||e.vmc==='Non détecté'},
-      {icon:'💧',label:'Chauffe-eau thermodynamique',     gain:1, cout:2500,  cond:e=>e.ecs==='Électrique'},
-      {icon:'🪟',label:'Remplacement fenêtres (SV→DV)',   gain:1, cout:5000,  cond:e=>e.fen==='Simple vitrage'},
+      {icon:comblesIcon, label:comblesLabel+' (R≥7)',       gain:2, cout:comblesCout, cond:comblesOuRampantsCondMoyen},
+      {icon:'🏚️',label:'Isolation plancher bas',           gain:1, cout:4000,        cond:e=>isoInsuf(e.plancher)||isoMoyen(e.plancher)},
+      {icon:'💨',label:'VMC simple flux hygroreglable',    gain:1, cout:800,         cond:e=>e.vmc==='Naturelle'||e.vmc==='Non détecté'},
+      {icon:'💧',label:'Chauffe-eau thermodynamique',      gain:1, cout:2500,        cond:e=>e.ecs==='Électrique'},
+      {icon:'🪟',label:'Remplacement fenêtres (SV→DV)',    gain:1, cout:5000,        cond:e=>e.fen==='Simple vitrage'},
     ],
     3: [ // +3 classes — isolation + systèmes
-      {icon:'🏠',label:'Isolation combles perdus (R≥8)',  gain:2, cout:3500,  cond:e=>['Non isolés','Non détecté'].includes(e.combles)},
-      {icon:'🧱',label:'Isolation murs ITE',              gain:2, cout:15000, cond:e=>['Non isolés','ITI'].includes(e.murs)},
-      {icon:'🔥',label:'PAC air/eau (rempl. chauffage)',  gain:3, cout:13000, cond:e=>['Fioul','Gaz ancien','Électrique'].includes(e.ch)},
-      {icon:'💨',label:'VMC double flux',                 gain:1, cout:4000,  cond:e=>e.vmc!=='VMC double flux'},
-      {icon:'🏚️',label:'Isolation plancher bas',          gain:1, cout:4000,  cond:e=>e.plancher==='Non isolé'},
+      {icon:comblesIcon, label:comblesLabel+' (R≥8)',       gain:2, cout:comblesCout, cond:comblesOuRampantsCondMoyen},
+      {icon:'🧱',label:'Isolation murs ITE',               gain:2, cout:15000,       cond:e=>['Non isolés','ITI','ITI_MOY'].includes(e.murs)},
+      {icon:'🔥',label:'PAC air/eau (rempl. chauffage)',   gain:3, cout:13000,       cond:e=>['Fioul','Gaz ancien','Électrique'].includes(e.ch)},
+      {icon:'💨',label:'VMC double flux',                  gain:1, cout:4000,        cond:e=>e.vmc!=='VMC double flux'},
+      {icon:'🏚️',label:'Isolation plancher bas',           gain:1, cout:4000,        cond:e=>isoInsuf(e.plancher)||isoMoyen(e.plancher)},
     ],
     4: [ // +4 classes — rénovation globale
-      {icon:'🏠',label:'Isolation combles perdus (R≥9)',  gain:2, cout:3500,  cond:e=>['Non isolés','Non détecté'].includes(e.combles)},
-      {icon:'🧱',label:'Isolation murs ITE (140mm)',      gain:2, cout:16000, cond:e=>['Non isolés','ITI'].includes(e.murs)},
-      {icon:'🔥',label:'PAC air/eau haute performance',   gain:3, cout:14000, cond:e=>['Fioul','Gaz ancien','Électrique','Bois/granulés'].includes(e.ch)||e.ch==='Non détecté'},
-      {icon:'💨',label:'VMC double flux',                 gain:1, cout:4000,  cond:e=>e.vmc!=='VMC double flux'},
-      {icon:'🏚️',label:'Isolation plancher bas',          gain:1, cout:4000,  cond:e=>e.plancher==='Non isolé'},
-      {icon:'💧',label:'Chauffe-eau thermodynamique',     gain:1, cout:2500,  cond:e=>e.ecs!=='Thermodynamique'&&e.ecs!=='Solaire'},
+      {icon:comblesIcon, label:comblesLabel+' (R≥9)',       gain:2, cout:comblesCout, cond:comblesOuRampantsCondMoyen},
+      {icon:'🧱',label:'Isolation murs ITE (140mm)',       gain:2, cout:16000,       cond:e=>['Non isolés','ITI','ITI_MOY'].includes(e.murs)},
+      {icon:'🔥',label:'PAC air/eau haute performance',    gain:3, cout:14000,       cond:e=>['Fioul','Gaz ancien','Électrique','Bois/granulés'].includes(e.ch)||e.ch==='Non détecté'},
+      {icon:'💨',label:'VMC double flux',                  gain:1, cout:4000,        cond:e=>e.vmc!=='VMC double flux'},
+      {icon:'🏚️',label:'Isolation plancher bas',           gain:1, cout:4000,        cond:e=>isoInsuf(e.plancher)||isoMoyen(e.plancher)},
+      {icon:'💧',label:'Chauffe-eau thermodynamique',      gain:1, cout:2500,        cond:e=>e.ecs!=='Thermodynamique'&&e.ecs!=='Solaire'},
     ],
     5: [ // +5 classes — passoire → très performant
-      {icon:'🏠',label:'Isolation combles perdus (R≥9)',  gain:2, cout:3500,  cond:e=>true},
-      {icon:'🧱',label:'Isolation murs ITE (160mm)',      gain:2, cout:18000, cond:e=>true},
-      {icon:'🔥',label:'PAC air/eau (COP ≥ 4.0)',        gain:3, cout:14000, cond:e=>true},
-      {icon:'💨',label:'VMC double flux',                 gain:1, cout:4000,  cond:e=>true},
-      {icon:'🏚️',label:'Isolation plancher bas',          gain:1, cout:4000,  cond:e=>true},
-      {icon:'💧',label:'Chauffe-eau thermodynamique',     gain:1, cout:2500,  cond:e=>true},
+      {icon:comblesIcon, label:comblesLabel+' (R≥9)',       gain:2, cout:comblesCout, cond:e=>true},
+      {icon:'🧱',label:'Isolation murs ITE (160mm)',        gain:2, cout:18000,       cond:e=>true},
+      {icon:'🔥',label:'PAC air/eau (COP ≥ 4.0)',          gain:3, cout:14000,       cond:e=>true},
+      {icon:'💨',label:'VMC double flux',                   gain:1, cout:4000,        cond:e=>true},
+      {icon:'🏚️',label:'Isolation plancher bas',            gain:1, cout:4000,        cond:e=>true},
+      {icon:'💧',label:'Chauffe-eau thermodynamique',       gain:1, cout:2500,        cond:e=>true},
     ],
     6: [ // +6 classes — G→A rénovation totale
-      {icon:'🏠',label:'Isolation combles perdus (R≥9)',  gain:2, cout:3500,  cond:e=>true},
-      {icon:'🧱',label:'Isolation murs ITE (160mm)',      gain:2, cout:20000, cond:e=>true},
-      {icon:'🔥',label:'PAC air/eau + PAC air/air appt', gain:3, cout:14000, cond:e=>true},
-      {icon:'💨',label:'VMC double flux',                 gain:1, cout:4000,  cond:e=>true},
-      {icon:'🏚️',label:'Isolation plancher bas',          gain:1, cout:4000,  cond:e=>true},
-      {icon:'💧',label:'Chauffe-eau thermodynamique',     gain:1, cout:2500,  cond:e=>true},
-      {icon:'☀️',label:'Panneaux solaires (3–6 kWc)',     gain:1, cout:9000,  cond:e=>true},
+      {icon:comblesIcon, label:comblesLabel+' (R≥9)',       gain:2, cout:comblesCout, cond:e=>true},
+      {icon:'🧱',label:'Isolation murs ITE (160mm)',        gain:2, cout:20000,       cond:e=>true},
+      {icon:'🔥',label:'PAC air/eau + PAC air/air appt',   gain:3, cout:14000,       cond:e=>true},
+      {icon:'💨',label:'VMC double flux',                   gain:1, cout:4000,        cond:e=>true},
+      {icon:'🏚️',label:'Isolation plancher bas',            gain:1, cout:4000,        cond:e=>true},
+      {icon:'💧',label:'Chauffe-eau thermodynamique',       gain:1, cout:2500,        cond:e=>true},
+      {icon:'☀️',label:'Panneaux solaires (3–6 kWc)',       gain:1, cout:9000,        cond:e=>true},
     ],
   };
 
@@ -2765,20 +3254,63 @@ function renderDPE(classe,containerId='dpeMeter'){
 }
 function renderDet(equip,containerId='detGrid'){
   const stCh=v=>v==='PAC'?{c:'st-good',t:'✓ Excellent'}:v==='Gaz condensation'?{c:'st-warn',t:'~ Correct'}:v==='Non détecté'?{c:'st-nd',t:'? Non détecté'}:{c:'st-bad',t:'✗ À remplacer'};
-  const stIso=v=>(v==='ITE'||v==='Très bien isolés')?{c:'st-good',t:'✓ Excellent'}:(v==='ITI'||v==='Isolés')?{c:'st-warn',t:'~ Correct'}:v==='Non détecté'?{c:'st-nd',t:'? Non détecté'}:{c:'st-bad',t:'✗ À isoler'};
   const stFen=v=>(v==='Triple vitrage'||v==='Double vitrage récent')?{c:'st-good',t:'✓ Bon'}:v==='Double vitrage ancien'?{c:'st-warn',t:'~ À améliorer'}:v==='Non détecté'?{c:'st-nd',t:'? Non détecté'}:{c:'st-bad',t:'✗ À remplacer'};
   const stVmc=v=>v==='VMC double flux'?{c:'st-good',t:'✓ Optimal'}:v==='VMC simple flux'?{c:'st-warn',t:'~ Correct'}:v==='Non détecté'?{c:'st-nd',t:'? Non détecté'}:{c:'st-bad',t:'✗ À installer'};
-  const stPlan=v=>v==='Isolé'?{c:'st-good',t:'✓ OK'}:v==='Non détecté'?{c:'st-nd',t:'? Non détecté'}:{c:'st-bad',t:'✗ À isoler'};
   const stEcs=v=>(v==='Thermodynamique'||v==='Solaire')?{c:'st-good',t:'✓ Excellent'}:v==='Gaz'?{c:'st-warn',t:'~ Correct'}:v==='Non détecté'?{c:'st-nd',t:'? Non détecté'}:{c:'st-bad',t:'✗ À remplacer'};
+
+  // Statut isolation par niveau qualitatif (avec épaisseur en cm si disponible)
+  function stIsoNiveau(valeur, epCm, type){
+    const ep = epCm ? ` — ${epCm} cm` : '';
+    if(!valeur || valeur === 'Non détecté') return {c:'st-nd', t:'? Non détecté'};
+    if(valeur === 'Non isolé' || valeur === 'Non isolés') return {c:'st-bad', t:'✗ Non isolé'};
+    if(valeur === 'Insuffisant') return {c:'st-bad', t:`✗ Insuffisant${ep}`};
+    if(valeur === 'Moyen') return {c:'st-warn', t:`~ Moyen${ep}`};
+    if(valeur === 'Bonne isolation') return {c:'st-good', t:`✓ Bonne isolation${ep}`};
+    // Valeurs héritées (ITE, ITI, Isolés, Très bien isolés, etc.)
+    if(valeur === 'ITE') return {c:'st-good', t:`✓ ITE${ep}`};
+    if(valeur === 'ITI') return {c:'st-warn', t:`~ ITI${ep}`};
+    if(valeur === 'ITI_MOY') return {c:'st-bad', t:`✗ ITI partielle${ep}`};
+    if(valeur === 'Très bien isolés') return {c:'st-good', t:`✓ Très bien${ep}`};
+    if(valeur === 'Isolés' || valeur === 'Isolé') return {c:'st-warn', t:`~ Moyen${ep}`};
+    return {c:'st-nd', t:'? ' + valeur};
+  }
+
+  // Valeur affichée : si on a un niveau qualitatif + épaisseur, on enrichit l'affichage
+  function valIso(valeur, epCm){
+    if(epCm !== null && epCm !== undefined && valeur !== 'Non isolé' && valeur !== 'Non isolés' && valeur !== 'Non détecté'){
+      return `${valeur} (${epCm} cm)`;
+    }
+    return valeur || 'Non détecté';
+  }
+
+  const ep = equip._ep || {};
+
+  // Label dynamique : "Combles perdus" ou "Combles aménagés" selon le type détecté
+  const comblesLbl = equip._typeComble === 'amenage' ? 'Combles aménagés' : 'Combles perdus';
+  // Si rampants ont été remplis depuis un comble aménagé, afficher "Rampants (comble aménagé)"
+  const rampantsLbl = equip._typeComble === 'amenage' ? 'Rampants (comble aménagé)' : 'Rampants';
+
+  // Ne pas afficher les lignes "Non détecté" pour combles et rampants (évite doublon)
   const items=[
-    {icon:'🔥',lbl:'Chauffage',val:equip.chauffageMixte?equip.ch+' + bois appoint':equip.ch,st:stCh(equip.ch)},
-    {icon:'🧱',lbl:'Murs',val:equip.murs,st:stIso(equip.murs)},
-    {icon:'🏠',lbl:'Combles',val:equip.combles,st:stIso(equip.combles)},
-    {icon:'🪟',lbl:'Fenêtres',val:equip.fen,st:stFen(equip.fen)},
-    {icon:'💨',lbl:'Ventilation',val:equip.vmc,st:stVmc(equip.vmc)},
-    {icon:'🏚️',lbl:'Plancher bas',val:equip.plancher,st:stPlan(equip.plancher)},
-    {icon:'💧',lbl:'Eau chaude',val:equip.ecs,st:stEcs(equip.ecs)},
-    {icon:'🚪',lbl:'Volets',val:equip.volets||'Non détecté',st:{c:'st-nd',t:'ℹ️ Info'}},
+    {icon:'🔥',lbl:'Chauffage',    val:equip.chauffageMixte?equip.ch+' + bois appoint':equip.ch, st:stCh(equip.ch)},
+    {icon:'🧱',lbl:'Murs',         val:valIso(equip.murs, ep.murs),          st:stIsoNiveau(equip.murs, ep.murs, 'murs')},
+    // Matériau mur natif si détecté
+    ...(equip.typeMur && equip.typeMur !== 'Non détecté'
+      ? [{icon:'🏗️',lbl:'Matériau mur', val:equip.typeMur, st:{c:'st-nd',t:'ℹ️ Structurel'}}]
+      : []),
+    // Afficher combles seulement si détecté (perdu) ou si aucun rampant
+    ...((equip.combles && equip.combles !== 'Non détecté') || (!equip.rampants || equip.rampants === 'Non détecté')
+      ? [{icon:'🏠',lbl:comblesLbl, val:valIso(equip.combles, ep.combles), st:stIsoNiveau(equip.combles, ep.combles, 'combles')}]
+      : []),
+    // Afficher rampants seulement si détecté
+    ...((equip.rampants && equip.rampants !== 'Non détecté')
+      ? [{icon:'🏔️',lbl:rampantsLbl, val:valIso(equip.rampants, ep.rampants), st:stIsoNiveau(equip.rampants, ep.rampants, 'rampants')}]
+      : []),
+    {icon:'🏚️',lbl:'Plancher bas',  val:valIso(equip.plancher, ep.plancher),  st:stIsoNiveau(equip.plancher, ep.plancher, 'plancher')},
+    {icon:'🪟',lbl:'Fenêtres',      val:equip.fen,  st:stFen(equip.fen)},
+    {icon:'💨',lbl:'Ventilation',   val:equip.vmc,  st:stVmc(equip.vmc)},
+    {icon:'💧',lbl:'Eau chaude',    val:equip.ecs,  st:stEcs(equip.ecs)},
+    {icon:'🚪',lbl:'Volets',        val:equip.volets||'Non détecté', st:{c:'st-nd',t:'ℹ️ Info'}},
   ];
   const el=document.getElementById(containerId);
   if(el)el.innerHTML=items.map(i=>`<div class="det-item"><div class="det-lbl">${i.icon} ${i.lbl}</div><div class="det-val">${i.val}</div><div class="det-st ${i.st.c}">${i.st.t}</div></div>`).join('');
@@ -2796,7 +3328,6 @@ function renderNiveau(niv,badgeId='niveauBadge',methodeId='niveauMethode',equips
    ANALYSE PDF
 ══════════════════════════════════════════════════════ */
 let equip={};
-let _debugFullText=''; // stocke le texte extrait pour le debug
 async function analyserDocument(){
   if(!currentFile){alert('Veuillez sélectionner un fichier.');return;}
   const btn=document.getElementById('btnAnalyser');
@@ -2812,7 +3343,6 @@ async function analyserDocument(){
       for(let i=1;i<=pdf.numPages;i++){
         const page=await pdf.getPage(i);
         const c=await page.getTextContent();
-        // Reconstruction intelligente : saut de ligne si Y change (items sur lignes différentes)
         let pageText='';
         let lastY=null;
         for(const item of c.items){
@@ -2824,114 +3354,211 @@ async function analyserDocument(){
       }
     }
 
-    // Debug console
-    ['murs sont','isol','ventilation','vitre','vitrage'].forEach(k=>{
-      const idx=fullText.toLowerCase().indexOf(k);
-      if(idx>=0) console.log('[NYX] '+k+': ...'+fullText.substring(Math.max(0,idx-40),idx+100)+'...');
-    });
+    // Extraction regex
+    beneficiaireData = extraireBeneficiaire(fullText);
+    const num = extraireNumeriques(fullText);
+    equip = detecterEquipements(fullText);
 
-    _debugFullText = fullText; // pour debug
-    document.getElementById('btnDebug').classList.remove('hidden');
-    beneficiaireData=extraireBeneficiaire(fullText);
-    document.getElementById('beneGrid').innerHTML=[
-      {k:'Nom',v:beneficiaireData.nom||'—'},{k:'Prénom',v:beneficiaireData.prenom||'—'},
-      {k:'Adresse',v:beneficiaireData.adresse||'—'},{k:'CP',v:beneficiaireData.cp||'—'},
-      {k:'Ville',v:beneficiaireData.ville||'—'},{k:'Surface',v:beneficiaireData.surface||'—'},
-      {k:'Type',v:beneficiaireData.typeBien||'—'},
-    ].map(f=>`<div class="bene-item"><div class="bene-key">${f.k}</div><div class="bene-val">${f.v}</div></div>`).join('');
-    document.getElementById('beneficiaireCard').classList.remove('hidden');
+    // → Calcul et affichage direct du résultat (sans panneau intermédiaire)
+    _appliquerResultat(beneficiaireData, equip, num, fullText);
 
-    const num=extraireNumeriques(fullText);
-    equip=detecterEquipements(fullText);
-    const surfaceM2=beneficiaireData.surface?parseFloat(beneficiaireData.surface):null;
-    const{classe,ep,ges,score,methode,detail3CL,ep3CL,ges3CL}=determinerClasse(num,equip,surfaceM2);
-    analysisResult={classe,ep,ges,score,methode,detail3CL,ep3CL,ges3CL,num,equip};
-
-    const niv=calculerNiveau(num,equip,classe);
-    document.getElementById('classeLetter').textContent=classe;
-    document.getElementById('classeLetter').className='classe-letter cl-'+classe;
-    document.getElementById('methodeLabel').textContent='Méthode : '+methode;
-
-    const scoreEl=document.getElementById('scoreNum');
-    if(scoreEl){
-      const qualite=getQualiteDonnees(num,equip);
-      const champs=[equip.ch,equip.murs,equip.combles,equip.fen,equip.vmc,equip.plancher,equip.ecs];
-      const detectes=champs.filter(v=>v&&v!=='Non détecté').length;
-      const fiabilite=num.ep!==null?100:Math.round((detectes/champs.length)*100);
-      const col=fiabilite>=80?'#00C853':fiabilite>=50?'#FFD740':'#FF6D00';
-      const ico=fiabilite>=80?'✅':fiabilite>=50?'📐':'⚠️';
-      const lbl=fiabilite>=80?'Analyse 3CL — Haute fiabilité':fiabilite>=50?'Analyse 3CL — Fiabilité correcte':'Analyse 3CL — Données partielles';
-      const note=`${detectes}/${champs.length} équipements détectés${num.ep!==null?' · EP officiel extrait':''}`;
-      scoreEl.innerHTML=`
-        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;background:rgba(${col==='#00C853'?'0,200,83':col==='#FFD740'?'255,215,64':'255,109,0'},0.10);border:1px solid ${col}40;margin-top:8px;">
-          <span style="font-size:18px;">${ico}</span>
-          <div>
-            <div style="font-size:12px;font-weight:700;color:${col};font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:0.05em;">${lbl} (${fiabilite}/100)</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${note}</div>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;background:rgba(${qualite.couleur==='#00C853'?'0,200,83':qualite.couleur==='#FFD740'?'255,215,64':'255,109,0'},0.10);border:1px solid ${qualite.couleur}40;margin-top:8px;">
-          <span style="font-size:18px;">${qualite.icone}</span>
-          <div>
-            <div style="font-size:12px;font-weight:700;color:${qualite.couleur};font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:0.05em;">${qualite.niveau}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${qualite.detail}</div>
-            ${qualite.action?`<div style="font-size:11px;color:#FF6D00;margin-top:3px;">→ ${qualite.action}</div>`:''}
-          </div>
-        </div>
-        <div style="margin-top:10px;padding:8px 12px;background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.15);border-radius:6px;font-size:11px;color:var(--muted);line-height:1.7;">
-          ⚖️ <em>Étude réalisée selon la méthode officielle <strong style="color:var(--text);">3CL-2021</strong> (Arrêté du 31/03/2021). Cette analyse constitue un outil d'aide à la décision. Elle ne se substitue pas à un DPE officiel.</em>
-        </div>`;
-    }
-    renderDPE(classe,'dpeMeter');
-    renderNiveau(niv,'niveauBadge','niveauMethode','niveauEquipements');
-    const epVal=ep!==null?ep:num.ep!==null?num.ep:null;
-    const gesVal=ges!==null?ges:num.ges!==null?num.ges:null;
-    if(epVal!==null||gesVal!==null){
-      document.getElementById('numPanel').classList.remove('hidden');
-      if(epVal!==null)document.getElementById('numEP').textContent=epVal;
-      if(gesVal!==null)document.getElementById('numGES').textContent=gesVal;
-    }
-    if(detail3CL){
-      document.getElementById('detail3CLPanel').classList.remove('hidden');
-      const d=detail3CL;
-      const setEl=(id,val)=>{const e=document.getElementById(id);if(e)e.textContent=val;};
-      setEl('d3cl_ep3CL',(ep3CL||'—')+' kWh EP/m²/an');
-      setEl('d3cl_ges3CL',(ges3CL||'—')+' kg CO₂/m²/an');
-      setEl('d3cl_epCroise',(ep||'—')+' kWh EP/m²/an');
-      setEl('d3cl_gesCroise',(ges||'—')+' kg CO₂/m²/an');
-      const surf=surfaceM2||100;
-      const nOcc=Math.max(1,Math.round(surf/30));
-      setEl('d3cl_surface',surf+' m² / '+nOcc+' occ. (estimé)');
-      setEl('d3cl_Ubat',d.Ubat?d.Ubat+' W/m².K':(ep3CL?Math.round(ep3CL/140*100)/100+' W/m².K (est.)':'—'));
-      setEl('d3cl_Bch',d.Bch_net?d.Bch_net+' kWh/an':(ep3CL?Math.round(ep3CL*surf*0.7)+' kWh/an (est.)':'—'));
-      setEl('d3cl_psi',d.psi?d.psi+' W/m.K':'0.35 W/m.K (défaut)');
-      setEl('d3cl_n50',d.n50?d.n50+' vol/h à 50Pa':'1.2 vol/h (défaut)');
-      setEl('d3cl_eta',d.eta_sais||(equip&&equip.ch==='Gaz condensation'?'0.92':equip&&equip.ch==='PAC'?'2.80':'0.80'));
-      setEl('d3cl_Ep_ch',d.Ep_ch?d.Ep_ch+' kWh EP/m²/an':(ep3CL?Math.round(ep3CL*0.75)+' kWh EP/m²/an (est.)':'—'));
-      setEl('d3cl_Ep_ecs',d.Ep_ecs?d.Ep_ecs+' kWh EP/m²/an':(ep3CL?Math.round(ep3CL*0.25)+' kWh EP/m²/an (est.)':'—'));
-    }
-    renderDet(equip,'detGrid');
-    detecterTypeBien();
-    document.getElementById('resultCard').classList.remove('hidden');
-    const travaux=genererScenario(equip,classe);
-    renderScenario(travaux,classe,'');
-    document.getElementById('scenarioCard').classList.remove('hidden');
-    renderSauts(classe,equip,'');
-    document.getElementById('sautsCard').classList.remove('hidden');
-    afficherOrientationDossier(classe,equip,ep,beneficiaireData);
-    document.getElementById('synthesesBtnWrap').classList.remove('hidden');
-    const btnAct=document.getElementById('btnActualiser');
-    if(btnAct)btnAct.classList.remove('hidden');
-    saveAnalyse({nom:(beneficiaireData.nom||'Inconnu')+' '+(beneficiaireData.prenom||''),classe,ep,ges});
-    saveVT_Firebase({nom:(beneficiaireData.nom||'Inconnu')+' '+(beneficiaireData.prenom||''),classe,ep,ges,methode,adresse:beneficiaireData.adresse||'',ville:beneficiaireData.ville||'',surface:beneficiaireData.surface||'',typeBien:beneficiaireData.typeBien||''});
   }catch(err){console.error(err);alert('Erreur : '+err.message);}
   finally{btn.disabled=false;sp.classList.add('hidden');bt.textContent='🔄 Relancer l\'analyse';}
 }
+
+/* ══════════════════════════════════════════════════════
+   CALCUL ET AFFICHAGE DIRECT DU RÉSULTAT
+══════════════════════════════════════════════════════ */
+function _appliquerResultat(ben, eq, num, fullText){
+  const surfVal = ben.surface ? parseFloat(ben.surface) : null;
+
+  // Mettre à jour beneficiaireData global
+  beneficiaireData = ben;
+  beneficiaireData.surface = surfVal ? surfVal + ' m²' : '';
+
+  // Auto-détecter la zone climatique depuis le CP extrait de la VT
+  if(ben.cp) autoDetectZone(ben.cp, 'dpe_zone');
+
+  // Afficher bénéficiaire + données bâtiment
+  const anneeAff = num.annee ? num.annee.toString() : '—';
+  const zoneAff  = (document.getElementById('dpe_zone')?.value)||'H2';
+  document.getElementById('beneGrid').innerHTML = [
+    {k:'Nom',       v:ben.nom||'—'},
+    {k:'Prénom',    v:ben.prenom||'—'},
+    {k:'Adresse',   v:ben.adresse||'—'},
+    {k:'CP / Ville',v:(ben.cp||'—')+' '+(ben.ville||'')},
+    {k:'Surface',   v:surfVal?surfVal+' m²':'—'},
+    {k:'Année',     v:anneeAff},
+    {k:'Type de mur',v:eq.typeMur||'—'},
+    {k:'Mitoyenneté',v:eq.mitoyennete||'—'},
+    {k:'Niveaux',   v:eq.niveauxChauffes?eq.niveauxChauffes+' niveau(x)':'—'},
+    {k:'Haut. plafond',v:eq.hauteurPlafond?eq.hauteurPlafond+' m':'—'},
+    {k:'Zone clim.',v:zoneAff},
+  ].map(f=>`<div class="bene-item"><div class="bene-key">${f.k}</div><div class="bene-val">${f.v}</div></div>`).join('');
+  document.getElementById('beneficiaireCard').classList.remove('hidden');
+
+  // Calcul classe
+  const {classe,ep,ges,score,methode,detail3CL,ep3CL,ges3CL} = determinerClasse(num, eq, surfVal);
+  analysisResult = {classe,ep,ges,score,methode,detail3CL,ep3CL,ges3CL,num,equip:eq};
+
+  const niv = calculerNiveau(num, eq, classe);
+  document.getElementById('classeLetter').textContent = classe;
+  document.getElementById('classeLetter').className = 'classe-letter cl-' + classe;
+  document.getElementById('methodeLabel').textContent = 'Méthode : ' + methode;
+
+  const scoreEl = document.getElementById('scoreNum');
+  if(scoreEl){
+    const champs = [eq.ch,eq.murs,eq.combles,eq.rampants,eq.fen,eq.vmc,eq.plancher,eq.ecs];
+    const detectes = champs.filter(v=>v&&v!=='Non détecté').length;
+    const fiabilite = num.ep!==null ? 100 : Math.round((detectes/champs.length)*100);
+    const col = fiabilite>=80?'#00C853':fiabilite>=50?'#FFD740':'#FF6D00';
+    const ico = fiabilite>=80?'✅':fiabilite>=50?'📐':'⚠️';
+    const lbl = fiabilite>=80?'Analyse 3CL — Haute fiabilité':fiabilite>=50?'Analyse 3CL — Fiabilité correcte':'Analyse 3CL — Données partielles';
+    scoreEl.style.display = '';
+    scoreEl.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;background:rgba(${col==='#00C853'?'0,200,83':col==='#FFD740'?'255,215,64':'255,109,0'},0.10);border:1px solid ${col}40;margin-top:8px;"><span style="font-size:18px;">${ico}</span><div><div style="font-size:12px;font-weight:700;color:${col};font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:0.05em;">${lbl} (${fiabilite}/100)</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${detectes}/${champs.length} équipements détectés ✓</div></div></div>`;
+  }
+
+  renderDPE(classe,'dpeMeter');
+  renderNiveau(niv,'niveauBadge','niveauMethode','niveauEquipements');
+  const epVal = ep!==null?ep:num.ep!==null?num.ep:null;
+  const gesVal = ges!==null?ges:num.ges!==null?num.ges:null;
+  if(epVal!==null||gesVal!==null){
+    document.getElementById('numPanel').classList.remove('hidden');
+    if(epVal!==null) document.getElementById('numEP').textContent=epVal;
+    if(gesVal!==null) document.getElementById('numGES').textContent=gesVal;
+  }
+  if(detail3CL){
+    document.getElementById('detail3CLPanel').classList.remove('hidden');
+    const setEl=(id,val)=>{const e=document.getElementById(id);if(e)e.textContent=val;};
+    setEl('d3cl_ep3CL',  (ep3CL||'—')+' kWh EP/m²/an');
+    setEl('d3cl_ges3CL', (ges3CL||'—')+' kg CO₂/m²/an');
+    setEl('d3cl_epCroise',  (ep||ep3CL||'—')+' kWh EP/m²/an');
+    setEl('d3cl_gesCroise', (ges||ges3CL||'—')+' kg CO₂/m²/an');
+    const surf = surfVal||100;
+    const nOcc = detail3CL.nOcc || Math.max(1,Math.round(surf/25));
+    setEl('d3cl_surface', surf+' m² / '+nOcc+' occ. (estimé)');
+    setEl('d3cl_Ubat',  detail3CL.Ubat      ? detail3CL.Ubat+' W/m².K'           : '—');
+    setEl('d3cl_Bch',   detail3CL.Bch_therm ? detail3CL.Bch_therm+' kWh/an (brut: '+(detail3CL.Bch_brut||'—')+')' : '—');
+    setEl('d3cl_psi',   detail3CL.HT_pt     ? detail3CL.HT_pt+' W/K (ponts therm.)' : '—');
+    setEl('d3cl_n50',   detail3CL.n50       ? detail3CL.n50+' vol/h (forfait 3CL)'  : '—');
+    setEl('d3cl_eta',   detail3CL.apportsSol!==undefined
+      ? 'Sol. '+detail3CL.apportsSol+' + Int. '+detail3CL.apportsInt+' kWh/an' : '—');
+    setEl('d3cl_Ep_ch', detail3CL.Ep_ch  ? detail3CL.Ep_ch+' kWh EP/m²/an'  : '—');
+    setEl('d3cl_Ep_ecs',detail3CL.Ep_ecs ? detail3CL.Ep_ecs+' kWh EP/m²/an' : '—');
+  }
+
+  renderDet(eq,'detGrid');
+  if(typeof detecterTypeBien === 'function') detecterTypeBien();
+  document.getElementById('resultCard').classList.remove('hidden');
+
+  // Scénario rénovation
+  if(typeof genererScenario === 'function' && typeof renderScenario === 'function'){
+    const travaux = genererScenario(eq, classe);
+    renderScenario(travaux, classe, '');
+  } else if(typeof renderTravaux === 'function'){
+    const surfForScen = surfVal||100;
+    renderTravaux(classe,eq,surfForScen,'travauxContainer','scenarioIntro','investSummary');
+  }
+  document.getElementById('scenarioCard').classList.remove('hidden');
+
+  if(typeof renderSauts === 'function') renderSauts(classe, eq, '');
+  document.getElementById('sautsCard').classList.remove('hidden');
+
+  if(typeof afficherOrientationDossier === 'function') afficherOrientationDossier(classe, eq, ep, beneficiaireData);
+  else if(typeof renderOrientation === 'function') renderOrientation(classe, eq, 'orientationContent');
+  document.getElementById('orientationCard').classList.remove('hidden');
+  document.getElementById('synthesesBtnWrap').classList.remove('hidden');
+
+  const btnAct = document.getElementById('btnActualiser');
+  if(btnAct) btnAct.classList.remove('hidden');
+
+  // Sauvegardes CRM + Firebase
+  if(typeof saveAnalyse === 'function')
+    saveAnalyse({nom:(beneficiaireData.nom||'Inconnu')+' '+(beneficiaireData.prenom||''),classe,ep,ges});
+  if(typeof saveVT_Firebase === 'function')
+    saveVT_Firebase({nom:(beneficiaireData.nom||'Inconnu')+' '+(beneficiaireData.prenom||''),classe,ep,ges,methode,adresse:beneficiaireData.adresse||'',ville:beneficiaireData.ville||'',surface:beneficiaireData.surface||'',typeBien:beneficiaireData.typeBien||''});
+
+  // IA en arrière-plan si champs manquants (amélioration silencieuse)
+  const manquants = [eq.ch,eq.murs,eq.combles,eq.rampants,eq.fen,eq.vmc,eq.plancher,eq.ecs]
+    .filter(v=>!v||v==='Non détecté').length;
+  if(manquants > 0 && fullText && fullText.length > 100){
+    _lancerIAsilencieuse(fullText, eq);
+  }
+}
+
+/* ── IA silencieuse en arrière-plan — enrichit le diagnostic sans bloquer ── */
+async function _lancerIAsilencieuse(fullText, equipRef){
+  try{
+    const texte = fullText.substring(0, 8000);
+    const response = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        system:'Tu es un expert en analyse de visites techniques de logement. Réponds UNIQUEMENT en JSON valide, sans markdown.',
+        messages:[{role:'user',content:
+          'Depuis ce texte de visite technique, extrait les valeurs en JSON:\n\n' +
+          '{"chauffage":"PAC|Gaz condensation|Gaz ancien|Fioul|Électrique|Bois/granulés|Non détecté",' +
+          '"murs":"ITE|ITI|ITI_MOY|Isolés|Non isolés|Non détecté","ep_murs_cm":nombre_ou_null,' +
+          '"combles":"Très bien isolés|Isolés|Non isolés|Non détecté","ep_combles_cm":nombre_ou_null,' +
+          '"rampants":"Bonne isolation|Moyen|Insuffisant|Non isolés|Non détecté","ep_rampants_cm":nombre_ou_null,' +
+          '"fenetres":"Triple vitrage|Double vitrage récent|Double vitrage ancien|Simple vitrage|Non détecté",' +
+          '"ventilation":"VMC double flux|VMC simple flux|Naturelle|Non détecté",' +
+          '"plancher":"Bonne isolation|Moyen|Insuffisant|Isolé|Non isolé|Non détecté","ep_plancher_cm":nombre_ou_null,' +
+          '"ecs":"Thermodynamique|Solaire|Électrique|Gaz|Non détecté",' +
+          '"surface":nombre_ou_null,"nom":null,"prenom":null,"ville":null,"cp":null}\n\n' +
+          'Épaisseurs toujours en cm. Texte VT:\n' + texte
+        }]
+      })
+    });
+    if(!response.ok) return;
+    const data = await response.json();
+    const ia = JSON.parse(data.content[0].text.replace(/```json|```/g,'').trim());
+
+    // Enrichir equip avec les valeurs IA pour les champs manquants uniquement
+    let enrichi = false;
+    const map = [
+      {iaKey:'chauffage',  equipKey:'ch'},
+      {iaKey:'murs',       equipKey:'murs'},
+      {iaKey:'combles',    equipKey:'combles'},
+      {iaKey:'rampants',   equipKey:'rampants'},
+      {iaKey:'fenetres',   equipKey:'fen'},
+      {iaKey:'ventilation',equipKey:'vmc'},
+      {iaKey:'plancher',   equipKey:'plancher'},
+      {iaKey:'ecs',        equipKey:'ecs'},
+    ];
+    map.forEach(({iaKey,equipKey})=>{
+      if((!equipRef[equipKey]||equipRef[equipKey]==='Non détecté') && ia[iaKey] && ia[iaKey]!=='Non détecté'){
+        equipRef[equipKey] = ia[iaKey]; enrichi = true;
+      }
+    });
+    if(!equipRef._ep) equipRef._ep = {};
+    if(ia.ep_murs_cm)     equipRef._ep.murs     = ia.ep_murs_cm;
+    if(ia.ep_combles_cm)  equipRef._ep.combles  = ia.ep_combles_cm;
+    if(ia.ep_rampants_cm) equipRef._ep.rampants = ia.ep_rampants_cm;
+    if(ia.ep_plancher_cm) equipRef._ep.plancher = ia.ep_plancher_cm;
+
+    if(enrichi){
+      // Recalculer et rafraîchir le diagnostic silencieusement
+      const num = extraireNumeriques(fullText||'');
+      const surfVal = beneficiaireData?.surface ? parseFloat(beneficiaireData.surface) : null;
+      const {classe,ep,ges,score,methode,detail3CL,ep3CL,ges3CL} = determinerClasse(num, equipRef, surfVal);
+      analysisResult = {classe,ep,ges,score,methode,detail3CL,ep3CL,ges3CL,num,equip:equipRef};
+      renderDet(equipRef,'detGrid');
+      // Mise à jour classe si changement
+      document.getElementById('classeLetter').textContent = classe;
+      document.getElementById('classeLetter').className = 'classe-letter cl-' + classe;
+    }
+  }catch(e){ console.warn('[NYX IA bg]', e); }
+}
+
 function analyserManuel(){
   const e={
     ch:document.getElementById('m_chauffage').value,
     murs:document.getElementById('m_murs').value,
     combles:document.getElementById('m_combles').value,
+    rampants:document.getElementById('m_rampants')?.value||'Non détecté',
     fen:document.getElementById('m_fenetres').value,
     vmc:document.getElementById('m_vmc').value,
     plancher:document.getElementById('m_plancher').value,
@@ -2940,6 +3567,9 @@ function analyserManuel(){
     robinets:'Non détecté',chauffageMixte:false,
     mitoyennete:document.getElementById('m_mitoyennete')?.value||'Aucune',
     regulation:document.getElementById('m_regulation')?.value||'Non détecté',
+    typeMur:'Non détecté', // non disponible en saisie manuelle
+    niveauxChauffes:parseInt(document.getElementById('m_niveaux')?.value)||null,
+    hauteurPlafond:null, // non disponible en saisie manuelle
   };
   const surface=parseFloat(document.getElementById('m_surface').value)||100;
   const annee=parseInt(document.getElementById('m_annee').value)||null;
@@ -3007,7 +3637,7 @@ function reinitialiserManuel(){
   ['m_nom','m_prenom','m_tel','m_email','m_adresse','m_cp','m_ville','m_surface','m_annee','m_niveaux']
     .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   // Remettre les selects à leur valeur par défaut
-  ['m_type','m_mitoyennete','m_chauffage','m_ecs','m_vmc','m_regulation','m_murs','m_combles','m_plancher','m_fenetres','m_volets']
+  ['m_type','m_mitoyennete','m_chauffage','m_ecs','m_vmc','m_regulation','m_murs','m_combles','m_rampants','m_plancher','m_fenetres','m_volets']
     .forEach(id=>{ const el=document.getElementById(id); if(el) el.selectedIndex=0; });
   // Masquer les blocs résultats
   ['m_resultCard','m_scenarioCard','m_sautsCard','m_synthesesBtnWrap']
@@ -3025,6 +3655,7 @@ function genererSyntheseManuel(){
       ch:document.getElementById('m_chauffage').value,
       murs:document.getElementById('m_murs').value,
       combles:document.getElementById('m_combles').value,
+      rampants:document.getElementById('m_rampants')?.value||'Non détecté',
       fen:document.getElementById('m_fenetres').value,
       vmc:document.getElementById('m_vmc').value,
       plancher:document.getElementById('m_plancher').value,
