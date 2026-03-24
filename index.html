@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -270,8 +271,12 @@ body::after{
 .form-input,.form-select,.form-textarea{
   background:var(--bg3);border:1px solid var(--border);border-radius:8px;
   color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;
-  padding:10px 14px;transition:border-color 0.2s;width:100%;
+  padding:10px 14px;transition:border-color 0.2s;width:100%;box-sizing:border-box;
 }
+#tab-devis .form-input,#tab-devis .form-select,#tab-devis .form-textarea{
+  font-size:16px;padding:14px 16px;border-radius:10px;
+}
+#tab-devis .form-label{font-size:12px;letter-spacing:0.06em;}
 .form-input:focus,.form-select:focus,.form-textarea:focus{outline:none;border-color:rgba(16,185,129,0.4);}
 .form-select option{background:var(--bg3);}
 .form-textarea{resize:vertical;min-height:80px;}
@@ -494,7 +499,7 @@ body::after{
      HEADER + NAV
 ══════════════════════════════════════════════════════ -->
 <header class="header">
-  <div class="logo">
+  <div class="logo" onclick="switchTab('dashboard360')" style="cursor:pointer;" title="Aller au Tableau de Bord">
     <div>
       <div class="logo-text">NYX</div>
       <div class="logo-sub">Plateforme Énergétique</div>
@@ -518,7 +523,7 @@ body::after{
     </div>
   </nav>
   <div class="nav-right">
-    <button class="btn-crm" onclick="toggleCRM()" id="btnCRM">👥 CRM</button>
+    <div id="btnCRM" style="display:none;"></div>
   </div>
 </header>
 
@@ -647,7 +652,7 @@ body::after{
             <div style="color:var(--muted);">Ubat (W/m².K) :</div><div id="d3cl_Ubat" style="color:#FFAB40;font-weight:600;">—</div>
             <div style="color:var(--muted);">Besoins chauffage nets :</div><div id="d3cl_Bch" style="color:#FFAB40;font-weight:600;">—</div>
             <div style="color:var(--muted);">Ponts thermiques HT_pt :</div><div id="d3cl_psi" style="color:#FFAB40;font-weight:600;">—</div>
-            <div style="color:var(--muted);">Perméabilité n50 :</div><div id="d3cl_n50" style="color:#FFAB40;font-weight:600;">—</div>
+            <div style="color:var(--muted);">Perméabilité Q4Pa :</div><div id="d3cl_n50" style="color:#FFAB40;font-weight:600;">—</div>
             <div style="color:var(--muted);">Apports solaires + internes :</div><div id="d3cl_eta" style="color:#69F0AE;font-weight:600;">—</div>
             <div style="color:var(--muted);">EP chauffage :</div><div id="d3cl_Ep_ch" style="color:var(--green2);font-weight:600;">—</div>
             <div style="color:var(--muted);">EP eau chaude :</div><div id="d3cl_Ep_ecs" style="color:var(--green2);font-weight:600;">—</div>
@@ -901,9 +906,8 @@ body::after{
      ONGLET 3 — DEVIS / FACTURE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
 <div class="tab-content" id="tab-devis">
-  <div style="display:grid;grid-template-columns:1fr;gap:24px;max-width:750px;margin:0 auto;">
+  <div style="max-width:960px;margin:0 auto;padding:0 8px;">
 
-    <!-- Formulaire gauche -->
     <div>
       <div class="card">
         <div class="card-title">⚙️ Paramètres du document</div>
@@ -939,11 +943,11 @@ body::after{
               <button id="d_logo_remove" onclick="removeLogo()" style="display:none;background:none;border:1px solid rgba(255,23,68,0.3);border-radius:6px;color:#FF1744;font-size:11px;padding:6px 10px;cursor:pointer;">✕</button>
             </div>
           </div>
-          <div class="form-group"><input class="form-input" id="d_entreprise" placeholder="Nom de votre entreprise" value="" oninput="updateDocPreview()"></div>
-          <div class="form-group"><input class="form-input" id="d_entreprise_adresse" placeholder="Adresse entreprise" oninput="updateDocPreview()"></div>
-          <div class="form-group"><input class="form-input" id="d_entreprise_complement" placeholder="Complément d'adresse (bât, étage, lieu-dit...)" oninput="updateDocPreview()"></div>
-          <div class="form-group"><input class="form-input" id="d_siret" placeholder="SIRET" oninput="updateDocPreview()"></div>
-          <div class="form-group"><input class="form-input" id="d_rge" placeholder="Numéro RGE (optionnel)" oninput="updateDocPreview()"></div>
+          <div class="form-group"><input class="form-input" id="d_entreprise" placeholder="Nom de votre entreprise" value="" oninput="updateDocPreview();sauvegarderEntreprise()"></div>
+          <div class="form-group"><input class="form-input" id="d_entreprise_adresse" placeholder="Adresse entreprise" oninput="updateDocPreview();sauvegarderEntreprise()"></div>
+          <div class="form-group"><input class="form-input" id="d_entreprise_complement" placeholder="Complément d'adresse (bât, étage, lieu-dit...)" oninput="updateDocPreview();sauvegarderEntreprise()"></div>
+          <div class="form-group"><input class="form-input" id="d_siret" placeholder="SIRET" oninput="updateDocPreview();sauvegarderEntreprise()"></div>
+          <div class="form-group"><input class="form-input" id="d_rge" placeholder="Numéro RGE (optionnel)" oninput="updateDocPreview();sauvegarderEntreprise()"></div>
         </div>
       </div>
 
@@ -972,6 +976,20 @@ body::after{
           <button id="d_audit_remove" onclick="removeAudit()" style="display:none;background:none;border:1px solid rgba(255,23,68,0.3);border-radius:6px;color:#FF1744;font-size:11px;padding:6px 10px;cursor:pointer;">✕ Supprimer</button>
         </div>
         <div style="margin-top:10px;font-size:12px;color:#555;">⚠️ L'audit énergétique est requis pour accéder aux lignes de travaux et générer un devis.</div>
+
+        <!-- Boutons scénarios — apparaissent après chargement audit -->
+        <div id="scenarioBtnsPanel" style="display:none;margin-top:14px;">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--green);margin-bottom:10px;">
+            📋 Importer un scénario dans les lignes de travaux
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="scenarioBtnsGrid">
+            <!-- Rempli dynamiquement par extraireScenarios() -->
+          </div>
+          <div id="scenarioPreview" style="display:none;margin-top:10px;background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.2);border-radius:8px;padding:12px;">
+            <div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:6px;" id="scenarioPreviewTitle"></div>
+            <div id="scenarioPreviewList" style="font-size:12px;color:#888;line-height:1.8;"></div>
+          </div>
+        </div>
       </div>
 
       <div class="card" id="lignesCard">
@@ -1114,14 +1132,13 @@ body::after{
           <label class="form-label">Mentions / Conditions</label>
           <textarea class="form-textarea" id="d_mentions" oninput="updateDocPreview()">Travaux réalisés par des professionnels certifiés RGE. TVA à 5.5% applicable pour les travaux de rénovation énergétique.</textarea>
         </div>
-        <div class="gap-8 mt16">
-          <button class="btn" onclick="imprimerDevis()">📄 Générer</button>
+        <div class="gap-8 mt16" style="display:flex;gap:8px;">
+          <button class="btn" onclick="imprimerDevis()">📄 Générer PDF</button>
           <button class="btn btn-ghost btn-sm" onclick="sauvegarderDevis()">💾 Sauvegarder</button>
         </div>
       </div>
     </div>
 
-    <!-- Aperçu supprimé - généré à la demande -->
   </div>
 </div><!-- /tab-devis -->
 
@@ -1333,7 +1350,7 @@ function applyRole(role){
   if(role==='admin'){
     // Admin voit tout
     document.querySelectorAll('.admin-only').forEach(el=>el.style.display='');
-    document.getElementById('btnCRM').style.display='';
+    document.getElementById('btnCRM').style.display='none'; // CRM désactivé
   } else {
     // Utilisateur — cache onglet Utilisateurs et CRM complet
     document.querySelectorAll('.admin-only').forEach(el=>el.style.display='none');
@@ -1513,11 +1530,22 @@ pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/p
    NAVIGATION
 ══════════════════════════════════════════════════════ */
 function switchTab(name){
+  const current = document.querySelector('.nav-tab.active')?.dataset?.tab;
+  // Si on reclique sur l'onglet actif → refresh (scroll haut + comportement natif)
+  if(current === name){
+    const tabEl = document.getElementById('tab-'+name);
+    if(tabEl) tabEl.scrollTop = 0;
+    // Recharger le contenu spécifique de l'onglet
+    if(name==='dashboard360') charger360();
+    if(name==='dpe'){ document.getElementById('tab-dpe').scrollTop=0; }
+    if(name==='manuel'){ document.getElementById('tab-manuel').scrollTop=0; }
+    return;
+  }
   document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
   document.querySelector(`[data-tab="${name}"]`).classList.add('active');
-  if(name==='devis') updateDocPreview();
+  if(name==='devis'){ chargerEntreprise(); updateDocPreview(); }
   if(name==='users') refreshUsers();
   if(name==='dashboard360') charger360();
 }
@@ -1893,24 +1921,44 @@ function extraireBeneficiaire(text){
     if(mPrenom) r.prenom = mPrenom[1].trim();
   }
 
-  // Fallback — depuis le nom du fichier VISITE-TECHNIQUE-NOM-PRENOM.pdf
-  // Appliqué si nom non trouvé dans le PDF OU si nom extrait suspect
+  // Fallback depuis nom du fichier VISITE-TECHNIQUE-NOM-PRENOM.pdf
+  // Appliqué si : nom absent/suspect OU prénom manquant
   const nomSuspect = r.nom.length < 2 || /^(m|mme|mr|monsieur|madame|dr)$/i.test(r.nom);
-  if((!r.nom || nomSuspect) && typeof currentFile !== 'undefined' && currentFile){
+  const prenomManquant = !r.prenom || r.prenom.length < 2;
+  if(((!r.nom || nomSuspect) || prenomManquant) && typeof currentFile !== 'undefined' && currentFile){
     try {
-      // Mots à exclure du nom de fichier (termes techniques, mots communs)
-      const MOTS_EXCLUS = /^(VISITE|TECHNIQUE|AUDIT|ENERGETIQUE|CHAUFFE|NON|OUI|RDC|PDF|DOC|LOGEMENT|MAISON|APPARTEMENT|FICHE|RAPPORT|ANALYSE|NYX|VT|DPE|BILAN|CLIENT|BENEFICIAIRE)$/i;
+      const MOTS_EXCLUS = /^(VISITE|TECHNIQUE|AUDIT|ENERGETIQUE|CHAUFFE|NON|OUI|RDC|PDF|DOC|LOGEMENT|MAISON|APPARTEMENT|FICHE|RAPPORT|ANALYSE|NYX|VT|DPE|BILAN|CLIENT|BENEFICIAIRE|HASSAN|OMAR|BA|ET)$/i;
       const fn = currentFile.name
         .replace(/\.pdf$/i,'')
-        .replace(/^VISITE-TECHNIQUE-/i,'')
-        .replace(/^VT-/i,'')
-        .replace(/^AUDIT-ENERGETIQUE-/i,'')
+        .replace(/^VISITE[-_]TECHNIQUE[-_]/i,'')
+        .replace(/^VISITE[-_]/i,'')
+        .replace(/^VT[-_]/i,'')
+        .replace(/^AUDIT[-_]ENERGETIQUE[-_]/i,'')
+        .replace(/^AUDIT[-_]/i,'')
         .replace(/_/g,'-');
       const parts = fn.split('-').filter(p=>p.length>1&&!/^\d+$/.test(p)&&!MOTS_EXCLUS.test(p));
       if(parts.length>=2){
-        r.nom    = parts[0].toUpperCase();
-        r.prenom = parts.slice(1).map(p=>p.charAt(0).toUpperCase()+p.slice(1).toLowerCase()).join(' ');
-      } else if(parts.length===1){
+        // Nom absent/suspect : prendre nom ET prénom du fichier
+        if(!r.nom || nomSuspect){
+          r.nom    = parts[0].toUpperCase();
+          r.prenom = parts.slice(1).map(p=>p.charAt(0).toUpperCase()+p.slice(1).toLowerCase()).join(' ');
+        } else if(prenomManquant){
+          // Nom déjà trouvé dans le PDF mais prénom manquant → récupérer uniquement le prénom depuis le fichier
+          // Chercher la partie du nom de fichier qui correspond au prénom (après le nom connu)
+          const nomNorm = r.nom.toLowerCase().replace(/\s/g,'-');
+          const fnLow   = fn.toLowerCase();
+          const idxNom  = fnLow.indexOf(nomNorm.split('-')[0]);
+          if(idxNom >= 0){
+            const afterNom = fn.slice(idxNom + r.nom.replace(/\s/g,'').length + 1);
+            const prenomParts = afterNom.split('-').filter(p=>p.length>1&&!MOTS_EXCLUS.test(p));
+            if(prenomParts.length>0)
+              r.prenom = prenomParts.map(p=>p.charAt(0).toUpperCase()+p.slice(1).toLowerCase()).join(' ');
+          } else {
+            // Impossible de localiser le nom → prendre la 2ème partie comme prénom
+            r.prenom = parts.slice(1).map(p=>p.charAt(0).toUpperCase()+p.slice(1).toLowerCase()).join(' ');
+          }
+        }
+      } else if(parts.length===1 && (!r.nom || nomSuspect)){
         r.nom = parts[0].toUpperCase();
       }
     } catch(e){}
@@ -3569,9 +3617,8 @@ function _appliquerResultat(ben, eq, num, fullText){
     const fiabilite = num.ep!==null ? 100 : Math.round((detectes/champs.length)*100);
     const col = fiabilite>=80?'#00C853':fiabilite>=50?'#FFD740':'#FF6D00';
     const ico = fiabilite>=80?'✅':fiabilite>=50?'📐':'⚠️';
-    const lbl = fiabilite>=80?'Analyse 3CL — Haute fiabilité':fiabilite>=50?'Analyse 3CL — Fiabilité correcte':'Analyse 3CL — Données partielles';
     scoreEl.style.display = '';
-    scoreEl.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;background:rgba(${col==='#00C853'?'0,200,83':col==='#FFD740'?'255,215,64':'255,109,0'},0.10);border:1px solid ${col}40;margin-top:8px;"><span style="font-size:18px;">${ico}</span><div><div style="font-size:12px;font-weight:700;color:${col};font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:0.05em;">${lbl} (${fiabilite}/100)</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${detectes}/${champs.length} équipements détectés ✓</div></div></div>`;
+    scoreEl.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;background:rgba(${col==='#00C853'?'0,200,83':col==='#FFD740'?'255,215,64':'255,109,0'},0.10);border:1px solid ${col}40;margin-top:8px;"><span style="font-size:18px;">${ico}</span><div><div style="font-size:12px;font-weight:700;color:${col};font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:0.05em;">Analyse basée sur la méthode de calcul 3CL</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">Un audit énergétique par un bureau RGE reste obligatoire</div></div></div>`;
   }
 
   renderDPE(classe,'dpeMeter');
@@ -3596,7 +3643,9 @@ function _appliquerResultat(ben, eq, num, fullText){
     setEl('d3cl_Ubat',  detail3CL.Ubat      ? detail3CL.Ubat+' W/m².K'           : '—');
     setEl('d3cl_Bch',   detail3CL.Bch_therm ? detail3CL.Bch_therm+' kWh/an (brut: '+(detail3CL.Bch_brut||'—')+')' : '—');
     setEl('d3cl_psi',   detail3CL.HT_pt     ? detail3CL.HT_pt+' W/K (ponts therm.)' : '—');
-    setEl('d3cl_n50',   detail3CL.n50       ? detail3CL.n50+' vol/h (forfait 3CL)'  : '—');
+    setEl('d3cl_n50',   detail3CL.Q4Pa !== undefined
+      ? detail3CL.Q4Pa+' m³/h.m² (kv='+detail3CL.kv+') — ventilation '+( detail3CL.Q4Pa>=2.2?'naturelle':'mécanique')
+      : detail3CL.n50 ? detail3CL.n50+' vol/h' : '—');
     setEl('d3cl_eta',   detail3CL.apportsSol!==undefined
       ? 'Sol. '+detail3CL.apportsSol+' + Int. '+detail3CL.apportsInt+' kWh/an' : '—');
     setEl('d3cl_Ep_ch', detail3CL.Ep_ch  ? detail3CL.Ep_ch+' kWh EP/m²/an'  : '—');
@@ -3939,16 +3988,17 @@ async function verifierEtChargerAudit(file){
     for(let i = 1; i <= pagesToRead; i++){
       const page = await pdf.getPage(i);
       const c = await page.getTextContent();
-      fullText += c.items.map(x=>x.str).join(' ').toLowerCase() + ' ';
+      fullText += c.items.map(x=>x.str).join(' ') + '\n';
     }
 
     // Vérifier les mots-clés
-    const found = AUDIT_KEYWORDS.filter(kw => fullText.includes(kw.toLowerCase()));
+    const fullTextLow = fullText.toLowerCase();
+    const found = AUDIT_KEYWORDS.filter(kw => fullTextLow.includes(kw.toLowerCase()));
     const score = found.length;
 
     if(score >= AUDIT_REQUIRED){
       // ✅ Document valide
-      activateAudit(file.name, found);
+      activateAudit(file.name, found, fullText);
     } else {
       // ❌ Document non reconnu
       document.getElementById('auditFileName').textContent = '❌ Document non reconnu comme audit énergétique';
@@ -3978,29 +4028,424 @@ function showAuditError(score, found){
   alert(msg);
 }
 
-function activateAudit(name, keywords){
+function activateAudit(name, keywords, fullText){
   auditLoaded = true;
-  const kw = keywords||[];
-  // Détecter scénarios
-  const hasScen1 = kw.some(k=>k.includes('scénario 1')||k.includes('scénario'));
-  const hasScen2 = kw.some(k=>k.includes('scénario 2')||k.includes('étapes'));
-  let badges = '';
-  if(hasScen1) badges += ' <span style="font-size:10px;padding:2px 8px;border-radius:100px;background:rgba(16,185,129,0.15);color:#10B981;border:1px solid rgba(16,185,129,0.3);">✓ Scénario 1</span>';
-  if(hasScen2) badges += ' <span style="font-size:10px;padding:2px 8px;border-radius:100px;background:rgba(96,165,250,0.15);color:#60A5FA;border:1px solid rgba(96,165,250,0.3);">✓ Scénario 2</span>';
-  document.getElementById('auditFileName').innerHTML = '✅ ' + name + badges;
+  document.getElementById('auditFileName').innerHTML = '✅ ' + name;
   document.getElementById('auditFileName').style.color = '#10B981';
   document.getElementById('d_audit_remove').style.display = 'block';
   const zone = document.getElementById('auditUploadZone');
   zone.style.borderColor = 'rgba(16,185,129,0.7)';
   zone.style.background  = 'rgba(16,185,129,0.08)';
+
+  // Extraire les scénarios depuis le texte de l'audit
+  if(fullText){
+    extraireEtAfficherScenarios(fullText);
+  }
   unlockLignes();
 }
+
+// ── Variables globales scénarios ──
+let auditScenarios = {};  // {sc1:{label,travaux}, sc2_e1:{...}, sc2_e2:{...}, sc2_e3:{...}}
+let auditFullText  = '';
+
+/* ══════════════════════════════════════════════════════════════════
+   EXTRACTION SCÉNARIOS DEPUIS AUDIT PDF (Liciel / tout auditeur RGE)
+   Stratégie :
+   1. Chercher les marqueurs réels dans le texte de l'audit
+   2. Pour chaque scénario/étape : extraire les travaux mentionnés
+   3. Fallback : si analysisResult disponible, proposer les travaux NYX
+══════════════════════════════════════════════════════════════════ */
+
+// ── Dictionnaire des travaux reconnaissables dans un audit ──
+// Clé : regex de détection | Valeur : libellé normalisé pour la ligne devis
+const AUDIT_TRAVAUX_MAP = [
+  // Isolation combles
+  { re:/comble[s]?\s*perdu|soufflage|plancher\s*comble/i,
+    desc:'Isolation des combles perdus par soufflage (R ≥ 7 m².K/W)', code:'BAR-EN-101' },
+  { re:/rampant|sous[\s-]rampant|comble[s]?\s*am[eé]nag/i,
+    desc:'Isolation des rampants (R ≥ 6 m².K/W — laine minérale 14 cm+)', code:'BAR-EN-101' },
+  { re:/toiture[\s-]terrasse/i,
+    desc:'Isolation toiture-terrasse (R ≥ 4.5 m².K/W)', code:'BAR-EN-101' },
+  // Isolation murs
+  { re:/ITE|isolation\s*(?:thermique\s*)?(?:par\s*l[''])?ext[eé]rieure?|ravalement\s*isol/i,
+    desc:'Isolation thermique extérieure (ITE) — 13 cm (U ≤ 0.27 W/m².K)', code:'BAR-EN-102' },
+  { re:/ITI|isolation\s*(?:thermique\s*)?(?:par\s*l[''])?int[eé]rieure?|doublage\s*int/i,
+    desc:'Isolation thermique intérieure (ITI) — doublage 12 cm', code:'BAR-EN-102' },
+  // Isolation plancher
+  { re:/plancher[\s-]bas|isolation\s*(?:du\s*)?plancher|isolation\s*sol/i,
+    desc:'Isolation plancher bas (R ≥ 3 m².K/W — vide sanitaire / dalle)', code:'BAR-EN-103' },
+  // Fenêtres / menuiseries
+  { re:/menuiserie|fen[êe]tre[s]?\s*(?:double|triple|DV|TV|Uw)|vitrage\s*renforc|double\s*vitrage\s*[àa]\s*isolation/i,
+    desc:'Remplacement menuiseries — double vitrage renforcé (Uw ≤ 1.3 W/m².K)', code:'BAR-EN-104' },
+  // VMC
+  { re:/VMC\s*(?:double[\s-]flux|DF)|ventilation\s*double[\s-]flux|VDF/i,
+    desc:'VMC double flux avec échangeur haute performance (rendement ≥ 85%)', code:'BAR-TH-125' },
+  { re:/VMC\s*(?:simple[\s-]flux|SF|hygror[eé]gl)|ventilation\s*(?:m[eé]canique\s*)?hygror[eé]gl/i,
+    desc:'VMC simple flux hygroréglable type B', code:'BAR-TH-125' },
+  // Chauffage — PAC
+  { re:/pompe\s*[àa]\s*chaleur\s*air[\s\/\-]eau|PAC\s*air[\s\/\-]eau|a[eé]rotherm/i,
+    desc:'Pompe à chaleur air/eau (COP ≥ 3.4) — remplacement chauffage existant', code:'BAR-TH-104' },
+  { re:/PAC\s*air[\s\/\-]air|climatiseur\s*r[eé]versible|split\s*r[eé]versible|clim\s*r[eé]versible/i,
+    desc:'PAC air/air réversible (SCOP ≥ 3.4) — chauffage + rafraîchissement', code:'BAR-TH-129-AA' },
+  { re:/PAC\s*air[\s\/\-]air|climatiseur\s*r[eé]versible|split\s*r[eé]versible/i,
+    desc:'PAC air/air réversible (COP ≥ 3.2)', code:'BAR-TH-104' },
+  { re:/g[eé]othermie|PAC\s*(?:eau[\s\/\-]eau|sol[\s\/\-]eau)/i,
+    desc:'PAC géothermique eau/eau (COP ≥ 4)', code:'BAR-TH-104' },
+  // Chaudière biomasse
+  { re:/chaudi[eè]re\s*(?:[àa]\s*)?(?:bois|biomasse|granul[eé]|pellet|plaquette)/i,
+    desc:'Chaudière biomasse bois/granulés (rendement ≥ 87%) — Label Flamme Verte', code:'BAR-TH-106' },
+  { re:/poêle\s*(?:[àa]\s*)?(?:bois|granul[eé]|pellet)|insert\s*(?:[àa]\s*)?bois/i,
+    desc:'Poêle à granulés / insert bois (rendement ≥ 85%)', code:'BAR-TH-112' },
+  // ECS thermodynamique
+  { re:/chauffe[\s-]eau\s*thermo(?:dyn)?|CET|ballon\s*thermo(?:dyn)?/i,
+    desc:'Chauffe-eau thermodynamique (COP ≥ 2.5) — 200 à 270 L', code:'BAR-TH-148' },
+  { re:/chauffe[\s-]eau\s*solaire|CESI|solaire\s*thermique\s*(?:ECS|individuel)/i,
+    desc:'Chauffe-eau solaire individuel (CESI) — 2 à 4 m² capteurs', code:'BAR-TH-101' },
+  // Régulation
+  { re:/robinet[s]?\s*thermostati|thermostat\s*programm|r[eé]gulation\s*(?:par\s*pi[eè]ce|chauffage)/i,
+    desc:'Robinets thermostatiques + thermostat programmable connecté', code:'BAR-TH-150' },
+  // Photovoltaïque
+  { re:/photovolta[iï]que|panneaux?\s*(?:PV|solaires?\s*photovolta)|production\s*[eé]lectrique/i,
+    desc:'Panneaux solaires photovoltaïques (3–6 kWc) — autoconsommation', code:'' },
+];
+
+function extraireEtAfficherScenarios(text){
+  auditFullText = text;
+  auditScenarios = {};
+
+  /* ══════════════════════════════════════════════════════
+     DOUBLE APPROCHE validée sur audit Liciel réel :
+
+     APPROCHE 1 — Listes à puces du résumé (page 8)
+     Le résumé contient :
+       "Scénario 1 ... (détails p.9) • Isolation de la toiture • Isolation des planchers bas ..."
+       "Première étape : • Isolation de la toiture ..."
+       "Deuxième étape : • Remplacement des menuiseries extérieures ..."
+     → Extraction directe des puces = travaux réels de l'audit
+
+     APPROCHE 2 — Section "Détail des travaux énergétiques" (pages scénarios)
+     Pour les audits sans résumé à puces.
+  ══════════════════════════════════════════════════════ */
+
+  // Mapping puces → libellés normalisés + codes BAR
+  const TRAVAUX_MAP = [
+    { re:/isolation\s*de\s*la\s*toiture/i,           desc:'Isolation de la toiture (combles perdus)', code:'BAR-EN-101' },
+    { re:/isolation\s*des\s*combles?\s*perdus?/i,     desc:'Isolation des combles perdus (R≥7 m².K/W)', code:'BAR-EN-101' },
+    { re:/isolation\s*(?:sous\s*)?rampants?/i,        desc:'Isolation sous rampants (R≥6 m².K/W)', code:'BAR-EN-101' },
+    { re:/isolation\s*des\s*planchers?\s*bas/i,       desc:'Isolation des planchers bas (R≥3 m².K/W)', code:'BAR-TH-103' },
+    { re:/isolation\s*des\s*murs/i,                   desc:'Isolation des murs (ITE — 13 cm)', code:'BAR-EN-102' },
+    { re:/changement\s*du\s*syst[eè]me\s*de\s*ventilation|VMC\s*double\s*flux/i, desc:'VMC double flux (rendement ≥85%)', code:'BAR-TH-125' },
+    { re:/VMC\s*simple|changement.*ventilation|ventilation\s*hygro/i, desc:'VMC simple flux hygroréglable', code:'BAR-TH-127' },
+    { re:/remplacement\s*des\s*menuiseries/i,         desc:'Remplacement des menuiseries extérieures (Uw≤1.3)', code:'BAR-EN-102' },
+    { re:/remplacement\s*des?\s*portes?/i,            desc:'Remplacement des portes extérieures (Ud≤1.3)', code:'BAR-EN-102' },
+    { re:/remplacement\s*des?\s*fen[êe]tres?/i,       desc:'Remplacement des fenêtres (Uw≤1.3 W/m².K)', code:'BAR-EN-102' },
+    { re:/pompe\s*[àa]\s*chaleur\s*air[\s\/]eau|PAC\s*air[\s\/]eau/i, desc:'Pompe à chaleur air/eau (COP≥3.4)', code:'BAR-TH-129' },
+    { re:/pompe\s*[àa]\s*chaleur|PAC|remplacement.*chauffage/i, desc:'Pompe à chaleur (COP≥3.4)', code:'BAR-TH-129' },
+    { re:/chauffe[\s-]eau\s*thermo|CET/i,          desc:'Chauffe-eau thermodynamique (COP≥2.5)', code:'BAR-TH-148' },
+    { re:/chauffe[\s-]eau\s*solaire|CESI/i,        desc:'Chauffe-eau solaire individuel (CESI)', code:'BAR-TH-148' },
+    { re:/chaudière\s*biomasse|bois.*granul/i,        desc:'Chaudière biomasse bois/granulés', code:'BAR-TH-106' },
+  ];
+
+  function normaliserTravail(texte){
+    const t = texte.trim().slice(0,120);
+    for(const m of TRAVAUX_MAP){
+      if(m.re.test(t)) return {desc:m.desc, complement:m.code, qte:1, pu:0};
+    }
+    return {desc:t, complement:'', qte:1, pu:0};
+  }
+
+  /* ── APPROCHE 1 : Listes à puces du résumé ── */
+  function extraireDepuisPuces(){
+    const MARKERS = [
+      {key:'sc1',    re:/Sc[eé]nario\s*1\s*[«"][\s\S]*?(?=Sc[eé]nario\s*2|Premi[eè]re\s*[eé]tape|$)/i, label:'Scénario 1'},
+      {key:'sc2_e1', re:/Premi[eè]re\s*[eé]tape\s*:?/i, label:'Scénario 2 — Étape 1'},
+      {key:'sc2_e2', re:/Deuxi[eè]me\s*[eé]tape\s*:?/i,  label:'Scénario 2 — Étape 2'},
+      {key:'sc2_e3', re:/Troisi[eè]me\s*[eé]tape\s*:?/i, label:'Scénario 2 — Étape 3'},
+    ];
+
+    const positions = [];
+    for(const mk of MARKERS){
+      const m = text.match(mk.re);
+      if(m) positions.push({key:mk.key, label:mk.label, pos:text.indexOf(m[0]), endPat:text.indexOf(m[0])+m[0].length});
+    }
+    positions.sort((a,b)=>a.pos-b.pos);
+    const seen=new Set();
+    const secs=positions.filter(s=>{if(seen.has(s.key))return false;seen.add(s.key);return true;});
+
+    const result={};
+    for(let i=0;i<secs.length;i++){
+      const s=secs[i];
+      const nextPos=i+1<secs.length?secs[i+1].pos:s.endPat+800;
+      const chunk=text.slice(s.endPat, nextPos);
+
+      // Extraire les puces "•"
+      const puces=[];
+      const re=/[•]\s*([^•\-\d%][^•]{2,80}?)(?=[•]|[\s][-]\s*\d+\s*%|$)/g;
+      let m;
+      while((m=re.exec(chunk))!==null){
+        const p=m[1].trim();
+        if(p.length>4) puces.push(p);
+      }
+      if(puces.length>0){
+        result[s.key]={label:s.label, travaux:puces.map(normaliserTravail), fromNYX:false};
+      }
+    }
+    return result;
+  }
+
+  /* ── APPROCHE 2 : Section "Détail des travaux" (texte inline PDF.js) ── */
+  function extraireDepuisDetail(){
+    const SECTION_RE=[
+      {key:'sc1',    re:/Scenario\s*1\s*[«"]/,    label:'Scénario 1'},
+      {key:'sc2_e1', re:/Premi[eè]re\s*[eé]tape(?=[\s\S]{0,1000}D[eé]tail\s*des\s*travaux)/i, label:'Scénario 2 — Étape 1'},
+      {key:'sc2_e2', re:/Deuxi[eè]me\s*[eé]tape(?=[\s\S]{0,1000}D[eé]tail\s*des\s*travaux)/i,  label:'Scénario 2 — Étape 2'},
+      {key:'sc2_e3', re:/Troisi[eè]me\s*[eé]tape(?=[\s\S]{0,1000}D[eé]tail\s*des\s*travaux)/i, label:'Scénario 2 — Étape 3'},
+    ];
+    const LICIEL_CATS=[
+      {re:/Plancher/,  norm:'Isolation plancher bas'},
+      {re:/Plafond/,   norm:'Isolation combles perdus'},
+      {re:/Rampants?/i,norm:'Isolation sous rampants'},
+      {re:/Toiture/i,  norm:'Isolation toiture'},
+      {re:/Mur(?!\s*\d)/, norm:'Isolation murs'},
+      {re:/Ventilation(?!\s*par)/i, norm:'Ventilation VMC'},
+      {re:/Porte(?!s?\s*pvc)/i,    norm:'Remplacement portes'},
+      {re:/Fen[êe]tres?(?!\s*battantes)/i, norm:'Remplacement fenêtres'},
+      {re:/Menuiseries?\s*ext/i, norm:'Remplacement menuiseries ext.'},
+      {re:/Chauffage(?!\s*PAC)/i, norm:'Système de chauffage'},
+    ];
+    const SKIP=/Avant\s*d|v[eé]rifier|Surface\s*totale|R[eé]sistance|Travaux\s*pouvant|Co[uû]t|TTC|d.humidit|[àa]\s*isoler/ig;
+
+    const found=[];
+    for(const s of SECTION_RE){
+      const m=text.match(s.re);
+      if(m) found.push({key:s.key,label:s.label,pos:text.indexOf(m[0])});
+    }
+    found.sort((a,b)=>a.pos-b.pos);
+    const seen=new Set();
+    const secs=found.filter(s=>{if(seen.has(s.key))return false;seen.add(s.key);return true;});
+
+    const result={};
+    for(let i=0;i<secs.length;i++){
+      const s=secs[i];
+      const end=i+1<secs.length?secs[i+1].pos:Math.min(s.pos+8000,text.length);
+      const chunk=text.slice(s.pos,end);
+      const dm=chunk.match(/D[eé]tail\s*des\s*travaux\s*[eé]nerg[eé]tiques/i);
+      if(!dm) continue;
+      const zone=chunk.slice(chunk.indexOf(dm[0]));
+      const fm=zone.match(/D[eé]tail\s*des\s*travaux\s*induits/i);
+      const zc=fm?zone.slice(0,zone.indexOf(fm[0])):zone;
+
+      const catPos=[];
+      for(const cat of LICIEL_CATS){
+        const re=new RegExp(cat.re.source,'ig');
+        let m2;
+        while((m2=re.exec(zc))!==null) catPos.push({start:m2.index,end:m2.index+m2[0].length,norm:cat.norm});
+      }
+      catPos.sort((a,b)=>a.start-b.start);
+
+      const travaux=[];
+      for(let j=0;j<catPos.length;j++){
+        const {start,end:cend,norm}=catPos[j];
+        const nextS=j+1<catPos.length?catPos[j+1].start:zc.length;
+        const seg=zc.slice(start,nextS);
+        const pm=seg.match(/(\d[\d\s]+\d|\d{3,})\s*[€E]/);
+        if(!pm) continue;
+        const prixStr=pm[0].trim();
+        const pu=parseInt(pm[1].replace(/\s/g,''))||0;
+        let d=seg.slice(cend-start,pm.index).replace(SKIP,' ').replace(/\s+/g,' ').trim().slice(0,60).replace(/[.,()]+$/,'').trim();
+        const desc=norm+(d.length>5?' — '+d:'');
+        if(!travaux.some(t=>t.desc===desc)) travaux.push({desc,complement:prixStr,qte:1,pu});
+      }
+      if(travaux.length>0) result[s.key]={label:s.label,travaux,fromNYX:false};
+    }
+    return result;
+  }
+
+  /* ── Combiner les deux approches ── */
+  const fromPuces  = extraireDepuisPuces();
+  const fromDetail = extraireDepuisDetail();
+
+  // Priorité : puces (plus fiable) > détail
+  for(const key of ['sc1','sc2_e1','sc2_e2','sc2_e3']){
+    if(fromPuces[key])       auditScenarios[key]=fromPuces[key];
+    else if(fromDetail[key]) auditScenarios[key]=fromDetail[key];
+  }
+
+  // Fallback global si rien trouvé
+  if(Object.keys(auditScenarios).length===0){
+    const tousLes=extraireDepuisDetail()['sc1'];
+    if(tousLes) auditScenarios['sc1']=tousLes;
+  }
+
+  genererScenariosFallback();
+  afficherBoutonsScenarios();
+}
+
+function genererScenariosFallback(){
+  /* Complète les slots sc1/sc2_e1/sc2_e2/sc2_e3 manquants
+     en utilisant analysisResult si disponible.
+     Ne remplace JAMAIS un scénario déjà extrait de l'audit. */
+  let travauxNYX = [];
+  if(typeof analysisResult !== 'undefined' && analysisResult && analysisResult.equip){
+    const tv = genererScenario(analysisResult.equip, analysisResult.classe || 'E');
+    if(tv && tv.length) travauxNYX = tv;
+  }
+  const oblig = travauxNYX.filter(t => t.priorite === 'OBLIGATOIRE');
+  const reco  = travauxNYX.filter(t => t.priorite === 'RECOMMANDÉ');
+  const toLine = t => ({desc:t.titre, complement:t.cout||'', qte:1, pu:0});
+  const isIsol = t => /comble|rampant|ITE|ITI|plancher|mur.*isol|isol.*mur/i.test(t.titre);
+  const isSyst = t => /VMC|ventilation|PAC|pompe.*chaleur|chaudi[eè]re/i.test(t.titre);
+  const isECS  = t => /thermodynamique|CET|chauffe.eau|CESI/i.test(t.titre);
+
+  if(!auditScenarios['sc1'] && oblig.length > 0)
+    auditScenarios['sc1'] = {label:'Scénario 1 — Travaux prioritaires',
+      travaux:oblig.map(toLine), fromNYX:true};
+
+  if(!auditScenarios['sc2_e1']){
+    const t = oblig.filter(isIsol);
+    if(t.length > 0)
+      auditScenarios['sc2_e1'] = {label:'Scénario 2 — Étape 1 : Isolation',
+        travaux:t.map(toLine), fromNYX:true};
+  }
+
+  if(!auditScenarios['sc2_e2']){
+    const t = oblig.filter(isSyst);
+    if(t.length > 0)
+      auditScenarios['sc2_e2'] = {label:'Scénario 2 — Étape 2 : Systèmes',
+        travaux:t.map(toLine), fromNYX:true};
+  }
+
+  if(!auditScenarios['sc2_e3']){
+    const t = [...oblig.filter(isECS), ...reco.slice(0,2)];
+    if(t.length > 0)
+      auditScenarios['sc2_e3'] = {label:'Scénario 2 — Étape 3 : ECS & finitions',
+        travaux:t.map(toLine), fromNYX:true};
+    else
+      // Garantir toujours 4 boutons : créer un slot vide avec message
+      auditScenarios['sc2_e3'] = {label:'Scénario 2 — Étape 3',
+        travaux:[{desc:'Aucune opération supplémentaire détectée', complement:'', qte:1, pu:0}],
+        fromNYX:true};
+  }
+}
+
+function afficherBoutonsScenarios(){
+  const panel = document.getElementById('scenarioBtnsPanel');
+  const grid  = document.getElementById('scenarioBtnsGrid');
+  if(!panel || !grid) return;
+
+  const keys = Object.keys(auditScenarios);
+  if(keys.length === 0){
+    panel.style.display = 'block';
+    grid.innerHTML = '<div style="font-size:12px;color:#888;grid-column:span 2;padding:8px;">Aucun scénario détecté dans cet audit. Ajoutez les opérations manuellement.</div>';
+    return;
+  }
+
+  const COLORS = {
+    sc1:    {bg:'rgba(16,185,129,0.12)',  border:'rgba(16,185,129,0.5)',  color:'#10B981', icon:'1️⃣'},
+    sc2_e1: {bg:'rgba(96,165,250,0.12)',  border:'rgba(96,165,250,0.5)',  color:'#60A5FA', icon:'2️⃣'},
+    sc2_e2: {bg:'rgba(255,215,64,0.12)',  border:'rgba(255,215,64,0.5)',  color:'#FFD740', icon:'3️⃣'},
+    sc2_e3: {bg:'rgba(255,109,0,0.12)',   border:'rgba(255,109,0,0.5)',   color:'#FF6D00', icon:'4️⃣'},
+  };
+
+  const fromNYX = Object.values(auditScenarios).some(s=>s.fromNYX);
+
+  grid.innerHTML = keys.map(k=>{
+    const sc = auditScenarios[k];
+    const c  = COLORS[k] || COLORS.sc1;
+    const nb = sc.travaux.length;
+    const src = sc.fromNYX
+      ? '<span style="font-size:10px;color:var(--muted);">généré par NYX</span>'
+      : '<span style="font-size:10px;color:#10B981;">✓ extrait de l\'audit</span>';
+    return `<button onclick="importerScenario('${k}')"
+      onmouseover="aperçuScenario('${k}')"
+      onmouseout="masquerAperçu()"
+      style="background:${c.bg};border:1px solid ${c.border};border-radius:8px;padding:12px 14px;cursor:pointer;text-align:left;transition:all 0.2s;width:100%;">
+      <div style="font-size:13px;font-weight:700;color:${c.color};">${c.icon} ${sc.label}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px;">${nb} opération${nb>1?'s':''} · ${src}</div>
+    </button>`;
+  }).join('');
+
+  if(fromNYX){
+    grid.innerHTML += `<div style="grid-column:span 2;font-size:11px;color:#666;padding:6px 2px;border-top:1px solid var(--border);margin-top:4px;">
+      ℹ️ Scénarios générés par NYX depuis l'analyse DPE. Pour utiliser les scénarios exacts de l'audit, l'audit doit être structuré avec les mots "Scénario 1", "Étape 1/2/3".
+    </div>`;
+  }
+
+  panel.style.display = 'block';
+}
+
+function aperçuScenario(key){
+  const sc = auditScenarios[key];
+  if(!sc) return;
+  const preview = document.getElementById('scenarioPreview');
+  const title   = document.getElementById('scenarioPreviewTitle');
+  const list    = document.getElementById('scenarioPreviewList');
+  if(!preview||!title||!list) return;
+  title.textContent = '📋 ' + sc.label;
+  list.innerHTML = sc.travaux.map((t,i)=>
+    `<div style="padding:3px 0;display:flex;align-items:flex-start;gap:6px;">
+      <span style="color:var(--green);font-weight:700;min-width:18px;">${i+1}.</span>
+      <span>${t.desc}</span>
+    </div>`
+  ).join('');
+  preview.style.display = 'block';
+}
+
+function masquerAperçu(){
+  const p = document.getElementById('scenarioPreview');
+  if(p) p.style.display = 'none';
+}
+
+function importerScenario(key){
+  const sc = auditScenarios[key];
+  if(!sc || !sc.travaux || !sc.travaux.length){
+    alert('Aucun travail dans ce scénario.');
+    return;
+  }
+
+  if(lignes.length > 0){
+    const choix = confirm(
+      '⚠️ ' + lignes.length + ' ligne(s) de travaux existent déjà.\n\n' +
+      'OK = Remplacer par les travaux du ' + sc.label + '\n' +
+      'Annuler = Ajouter à la suite des lignes existantes'
+    );
+    if(choix){
+      lignes = sc.travaux.map(t=>({desc:t.desc||'', complement:t.complement||'', qte:t.qte||1, pu:t.pu||0}));
+    } else {
+      sc.travaux.forEach(t=>lignes.push({desc:t.desc||'', complement:t.complement||'', qte:t.qte||1, pu:t.pu||0}));
+    }
+  } else {
+    lignes = sc.travaux.map(t=>({desc:t.desc||'', complement:t.complement||'', qte:t.qte||1, pu:t.pu||0}));
+  }
+
+  renderLignes();
+  masquerAperçu();
+
+  // Feedback visuel — bouton actif
+  const btns = document.querySelectorAll('#scenarioBtnsGrid button');
+  btns.forEach(b=>{ b.style.opacity='0.6'; b.style.boxShadow='none'; });
+  const idx = Object.keys(auditScenarios).indexOf(key);
+  if(btns[idx]){ btns[idx].style.opacity='1'; btns[idx].style.boxShadow='0 0 0 2px #10B981'; }
+
+  // Scroll vers les lignes
+  setTimeout(()=>{
+    const lc = document.getElementById('lignesCard');
+    if(lc) lc.scrollIntoView({behavior:'smooth', block:'start'});
+  }, 100);
+}
+
+
 function removeAudit(){
   auditLoaded = false;
+  auditScenarios = {};
+  auditFullText  = '';
   document.getElementById('d_audit').value = '';
   document.getElementById('auditFileName').textContent = 'Aucun audit chargé';
   document.getElementById('auditFileName').style.color = 'var(--muted)';
   document.getElementById('d_audit_remove').style.display = 'none';
+  // Masquer le panneau scénarios
+  const panel = document.getElementById('scenarioBtnsPanel');
+  if(panel) panel.style.display = 'none';
   const zone = document.getElementById('auditUploadZone');
   zone.style.borderColor = 'rgba(16,185,129,0.3)';
   zone.style.background  = 'rgba(16,185,129,0.05)';
@@ -4021,34 +4466,86 @@ function addLigne(desc='',qte=1,pu=0,complement=''){
 }
 function removeLigne(i){lignes.splice(i,1);renderLignes();}
 function renderLignes(){
-  const container=document.getElementById('lignes-container');
-  container.innerHTML=lignes.map((l,i)=>`
-    <div style="margin-bottom:10px;background:var(--bg3);border-radius:8px;padding:10px;border:1px solid var(--border);" id="ligne_wrap_${i}">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">
-        <!-- Champ description avec autocomplétion BAR-TH -->
+  const container = document.getElementById('lignes-container');
+  if(!container) return;
+  container.innerHTML = lignes.map((l,i) => `
+    <div style="margin-bottom:14px;background:var(--bg3);border-radius:12px;
+                padding:16px 18px;border:1px solid var(--border);" id="ligne_wrap_${i}">
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+
         <div style="position:relative;">
-          <input class="form-input" style="font-size:13px;" id="desc_input_${i}"
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;
+                      letter-spacing:0.08em;margin-bottom:6px;font-family:'Space Mono',monospace;">
+            Description / Opération
+          </div>
+          <input id="desc_input_${i}"
+            style="width:100%;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);
+                   border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;
+                   font-size:15px;padding:13px 16px;transition:border-color 0.2s;"
             placeholder="🔍 Rechercher une opération BAR-TH..."
             value="${l.desc||''}"
             autocomplete="off"
             oninput="lignes[${i}].desc=this.value;filtrerOperations(${i});updateDocPreview()"
             onfocus="filtrerOperations(${i})"
             onblur="setTimeout(()=>fermerSuggestions(${i}),200)">
-          <!-- Badge fiche détectée -->
           ${detecterFicheCEE((l.desc||'')+' '+(l.complement||'')) ?
-            `<span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:10px;padding:2px 7px;background:rgba(16,185,129,0.15);color:var(--green);border-radius:4px;font-family:'Space Mono',monospace;pointer-events:none;">
+            `<span style="position:absolute;right:10px;bottom:13px;font-size:10px;padding:2px 8px;
+                          background:rgba(16,185,129,0.15);color:var(--green);border-radius:4px;
+                          font-family:'Space Mono',monospace;pointer-events:none;">
               ${(FICHES_CEE[detecterFicheCEE((l.desc||'')+' '+(l.complement||''))]||{code:''}).code||''}
             </span>` : ''}
-          <!-- Liste suggestions -->
-          <div id="sugg_${i}" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:300;background:var(--bg2);border:1px solid rgba(16,185,129,0.3);border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.4);"></div>
+          <div id="sugg_${i}" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:300;
+               background:var(--bg2);border:1px solid rgba(16,185,129,0.3);border-radius:0 0 8px 8px;
+               max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.4);"></div>
         </div>
-        <input class="form-input" style="font-size:13px;" placeholder="Complément (marque, référence...)" value="${l.complement||''}" oninput="lignes[${i}].complement=this.value;updateDocPreview()">
+
+        <div>
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;
+                      letter-spacing:0.08em;margin-bottom:6px;font-family:'Space Mono',monospace;">
+            Complément (marque, référence, code CEE…)
+          </div>
+          <input
+            style="width:100%;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);
+                   border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;
+                   font-size:15px;padding:13px 16px;transition:border-color 0.2s;"
+            placeholder="ex: Airwell 12kW — BAR-TH-104"
+            value="${l.complement||''}"
+            oninput="lignes[${i}].complement=this.value;updateDocPreview()">
+        </div>
       </div>
-      <div style="display:grid;grid-template-columns:70px 110px 110px 30px;gap:8px;align-items:center;">
-        <input class="form-input" style="font-size:13px;text-align:center;" type="number" value="${l.qte}" min="1" placeholder="Qté" oninput="lignes[${i}].qte=parseFloat(this.value)||1;updateDocPreview()">
-        <input class="form-input" style="font-size:13px;text-align:right;" type="number" value="${l.pu}" min="0" placeholder="Prix unitaire HT" oninput="lignes[${i}].pu=parseFloat(this.value)||0;updateDocPreview()">
-        <div style="font-size:13px;color:var(--green2);text-align:right;font-family:'Space Mono',monospace;">${((l.qte||1)*(l.pu||0)).toLocaleString('fr-FR',{minimumFractionDigits:2})} €</div>
-        <button onclick="removeLigne(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;">✕</button>
+
+      <div style="display:grid;grid-template-columns:160px 220px 1fr 48px;gap:12px;align-items:end;">
+        <div>
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;
+                      letter-spacing:0.08em;margin-bottom:6px;font-family:'Space Mono',monospace;">Quantité</div>
+          <input type="number" min="1" value="${l.qte}" placeholder="1"
+            style="width:100%;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);
+                   border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;
+                   font-size:16px;font-weight:700;padding:13px 16px;text-align:center;transition:border-color 0.2s;"
+            oninput="lignes[${i}].qte=parseFloat(this.value)||1;updateDocPreview()">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;
+                      letter-spacing:0.08em;margin-bottom:6px;font-family:'Space Mono',monospace;">Prix unitaire HT (€)</div>
+          <input type="number" min="0" step="0.01" value="${l.pu}" placeholder="0,00"
+            style="width:100%;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);
+                   border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;
+                   font-size:16px;font-weight:700;padding:13px 16px;text-align:right;transition:border-color 0.2s;"
+            oninput="lignes[${i}].pu=parseFloat(this.value)||0;updateDocPreview()">
+        </div>
+        <div style="padding-bottom:2px;">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;
+                      letter-spacing:0.08em;margin-bottom:8px;font-family:'Space Mono',monospace;">Total HT</div>
+          <div style="font-size:20px;font-weight:700;color:var(--green2);
+                      font-family:'Space Mono',monospace;text-align:right;">
+            ${((l.qte||1)*(l.pu||0)).toLocaleString('fr-FR',{minimumFractionDigits:2})} €
+          </div>
+        </div>
+        <button onclick="removeLigne(${i})"
+          style="background:rgba(255,23,68,0.08);border:1px solid rgba(255,23,68,0.25);
+                 border-radius:8px;color:#FF1744;cursor:pointer;font-size:18px;
+                 padding:12px;margin-bottom:0px;line-height:1;" title="Supprimer">✕</button>
       </div>
     </div>`).join('');
   updateDocPreview();
@@ -4102,6 +4599,50 @@ function fermerSuggestions(idx){
   if(sugg) sugg.style.display = 'none';
 }
 let logoDataUrl = '';
+
+/* ══════════════════════════════════════════════════════
+   MÉMORISATION DONNÉES ENTREPRISE
+   Sauvegarde automatique dans localStorage à chaque saisie
+   Rechargement automatique à l'ouverture de l'onglet
+══════════════════════════════════════════════════════ */
+function sauvegarderEntreprise(){
+  const data = {
+    nom:        document.getElementById('d_entreprise')?.value || '',
+    adresse:    document.getElementById('d_entreprise_adresse')?.value || '',
+    complement: document.getElementById('d_entreprise_complement')?.value || '',
+    siret:      document.getElementById('d_siret')?.value || '',
+    rge:        document.getElementById('d_rge')?.value || '',
+    logo:       logoDataUrl || '',
+  };
+  lsSet('nyx_entreprise', JSON.stringify(data));
+}
+
+function chargerEntreprise(){
+  try {
+    const raw = lsGet('nyx_entreprise');
+    if(!raw) return;
+    const data = JSON.parse(raw);
+    const setVal = (id, val) => { const el = document.getElementById(id); if(el && val) el.value = val; };
+    setVal('d_entreprise',           data.nom);
+    setVal('d_entreprise_adresse',   data.adresse);
+    setVal('d_entreprise_complement',data.complement);
+    setVal('d_siret',                data.siret);
+    setVal('d_rge',                  data.rge);
+    // Restaurer le logo
+    if(data.logo){
+      logoDataUrl = data.logo;
+      const img = document.getElementById('d_logo_img');
+      const lbl = document.getElementById('d_logo_label');
+      const prv = document.getElementById('d_logo_preview');
+      const rmv = document.getElementById('d_logo_remove');
+      if(img) img.src = data.logo;
+      if(lbl) lbl.textContent = '✅ Logo enregistré';
+      if(prv) prv.style.display = 'block';
+      if(rmv) rmv.style.display = 'block';
+    }
+    updateDocPreview();
+  } catch(e) {}
+}
 
 /* ══════════════════════════════════════════════════════════════
    MOTEUR CUMAC / CEE
@@ -4215,7 +4756,8 @@ const CATALOGUE_OPERATIONS = [
   {code:'BAR-TH-103', nom:'Isolation plancher bas',             desc:"Isolation plancher bas (R≥3 m².K/W) — vide sanitaire/garage",                typeKey:'plancher',     cout_min:3000,  cout_max:6000},
   {code:'BAR-TH-125', nom:'VMC double flux',                    desc:"VMC double flux avec récupération de chaleur (efficacité ≥80%)",                typeKey:'vmc_df',       cout_min:2000,  cout_max:4000},
   {code:'BAR-TH-127', nom:'VMC simple flux hygro',              desc:"VMC simple flux hygroreglable basse consommation",                            typeKey:'vmc_sf',       cout_min:500,   cout_max:1000},
-  {code:'BAR-TH-129', nom:'PAC air/eau',                        desc:"Pompe à chaleur air/eau (COP≥3.4) — remplacement chaudière",                  typeKey:'pac',          cout_min:10000, cout_max:16000},
+  {code:'BAR-TH-129', nom:'PAC air/eau',                        desc:"Pompe à chaleur air/eau (COP≥3.4) — remplacement chaudière",                  typeKey:'pac',          cout_min:10000, cout_max:16000, tva:5.5},
+  {code:'BAR-TH-129-AA', nom:'PAC air/air réversible',          desc:"PAC air/air réversible (SCOP≥3.4) — chauffage + rafraîchissement",             typeKey:'pac_airair',   cout_min:3000,  cout_max:8000,  tva:20},
   {code:'BAR-TH-148', nom:'Chauffe-eau thermodynamique',        desc:"Chauffe-eau thermodynamique CET (COP≥2.5)",                                   typeKey:'cet',          cout_min:1500,  cout_max:3500},
   {code:'BAR-EN-102', nom:'Fenêtres double vitrage',           desc:"Remplacement fenêtres — double vitrage bas-émissif (Uw≤1.3 W/m².K)",          typeKey:'fenetres',     cout_min:400,   cout_max:800},
   {code:'BAR-TH-160', nom:'Isolation rampants toiture',         desc:"Isolation rampants toiture (R≥6 m².K/W)",                                     typeKey:'rampants',     cout_min:3000,  cout_max:6000},
@@ -4429,7 +4971,7 @@ function ouvrirCatalogue(){
           <span style="font-size:13px;font-weight:600;">${op.nom}</span>
         </div>
         <div style="font-size:12px;color:var(--muted);">${op.desc}</div>
-        <div style="font-size:11px;color:#FFD740;margin-top:4px;">💰 ${op.cout_min.toLocaleString('fr-FR')} – ${op.cout_max.toLocaleString('fr-FR')} €</div>
+        <div style="font-size:11px;color:#FFD740;margin-top:4px;">💰 ${op.cout_min.toLocaleString('fr-FR')} – ${op.cout_max.toLocaleString('fr-FR')} € HT · TVA ${op.tva||5.5}%${op.tva===20?' ⚠️ TVA 20% (non éligible rénovation énergétique)':''}</div>
       </div>
     </div>`).join('');
   // Pré-cocher les fiches déjà dans les lignes
@@ -4451,7 +4993,7 @@ function ajouterDepuisCatalogue(){
     // Vérifier si déjà dans les lignes
     const deja = lignes.some(l => detecterFicheCEE(l.desc+' '+(l.complement||'')) === op.typeKey);
     if(!deja){
-      lignes.push({desc:op.desc, complement:op.code, qte:1, pu:Math.round((op.cout_min+op.cout_max)/2)});
+      lignes.push({desc:op.desc, complement:op.code + (op.tva===20?' — TVA 20%':''), qte:1, pu:Math.round((op.cout_min+op.cout_max)/2)});
     }
   });
   renderLignes();
@@ -4690,6 +5232,7 @@ function handleLogoUpload(input){
     document.getElementById('d_logo_label').style.borderColor = 'rgba(16,185,129,0.5)';
     document.getElementById('d_logo_label').style.color = '#10B981';
     updateDocPreview();
+    sauvegarderEntreprise();  // Mémoriser le logo
   };
   reader.readAsDataURL(file);
 }
@@ -4808,8 +5351,8 @@ function updateDocPreview(){
   if(deducTotRow){ deducTotRow.style.display = hasDedu ? 'flex' : 'none'; document.getElementById('deduc_total_val').textContent=fmt(sousTotalApresAides); }
   if(resteRow){ resteRow.style.display = hasDedu ? 'flex' : 'none'; document.getElementById('d_resteACharge').textContent=fmt(resteACharge); }
   const preview=document.getElementById('docPreview');
-  if(!preview)return;
-  preview.innerHTML=`
+  const previewLive=document.getElementById('docPreviewLive');
+  const html=`
     <div class="doc-header-line">
       <div style="display:flex;align-items:flex-start;gap:14px;">
         ${logoDataUrl?`<img src="${logoDataUrl}" style="width:70px;height:70px;object-fit:contain;border-radius:6px;flex-shrink:0;">`:'' }
@@ -4846,6 +5389,8 @@ function updateDocPreview(){
     </div>
     ${buildCumacPreview()}
     <div class="doc-footer">${mentions}</div>`;
+  if(preview) preview.innerHTML = html;
+  if(previewLive) previewLive.innerHTML = `<div class="doc-preview" style="background:#fff;padding:20px;border-radius:8px;color:#333;">${html}</div>`;
 }
 
 function buildCumacPreview(){
@@ -5429,8 +5974,10 @@ function genererSynthese(){
     <div style="font-size:11px;color:#aaa;margin-top:8px;">Calcul 3CL-2021 (Arrêté du 31 mars 2021). Valeurs indicatives — un DPE certifié par un diagnostiqueur accrédité reste nécessaire.</div>
   </div>
 
+  <!-- 4 + 5 : DIAGNOSTIC + SCÉNARIO sur la même page -->
+  <div style="page-break-before:always;">
   <!-- 4. DIAGNOSTIC ÉQUIPEMENTS -->
-  <div class="section">
+  <div class="section" style="page-break-inside:avoid;margin-bottom:14px;">
     <div class="section-title">4 — Diagnostic des Équipements</div>
     <div class="equip-grid">
       ${EQ_ITEMS.map(e=>`<div class="equip-item"><div class="equip-icon">${e.icon}</div><div class="equip-lbl">${e.lbl}</div><div class="equip-val">${e.val}</div></div>`).join('')}
@@ -5509,6 +6056,8 @@ function genererSynthese(){
     </table>` : ''}
     <div style="margin-top:10px;font-size:10px;color:#aaa;">Formule synergie 3CL-2021 : G_A + G_B − (0.15×G_A×G_B)/100. Aides : MaPrimeRénov' + CEE + éco-PTZ + TVA 5.5%. Valeurs indicatives.</div>
   </div>
+
+  </div><!-- /sections 4+5 -->
 
   <!-- FOOTER -->
   <div class="footer">
@@ -5811,7 +6360,7 @@ function db360SetUser(login){
 }
 
 // Init zone audit drag & drop après chargement DOM
-document.addEventListener('DOMContentLoaded', ()=>{ initAuditZone(); lockLignes(); });
+document.addEventListener('DOMContentLoaded', ()=>{ initAuditZone(); lockLignes(); chargerEntreprise(); });
 // Fallback si DOM déjà chargé
 if(document.readyState==='complete'||document.readyState==='interactive'){
   setTimeout(()=>{ initAuditZone(); lockLignes(); }, 100);
