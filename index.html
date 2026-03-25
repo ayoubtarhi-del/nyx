@@ -702,7 +702,9 @@ body::after{
   <!-- Zone climatique auto-détectée (cachée, utilisée par getZone()) -->
   <select id="dpe_zone" style="display:none">
     <option value="H1a">H1a</option><option value="H1b">H1b</option>
-    <option value="H1c">H1c</option><option value="H2" selected>H2</option>
+    <option value="H1c">H1c</option>
+    <option value="H2a">H2a</option><option value="H2b">H2b</option>
+    <option value="H2c">H2c</option><option value="H2" selected>H2</option>
     <option value="H2d">H2d</option><option value="H3">H3</option>
   </select>
 
@@ -733,12 +735,14 @@ body::after{
       <div class="form-group"><label class="form-label">Zone climatique (3CL) <span id="zone_auto_badge" style="font-size:10px;color:#10B981;display:none;">✓ Auto-détectée</span></label>
         <select class="form-select" id="m_zone">
           <option value="">-- Sélectionner votre zone --</option>
-          <option value="H1a">H1a — Nord / Est (très froid) ×1.15</option>
-          <option value="H1b">H1b — Île-de-France ×1.10</option>
-          <option value="H1c">H1c — Bourgogne / Centre-Est ×1.05</option>
-          <option value="H2">H2 — Centre / Ouest ×1.00</option>
-          <option value="H2d">H2d — Pyrénées / Corse ×0.95</option>
-          <option value="H3">H3 — Méditerranée (tempéré) ×0.85</option>
+          <option value="H1a">H1a — Nord / Est (très froid) — 3014 DJU</option>
+          <option value="H1b">H1b — Île-de-France — 2845 DJU</option>
+          <option value="H1c">H1c — Bourgogne / Centre-Est — 2645 DJU</option>
+          <option value="H2a">H2a — Atlantique Nord (Nantes) — 2361 DJU</option>
+          <option value="H2b">H2b — Atlantique Sud (Bordeaux) — 2100 DJU</option>
+          <option value="H2c">H2c — Grand Sud-Ouest (Toulouse) — 1950 DJU</option>
+          <option value="H2d">H2d — Pyrénées / Corse — 1800 DJU</option>
+          <option value="H3">H3 — Méditerranée (Marseille) — 1350 DJU</option>
         </select></div>
       <div class="form-group"><label class="form-label">Type de bien</label>
         <select class="form-select" id="m_type"><option value="">Sélectionner</option><option>Maison individuelle</option><option>Appartement</option><option>Immeuble</option></select></div>
@@ -1800,8 +1804,35 @@ async function handleFileSelect(file){
 
 const ORDER=['A','B','C','D','E','F','G'];
 const COLORS={A:'#00C853',B:'#69F0AE',C:'#FFD740',D:'#FFAB40',E:'#FF6D00',F:'#FF1744',G:'#B71C1C'};
-function classeEP(v){for(const c of ORDER){if(v<={A:70,B:110,C:180,D:250,E:330,F:420,G:9999}[c])return c;}return 'G';}
-function classeGES(v){for(const c of ORDER){if(v<={A:6,B:11,C:30,D:50,E:70,F:100,G:9999}[c])return c;}return 'G';}
+// Arrêté 25 mars 2024 — seuils EP modulés pour logements ≤ 40m²
+// Interpolation linéaire entre seuils 15m² et 40m²
+// Au-dessus de 40m² : seuils standards arrêté 31/03/2021
+function classeEP(v, sref) {
+  const std = {A:70,B:110,C:180,D:250,E:330,F:420};
+  if(!sref || sref >= 40) {
+    // Seuils standards — logements > 40m²
+    for(const c of ORDER){ if(v <= (std[c] || 9999)) return c; }
+    return 'G';
+  }
+  // Petites surfaces ≤ 40m² — seuils F/G modulés (arrêté 25/03/2024)
+  // Formule : seuil(S) = seuil_40 + (seuil_15 - seuil_40) × (40 - S) / 25
+  // Valeurs aux bornes : 15m² → F:590, G:>590 | 40m² → F:420, G:>420
+  const s = Math.max(15, Math.min(40, sref));
+  const t = (40 - s) / 25; // 0 à 40m², 1 à 15m²
+  const seuilsModules = {
+    A: Math.round(70  + (95  - 70)  * t),
+    B: Math.round(110 + (155 - 110) * t),
+    C: Math.round(180 + (255 - 180) * t),
+    D: Math.round(250 + (355 - 250) * t),
+    E: Math.round(330 + (470 - 330) * t),
+    F: Math.round(420 + (590 - 420) * t),
+  };
+  for(const c of ORDER){ if(v <= (seuilsModules[c] || 9999)) return c; }
+  return 'G';
+}
+
+// Seuils GES — standards pour tous logements (pas de modulation surface)
+function classeGES(v){ for(const c of ORDER){if(v<={A:6,B:11,C:30,D:50,E:70,F:100,G:9999}[c])return c;}return 'G';}
 function classeMax(a,b){return ORDER.indexOf(a)>=ORDER.indexOf(b)?a:b;}
 function classeToScore(c){return{A:92,B:80,C:65,D:50,E:35,F:20,G:8}[c]||50;}
 
@@ -1852,14 +1883,47 @@ function getQualiteDonnees(num, equip){
 
 function extraireNumeriques(text){
   const r={ep:null,ges:null,classeDirecte:null,annee:null};
-  const epP=[/(\d{2,4})\s*kWh\s*\/?\s*m[²2]\s*\.?\s*an/i,/énergie\s*primaire\s*[:\-=]?\s*(\d{2,4})/i,/EP\s*[:\-=]\s*(\d{2,4})/i];
-  for(const p of epP){const m=text.match(p);if(m){const v=parseInt(m[1]);if(v>0&&v<3000){r.ep=v;break;}}}
-  const gP=[/(\d{1,3})\s*kg\s*(?:CO[²2]|éq\.?\s*CO[²2])\s*\/?\s*m[²2]/i,/GES\s*[:\-=]\s*(\d{1,3})/i];
-  for(const p of gP){const m=text.match(p);if(m){const v=parseInt(m[1]);if(v>=0&&v<500){r.ges=v;break;}}}
-  const cP=[/classe\s*[eé]nerg[eé]tique\s*[:\-]?\s*([A-G])\b/i,/DPE\s*[:\-]?\s*([A-G])\b/i];
+
+  // EP total - priorite champs officiels, evite postes partiels
+  const epPatterns = [
+    /(?:consommation\s*(?:totale|en\s*[eé]nergie\s*primaire)|[eé]nergie\s*primaire\s*totale|cep_?mod|cep\s*r[eé]f)\s*[:\-=]?\s*(\d{2,4})\s*kWh/i,
+    /(?:cep|CEP)\s*[:\-=]\s*(\d{2,4})\s*kWh/i,
+    /(\d{2,4})\s*kWh\s*[eé]p\s*\/\s*m[²2]/i,
+    /[eé]nergie\s*primaire\s*[:\-=]?\s*(\d{2,4})\s*kWh\s*\/\s*m[²2]/i,
+    /\bEP\s*[:\-=]\s*(\d{2,4})\b/i,
+    /(\d{2,4})\s*kWh\s*\/\s*m[²2]\s*[./\s]*an/i,
+  ];
+  for(const p of epPatterns){
+    const m=text.match(p); if(m){const v=parseInt(m[1]);if(v>0&&v<2000){r.ep=v;break;}}
+  }
+
+  // GES
+  const gesPatterns = [
+    /(?:GES|[eé]missions?\s*(?:de\s*)?(?:gaz\s*[àa]\s*effet\s*de\s*serre|CO[²2]))\s*[:\-=]\s*(\d{1,3})\s*kg/i,
+    /(\d{1,3})\s*kg\s*(?:CO[²2]|[eé]q\.?\s*CO[²2])\s*\/?\s*m[²2]/i,
+    /\bGES\s*[:\-=]\s*(\d{1,3})\b/i,
+  ];
+  for(const p of gesPatterns){
+    const m=text.match(p); if(m){const v=parseInt(m[1]);if(v>=0&&v<500){r.ges=v;break;}}
+  }
+
+  // Classe directe
+  const cP=[
+    /classe\s*[eé]nerg[eé]tique\s*[:\-]?\s*([A-G])\b/i,
+    /[eé]tiquette\s*(?:DPE|[eé]nerg[eé]tique)\s*[:\-]?\s*([A-G])\b/i,
+    /DPE\s*[:\-]?\s*([A-G])\b/i,
+  ];
   for(const p of cP){const m=text.match(p);if(m){r.classeDirecte=m[1].toUpperCase();break;}}
-  const am=text.match(/ann[eé]e\s*(?:de\s*)?construction[^:]*:\s*(1[5-9]\d{2}|20[012]\d)/i)||text.match(/\b(1[89]\d{2})\b/);
-  if(am)r.annee=parseInt(am[1]);
+
+  // Annee construction - contexte obligatoire
+  const anneePatterns=[
+    /ann[eé]e\s*(?:de\s*)?construction[^:\r\n]*[:\-]\s*(1[5-9]\d{2}|20[012]\d)/i,
+    /(?:construit|b[aâ]ti|[eé]difi[eé]|achev[eé])\s*(?:en\s*)?[:\-]?\s*(1[5-9]\d{2}|20[012]\d)/i,
+    /(?:^|\n)\s*(?:ann[eé]e|date\s*de\s*construction)\s*[:\-]\s*(1[5-9]\d{2}|20[012]\d)/im,
+    /p[eé]riode\s*de\s*construction[^:\r\n]*:\s*(?:avant\s*)?(1[5-9]\d{2}|20[012]\d)/i,
+  ];
+  for(const p of anneePatterns){const m=text.match(p);if(m){r.annee=parseInt(m[1]);break;}}
+
   return r;
 }
 function extraireBeneficiaire(text){
@@ -2050,8 +2114,9 @@ function extraireEpaisseurCm(contextText){
   return Math.round(val * 10) / 10;
 }
 
-function detecterEquipements(text){
+function detecterEquipements(text, num){
   const t = text.toLowerCase();
+  const _anneeConstr = (num && num.annee) ? num.annee : null;
   let ch='Non détecté', murs='Non détecté', combles='Non détecté', fen='Non détecté';
   let vmc='Non détecté', plancher='Non détecté', ecs='Non détecté';
   let chauffageMixte=false, volets='Non détecté', robinets='Non détecté';
@@ -2061,8 +2126,8 @@ function detecterEquipements(text){
   const hasPAC_aireau  = t.match(/pompe\s*[àa]\s*chaleur\s*air[\s\/\-]eau|pac\s*air[\s\/\-]eau|a[eé]rotherm|air[\s\/\-]eau/);
   const hasPAC_airair  = t.match(/pac\s*air[\s\/\-]air|pompe\s*[àa]\s*chaleur\s*air[\s\/\-]air|climatiseur\s*r[eé]versible|split.*r[eé]versible|r[eé]versible.*split/);
   const hasPAC_geo     = t.match(/g[eé]otherm|eau[\s\/\-]eau.*pac|pac.*eau[\s\/\-]eau/);
-  const hasPAC_generic = t.match(/\bpac\b|pompe\s*[àa]\s*chaleur|thermodynamique.*chauffage/);
-  const hasCond    = t.match(/(?:chaudi[eè]re|chaudière)\s*[àa]\s*gaz\s*[àa]\s*condensation|condensation/);
+  const hasPAC_generic = t.match(/(?:chauffage[^.\n]{0,30})?(?:\bpac\b|pompe\s*[àa]\s*chaleur)(?![^.\n]{0,30}(?:ecs|eau\s*chaude|ballon|chauffe[\s-]eau|thermodynamique))/i);
+  const hasCond    = t.match(/(?:chaudi[eè]re|chaudière)\s*[àa]\s*gaz\s*[àa]\s*condensation|chaudière\s*condensation|condensation.*chaudière/);
   const hasBois    = t.match(/po[eê]le[\s\-àa]*(?:bois|granul)|granul[eé]s|pellets?|insert.*(?:bois|granul)|bois\s*(?:bûche|énergie)/);
   const hasGaz     = t.match(/(?:chaudi[eè]re|chaudière)\s*[àa]\s*gaz(?!\s*condensation)|gaz\s*naturel|chaud.*gaz|gaz.*chaud|\bgaz\b.*chauffage|chauffage.*\bgaz\b|gpl\b|combustible.*gaz/);
   const hasFioul   = t.match(/\bfioul\b|\bfuel\b|mazout|combustible.*p[eé]trole|chaud.*fioul|fioul.*chaud/);
@@ -2070,17 +2135,38 @@ function detecterEquipements(text){
   const hasElec    = t.match(/radiateur[s]?\s*[eé]lectrique|convecteur[s]?|panneau[x]?\s*rayonnant|chauffage\s*[eé]lectrique|grille[\s-]pain|effet\s*joule|chaleur\s*douce|[eé]lectrique.*radiateur/)
     || text.match(/radiateur\s*[eé]lectrique[^:]*:\s*[1-9]/i);
 
-  if(hasPAC_geo)           ch = 'Géothermie';
-  else if(hasPAC_aireau)   ch = 'PAC air/eau';
-  else if(hasPAC_airair)   ch = 'PAC air/air';
-  else if(hasPAC_generic)  ch = 'PAC air/eau';  // générique → air/eau par défaut
-  else if(hasCond)         ch = 'Gaz condensation';
-  else if(hasElec&&hasBois){ ch='Électrique'; chauffageMixte=true; }
-  else if(hasElec)         ch = 'Électrique';
-  else if(hasFioul)        ch = 'Fioul';
-  else if(hasPropane)      ch = 'Fioul';
-  else if(hasGaz)          ch = 'Gaz ancien';
-  else if(hasBois)         ch = 'Bois/granulés';
+  // Priorité 1 — champ structuré type de chauffage
+  const champCH = text.match(/(?:type|mode|syst[eè]me)\s*(?:de\s*)?(?:chauffage|chauffe[\s-]eau)\s*[:\-]\s*([^\r\n]{3,60})/i)?.[1]
+    || text.match(/chauffage\s*principal\s*[:\-]\s*([^\r\n]{3,60})/i)?.[1]
+    || text.match(/(?:^|\n)\s*chauffage\s*[:\-]\s*([^\r\n]{3,60})/im)?.[1] || '';
+  if(champCH){
+    const cc = champCH.toLowerCase();
+    if(cc.match(/g[eé]otherm|pac.*eau.*eau|eau.*eau.*pac/))           ch = 'Géothermie';
+    else if(cc.match(/pac\s*air[\s\/\-]eau|a[eé]rotherm|air[\s\/\-]eau.*pac/)) ch = 'PAC air/eau';
+    else if(cc.match(/pac\s*air[\s\/\-]air|r[eé]versible|split/))    ch = 'PAC air/air';
+    else if(cc.match(/\bpac\b|pompe.*chaleur/))                       ch = 'PAC air/eau';
+    else if(cc.match(/condensation/))                                  ch = 'Gaz condensation';
+    else if(cc.match(/\bfioul\b|\bfuel\b|mazout/))                   ch = 'Fioul';
+    else if(cc.match(/propane|butane/))                                ch = 'Fioul';
+    else if(cc.match(/\bgaz\b/))                                      ch = 'Gaz ancien';
+    else if(cc.match(/bois|granul[eé]|po[eê]le|pellet|insert/))       ch = 'Bois/granulés';
+    else if(cc.match(/[eé]lectrique|convect|rayonnant|joule/))        ch = 'Électrique';
+  }
+
+  // Priorité 2 — regex génériques (si champ structuré absent)
+  if(ch === 'Non détecté'){
+    if(hasPAC_geo)       ch = 'Géothermie';
+    else if(hasPAC_aireau) ch = 'PAC air/eau';
+    else if(hasPAC_airair) ch = 'PAC air/air';
+    else if(hasPAC_generic && !t.match(/thermodynamique.*(?:ecs|eau\s*chaude|ballon)|ballon.*thermodynamique/)) ch = 'PAC air/eau';
+    else if(hasCond)     ch = 'Gaz condensation';
+    else if(hasElec && hasBois){ ch = 'Électrique'; chauffageMixte = true; }
+    else if(hasElec)     ch = 'Électrique';
+    else if(hasFioul)    ch = 'Fioul';
+    else if(hasPropane)  ch = 'Fioul';
+    else if(hasGaz)      ch = 'Gaz ancien';
+    else if(hasBois)     ch = 'Bois/granulés';
+  }
 
   /* ════════════════════════════════════════
      MURS — lecture champs structurés VT
@@ -2219,7 +2305,7 @@ function detecterEquipements(text){
     const niveau = classerIsolationParEpaisseur(epaisseurCm, 'combles');
     if(niveau === 'Bonne isolation') return 'Très bien isolés';
     if(niveau === 'Moyen') return 'Isolés';
-    return 'Isolés'; // Insuffisant mais isolé quand même
+    return 'Non isolés'; // Insuffisant (<10cm) = équivalent non isolé pour le calcul
   }
 
   if(combIsoleON){
@@ -2415,7 +2501,11 @@ function detecterEquipements(text){
   else if(t.match(/double\s*vitrage.*(?:\+20|\+\s*20|vieux|ancien|avant\s*20)/i)) fen='Double vitrage ancien';
   else if(t.match(/triple\s*vitrage|tv\b/)) fen='Triple vitrage';
   else if(t.match(/double\s*vitrage\s*r[eé]cent|double\s*vitrage.*(-\s*10|moins\s*10)/i)) fen='Double vitrage récent';
-  else if(t.match(/double\s*vitrage|dv\b|double-vitrage/)) fen='Double vitrage ancien';
+  else if(t.match(/double\s*vitrage|dv\b|double-vitrage/)) {
+    // DV sans précision : récent si construction ≥ 2000, ancien sinon
+    if(_anneeConstr && _anneeConstr >= 2000) fen='Double vitrage récent';
+    else fen='Double vitrage ancien';
+  }
 
   /* ── EAU CHAUDE ── */
   if(t.match(/ballon\s*thermodynamique|chauffe[\s-]eau\s*thermodynamique|cet\b/)) ecs='Thermodynamique';
@@ -2426,6 +2516,25 @@ function detecterEquipements(text){
     if(t.match(/\bgaz\b/)) ecs='Gaz';
     else if(t.match(/[eé]lectrique/)) ecs='Électrique';
   }
+
+  /* ── ECS : champ structuré prioritaire + auto-inférence PAC ── */
+  // Champ structuré type ECS
+  const champECS = text.match(/(?:type|mode|syst[eè]me)\s*(?:de\s*)?(?:ecs|eau\s*chaude\s*sanitaire|chauffe[\s-]eau)\s*[:\-]\s*([^\r\n]{2,50})/i)?.[1]||'';
+  if(champECS){
+    const cc=champECS.toLowerCase();
+    if(cc.match(/thermodynamique|cet\b/)) ecs='Thermodynamique';
+    else if(cc.match(/solaire|capteur/)) ecs='Solaire';
+    else if(cc.match(/[eé]lectrique|cumulus|ballon/)) ecs='Électrique';
+    else if(cc.match(/\bgaz\b/)) ecs='Gaz';
+  }
+  // Auto-inférence : PAC air/eau souvent intégrée avec production ECS
+  if(ecs==='Non détecté' && (ch==='PAC air/eau' || ch==='Géothermie')){
+    // Si VT mentionne PAC avec production ECS intégrée
+    if(t.match(/pac.*ecs\s*int[eé]gr[eé]|ecs.*pac|production.*ecs.*pac|eau\s*chaude.*pac/)) ecs='Thermodynamique';
+    // Sinon, PAC air/eau → ECS souvent ballon électrique dans les vieilles installs
+    // On ne force pas — laisser 'Non détecté' pour ne pas biaiser
+  }
+
 
   /* ── VOLETS ── */
   if(t.match(/volets?\s*roulants?/)) volets='Volets roulants';
@@ -2521,15 +2630,19 @@ const R_PAROI={
   },
 };
 
-// DJU (Degrés-Jours Unifiés) par zone climatique — valeurs 3CL-2021
-// Source : Tableau 2 annexe I de l'arrêté du 31 mars 2021
+// DJU (Degrés-Jours Unifiés) par zone climatique — valeurs officielles
+// Source : Annexe I, Tableau 2, arrêté du 31 mars 2021
 const DJU_ZONE = {
-  'H1a': 3000,  // Nord/Est — très froid
-  'H1b': 2800,  // Île-de-France
-  'H1c': 2600,  // Centre-Est / Bourgogne
-  'H2':  2300,  // Centre / Ouest (ancienne référence)
-  'H2d': 2100,  // Pyrénées / Corse
-  'H3':  1500,  // Méditerranée
+  'H1a': 3014,  // Strasbourg — Nord/Est, très froid
+  'H1b': 2845,  // Paris — Île-de-France
+  'H1c': 2645,  // Chalon-sur-Saône — Bourgogne/Centre-Est
+  'H2a': 2361,  // Nantes — Atlantique Nord
+  'H2b': 2100,  // Bordeaux — Atlantique Sud
+  'H2c': 1950,  // Toulouse — Grand Sud-Ouest
+  'H2d': 1800,  // Perpignan — Pyrénées/Corse
+  'H3':  1350,  // Marseille — Méditerranée
+  // Alias de compatibilité (zone H2 générique → H2b par défaut)
+  'H2':  2100,
 };
 const DJU_REF = 2300;
 /* COP / η_sais : PAC air/eau=3.40 | PAC air/air=2.80 | Géothermie=4.50 */
@@ -2538,10 +2651,12 @@ const ETA_CHAUFFAGE = {
   'Gaz condensation':1.05,'Bois/granulés':0.78,'Gaz ancien':0.82,
   'Fioul':0.80,'Électrique':1.00,'Non détecté':0.85,
 };
+// Arrêté du 13 août 2025 — en vigueur au 01/01/2026
+// Coefficient de conversion énergie finale → primaire : électricité 2.30 → 1.90
 const EP_COEFF = {
-  'PAC air/eau':2.30,'PAC air/air':2.30,'PAC':2.30,'Géothermie':2.30,
+  'PAC air/eau':1.90,'PAC air/air':1.90,'PAC':1.90,'Géothermie':1.90,
   'Gaz condensation':1.00,'Bois/granulés':0.60,'Gaz ancien':1.00,
-  'Fioul':1.00,'Électrique':2.30,'Non détecté':1.00,
+  'Fioul':1.00,'Électrique':1.90,'Non détecté':1.00,
 };
 const CO2_COEFF = {
   'PAC air/eau':0.064,'PAC air/air':0.064,'PAC':0.064,'Géothermie':0.064,
@@ -2552,7 +2667,7 @@ const ETA_ECS = {
   'Thermodynamique':2.50,'Solaire':3.00,'Électrique':0.90,'Gaz':0.85,'Non détecté':0.85,
 };
 const EP_ECS = {
-  'Thermodynamique':2.30,'Solaire':0.50,'Électrique':2.30,'Gaz':1.00,'Non détecté':1.00,
+  'Thermodynamique':1.90,'Solaire':0.50,'Électrique':1.90,'Gaz':1.00,'Non détecté':1.00,
 };
 const CO2_ECS = {
   'Thermodynamique':0.064,'Solaire':0.010,'Électrique':0.064,'Gaz':0.227,'Non détecté':0.200,
@@ -2629,7 +2744,9 @@ function detecterInertie(equip, annee) {
 }
 
 function calculer3CL(equip, surfaceM2, annee) {
-  const Sh  = surfaceM2 || 100;
+  // Arrêté 25 mars 2024 : surface de référence = Sref (Sh + vérandas chauffées ≥1.80m)
+  const Sref_veranda = (equip.verandaChauffee === true && equip.verandaSurface) ? equip.verandaSurface : 0;
+  const Sh  = (surfaceM2 || 100) + Sref_veranda;
   const hsp = equip.hauteurPlafond || 2.5;
   const niv = equip.niveauxChauffes || 2;
 
@@ -2736,7 +2853,7 @@ function calculer3CL(equip, surfaceM2, annee) {
   const Eaux = 3 * Sh, Eecl = 3.5 * Sh;
   const Ep_ch  = Ech  * (EP_COEFF[equip.ch]  || 1.0) / Sh;
   const Ep_ecs = Eecs * (EP_ECS[equip.ecs]   || 1.0) / Sh;
-  const Ep_aux = (Eaux + Eecl) * 2.3 / Sh;
+  const Ep_aux = (Eaux + Eecl) * 1.9 / Sh;  // Arrêté 13/08/2025 : coeff élec 1.9
   const Ep_total = Ep_ch + Ep_ecs + Ep_aux;
 
   const GES_total = Ech  * (CO2_COEFF[equip.ch]  || 0.2) / Sh
@@ -2844,7 +2961,7 @@ function calculerThCEEx(equip,surfaceM2,annee){
   const Eaux=P_vmc*8760/1000+2.5*Sh,Eecl=2.8*Sh;
   const Ep_ch=Ech*(EP_COEFF[equip.ch]||1.0)/Sh;
   const Ep_ecs=Eecs*(EP_ECS[equip.ecs]||1.0)/Sh;
-  const Ep_total=Ep_ch+Ep_ecs+(Eaux+Eecl)*2.3/Sh;
+  const Ep_total=Ep_ch+Ep_ecs+(Eaux+Eecl)*1.9/Sh;
   const GES_total=Ech*(CO2_COEFF[equip.ch]||0.2)/Sh+Eecs*(CO2_ECS[equip.ecs]||0.2)/Sh+(Eaux+Eecl)*0.064/Sh;
   const k=!annee?1:annee<1948?1.18:annee<1975?1.08:annee>=2021?0.68:annee>=2012?0.88:1;
   return{ep:Math.round(Ep_total*k),ges:Math.round(GES_total*k*10)/10,detail:{Bbio:Math.round(Bbio*10)/10,Bch_net:Math.round(Bch_net),HT_trans:Math.round(HT_trans),HT_pt:Math.round(psi*per*4),Hinf:Math.round(Hinf),n50,psi,eta_sais,Ep_ch:Math.round(Ep_ch),Ep_ecs:Math.round(Ep_ecs),GES_ch:Math.round(Ech*(CO2_COEFF[equip.ch]||0.2)/Sh*10)/10,GES_ecs:Math.round(Eecs*(CO2_ECS[equip.ecs]||0.2)/Sh*10)/10,surface:Sh,nOcc}};
@@ -2867,23 +2984,24 @@ function scoreEquipements(e){
 function scoreToClasse(s){return s>=88?'A':s>=72?'B':s>=56?'C':s>=40?'D':s>=24?'E':s>=10?'F':'G';}
 
 function determinerClasse(num,equip,surfaceM2){
-  if(num.ep!==null&&num.ges!==null){const c=classeMax(classeEP(num.ep),classeGES(num.ges));return{classe:c,ep:num.ep,ges:num.ges,score:classeToScore(c),methode:'Données numériques officielles (EP + GES)',detail3CL:null,detailThCEEx:null,ep3CL:null,epThCEEx:null,ges3CL:null,gesThCEEx:null};}
-  if(num.ep!==null){const c=classeEP(num.ep);return{classe:c,ep:num.ep,ges:null,score:classeToScore(c),methode:'Énergie primaire extraite du PDF',detail3CL:null,detailThCEEx:null,ep3CL:null,epThCEEx:null,ges3CL:null,gesThCEEx:null};}
+  const sref = surfaceM2 || 100;  // surface de référence pour seuils modulés
+  if(num.ep!==null&&num.ges!==null){const c=classeMax(classeEP(num.ep,sref),classeGES(num.ges));return{classe:c,ep:num.ep,ges:num.ges,score:classeToScore(c),methode:'Données numériques officielles (EP + GES)',detail3CL:null,detailThCEEx:null,ep3CL:null,epThCEEx:null,ges3CL:null,gesThCEEx:null};}
+  if(num.ep!==null){const c=classeEP(num.ep,sref);return{classe:c,ep:num.ep,ges:null,score:classeToScore(c),methode:'Énergie primaire extraite du PDF',detail3CL:null,detailThCEEx:null,ep3CL:null,epThCEEx:null,ges3CL:null,gesThCEEx:null};}
   if(num.ges!==null){const c=classeGES(num.ges);return{classe:c,ep:null,ges:num.ges,score:classeToScore(c),methode:'Émissions GES extraites du PDF',detail3CL:null,detailThCEEx:null,ep3CL:null,epThCEEx:null,ges3CL:null,gesThCEEx:null};}
   if(num.classeDirecte){return{classe:num.classeDirecte,ep:null,ges:null,score:classeToScore(num.classeDirecte),methode:'Classe lue dans le document',detail3CL:null,detailThCEEx:null,ep3CL:null,epThCEEx:null,ges3CL:null,gesThCEEx:null};}
-  const surface=surfaceM2||100;
+  const surface=sref;
   const calc=calculer3CL(equip, surface, num.annee);
-  const epAdj = calc.ep;   // n50 forfaitaire intègre déjà l'année de construction
+  const epAdj = calc.ep;
   const gesAdj=Math.round((calc.ges*epAdj/calc.ep)*10)/10;
-  const classe3CL=classeMax(classeEP(epAdj),classeGES(gesAdj));
-  return{classe:classe3CL,ep:epAdj,ges:gesAdj,score:classeToScore(classe3CL),methode:'3CL-2021 (Arrêté du 31 mars 2021)',detail3CL:{...calc.detail,epAdj,gesAdj},detailThCEEx:null,ep3CL:epAdj,epThCEEx:null,ges3CL:gesAdj,gesThCEEx:null};
+  const classe3CL=classeMax(classeEP(epAdj,sref),classeGES(gesAdj));
+  return{classe:classe3CL,ep:epAdj,ges:gesAdj,score:classeToScore(classe3CL),methode:'3CL-2021 (Arrêté du 31 mars 2021 — modifié 13/08/2025)',detail3CL:{...calc.detail,epAdj,gesAdj},detailThCEEx:null,ep3CL:epAdj,epThCEEx:null,ges3CL:gesAdj,gesThCEEx:null};
 }
+
 
 function calculerNiveau(num,equip,classe){
   const equipsDetectes=[];
   if(num.ep!==null)equipsDetectes.push('EP: '+num.ep+' kWh/m²/an');
   if(num.ges!==null)equipsDetectes.push('GES: '+num.ges+' kg CO₂/m²/an');
-  if(num.classeDirecte)equipsDetectes.push('Classe: '+num.classeDirecte);
   if(num.annee)equipsDetectes.push('Année: '+num.annee);
   [equip.ch,equip.murs,equip.combles,equip.rampants,equip.fen,equip.vmc,equip.plancher,equip.ecs].forEach((v,i)=>{
     if(v&&v!=='Non détecté')equipsDetectes.push(['Chauffage','Murs','Combles','Rampants','Fenêtres','VMC','Plancher','ECS'][i]+': '+v);
@@ -2899,12 +3017,15 @@ function calculerNiveau(num,equip,classe){
 /* ── SCENARIO ── */
 /* ══ ZONES CLIMATIQUES 3CL ══ */
 const ZONES_CLIM = {
-  'H1a':{label:'H1a — Nord/Est (très froid)',  coeff:1.15},
-  'H1b':{label:'H1b — Île-de-France',          coeff:1.10},
-  'H1c':{label:'H1c — Bourgogne/Centre-Est',   coeff:1.05},
-  'H2': {label:'H2 — Centre/Ouest (référence)',coeff:1.00},
-  'H2d':{label:'H2d — Pyrénées/Corse',         coeff:0.95},
-  'H3': {label:'H3 — Méditerranée (tempéré)',  coeff:0.85},
+  'H1a':{label:'H1a — Nord/Est (très froid)',       coeff:1.20},
+  'H1b':{label:'H1b — Île-de-France',               coeff:1.14},
+  'H1c':{label:'H1c — Bourgogne/Centre-Est',        coeff:1.06},
+  'H2a':{label:'H2a — Atlantique Nord (Nantes)',    coeff:0.95},
+  'H2b':{label:'H2b — Atlantique Sud (Bordeaux)',   coeff:0.84},
+  'H2c':{label:'H2c — Grand Sud-Ouest (Toulouse)',  coeff:0.78},
+  'H2' :{label:'H2 — Centre/Ouest (référence)',     coeff:0.84},
+  'H2d':{label:'H2d — Pyrénées/Corse',              coeff:0.72},
+  'H3' :{label:'H3 — Méditerranée (Marseille)',     coeff:0.54},
 };
 /* Gains réels par travaux (% CEP) — Cahier des charges 3CL-2021 */
 const GT = {
@@ -2938,30 +3059,34 @@ const MATRICE = {
    Source : Arrêté du 31 mars 2021 (annexe I)
 ══════════════════════════════════════════════════════ */
 const DEPT_ZONE = {
-  // H1a — Nord-Est très froid (Alsace, Lorraine, Champagne-Ardenne, Aisne)
+  // H1a — Nord-Est très froid
   '02':'H1a','08':'H1a','10':'H1a','51':'H1a','52':'H1a','54':'H1a','55':'H1a',
   '57':'H1a','67':'H1a','68':'H1a','88':'H1a',
-  // H1b — Nord, Picardie, Normandie, Île-de-France, Bourgogne nord
+  // H1b — Nord, Picardie, Normandie, Ile-de-France, Bourgogne nord
   '59':'H1b','60':'H1b','62':'H1b','80':'H1b',
   '75':'H1b','77':'H1b','78':'H1b','91':'H1b','92':'H1b','93':'H1b','94':'H1b',
   '95':'H1b','28':'H1b','45':'H1b','89':'H1b','21':'H1b','58':'H1b','71':'H1b',
   '27':'H1b','76':'H1b',
-  // H1c — Centre-Est / Bourgogne / Rhône-Alpes nord
-  '01':'H1c','03':'H1c','15':'H1c','18':'H1c','23':'H1c','36':'H1c','37':'H1c',
-  '38':'H1c','39':'H1c','41':'H1c','42':'H1c','43':'H1c','44':'H1c','49':'H1c',
-  '53':'H1c','63':'H1c','69':'H1c','70':'H1c','72':'H1c','74':'H1c','85':'H1c',
+  // H1c — Centre-Est, Bourgogne, Rhone-Alpes nord
+  '01':'H1c','03':'H1c','18':'H1c','23':'H1c','36':'H1c','37':'H1c',
+  '38':'H1c','39':'H1c','41':'H1c','42':'H1c','43':'H1c',
+  '63':'H1c','69':'H1c','70':'H1c','74':'H1c',
   '86':'H1c','87':'H1c','25':'H1c','90':'H1c',
-  // H2 — Centre / Ouest / Sud-Ouest (zone de référence)
-  '04':'H2','05':'H2','07':'H2','11':'H2','12':'H2','14':'H2','16':'H2',
-  '17':'H2','19':'H2','22':'H2','24':'H2','29':'H2','31':'H2','32':'H2',
-  '33':'H2','34':'H2','35':'H2','40':'H2','46':'H2','47':'H2','48':'H2',
-  '50':'H2','56':'H2','61':'H2','64':'H2','65':'H2','79':'H2','81':'H2',
-  '82':'H2','09':'H2',
-  // H2d — Pyrénées / Corse
-  '2A':'H2d','2B':'H2d','66':'H2d',
-  // H3 — Méditerranée / littoral sud
-  '06':'H3','13':'H3','30':'H3','83':'H3','84':'H3','26':'H3',
-  // DOM-TOM → H3 par défaut
+  // H2a — Atlantique Nord (Bretagne, Pays-de-la-Loire, Basse-Normandie)
+  '14':'H2a','22':'H2a','29':'H2a','35':'H2a','44':'H2a','49':'H2a',
+  '50':'H2a','53':'H2a','56':'H2a','61':'H2a','72':'H2a','85':'H2a',
+  // H2b — Atlantique Sud (Gironde, Charentes, Dordogne, Deux-Sevres)
+  '16':'H2b','17':'H2b','19':'H2b','24':'H2b','33':'H2b','40':'H2b',
+  '47':'H2b','79':'H2b','87':'H2b',
+  // H2c — Grand Sud-Ouest (Midi-Pyrenees, Auvergne sud, Languedoc interieur)
+  '09':'H2c','11':'H2c','12':'H2c','15':'H2c','31':'H2c','32':'H2c',
+  '46':'H2c','48':'H2c','65':'H2c','81':'H2c','82':'H2c',
+  // H2d — Pyrenees, Corse
+  '2A':'H2d','2B':'H2d','64':'H2d','66':'H2d',
+  // H3 — Mediterranee, littoral sud
+  '04':'H3','05':'H3','06':'H3','07':'H3','13':'H3','26':'H3',
+  '30':'H3','34':'H3','83':'H3','84':'H3',
+  // DOM-TOM
   '971':'H3','972':'H3','973':'H3','974':'H3','976':'H3',
 };
 
@@ -3010,7 +3135,9 @@ function autoDetectZoneManuel(cp){
   if(zone){
     const ZONE_LABELS = {
       'H1a':'H1a — Nord/Est','H1b':'H1b — Île-de-France','H1c':'H1c — Centre-Est',
-      'H2':'H2 — Centre/Ouest','H2d':'H2d — Pyrénées/Corse','H3':'H3 — Méditerranée'
+      'H2a':'H2a — Atlantique Nord','H2b':'H2b — Atlantique Sud',
+      'H2c':'H2c — Grand Sud-Ouest','H2':'H2 — Centre/Ouest',
+      'H2d':'H2d — Pyrénées/Corse','H3':'H3 — Méditerranée'
     };
     badge.textContent = '✓ ' + (ZONE_LABELS[zone] || zone) + ' (auto)';
     badge.style.display = 'inline';
@@ -3100,7 +3227,7 @@ function genererScenario(equip,classeActuelle){
   if(chARemplacer){
     const gain = g(GT.pac.moy);
     const desc = equip.ch==='Électrique'
-      ? 'Radiateurs électriques (coeff EP 2.3). Remplacement PAC air/eau COP 3–5 → gain '+gain+'% CEP. Économies 60–75%.'
+      ? 'Radiateurs électriques (coeff EP 1.9 depuis jan. 2026). Remplacement PAC air/eau COP 3–5 → gain '+gain+'% CEP. Économies 60–75%.'
       : equip.ch==='Fioul'
       ? 'Chaudière fioul : CO₂ 0.324 kg/kWh. PAC air/eau → gain '+gain+'% CEP. -50 à 70% sur facture chauffage.'
       : equip.ch==='Gaz condensation'
@@ -3561,7 +3688,7 @@ async function analyserDocument(){
     // Extraction regex
     beneficiaireData = extraireBeneficiaire(fullText);
     const num = extraireNumeriques(fullText);
-    equip = detecterEquipements(fullText);
+    equip = detecterEquipements(fullText, num);
 
     // → Calcul et affichage direct du résultat (sans panneau intermédiaire)
     _appliquerResultat(beneficiaireData, equip, num, fullText);
@@ -3699,9 +3826,9 @@ async function _lancerIAsilencieuse(fullText, equipRef){
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
+        model:'claude-sonnet-4-6',
         max_tokens:1000,
-        system:'Tu es un expert en analyse de visites techniques de logement. Réponds UNIQUEMENT en JSON valide, sans markdown.',
+        system:'Tu es un expert DPE et visite technique en France. Analyse le texte et extrais les équipements. Règles: chauffage=énergie PRINCIPALE de chauffage (pas ECS), combles Insuffisant=Non isolés, double vitrage sans précision=Double vitrage ancien. Réponds UNIQUEMENT en JSON valide, sans markdown ni commentaire.',
         messages:[{role:'user',content:
           'Depuis ce texte de visite technique, extrait les valeurs en JSON:\n\n' +
           '{"chauffage":"PAC|Gaz condensation|Gaz ancien|Fioul|Électrique|Bois/granulés|Non détecté",' +
@@ -3795,7 +3922,7 @@ function analyserManuel(){
   const epFinal  = res.ep  !== null ? Math.round(res.ep  * regBonus) : null;
   const gesFinal = res.ges !== null ? Math.round(res.ges * regBonus * 10)/10 : null;
   const classeFin = epFinal !== null
-    ? (epFinal<70?'A':epFinal<110?'B':epFinal<180?'C':epFinal<250?'D':epFinal<330?'E':epFinal<420?'F':'G')
+    ? classeEP(epFinal, surface)
     : res.classe;
 
   const classe = classeFin;
