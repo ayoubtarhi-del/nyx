@@ -1142,7 +1142,18 @@ async function syncUsersFromFirestore(){
     const adminIdx = arr.findIndex(x=>x.login==='AYOUB');
     if(adminIdx < 0) arr.unshift(ADMIN_DEFAULT);
     else { arr[adminIdx].actif = true; arr[adminIdx].hashed = true; }
+    // Fusionner avec le localStorage local pour ne pas perdre les users
+    // créés localement mais pas encore propagés vers Firestore
+    const localArr = JSON.parse(lsGet('nyx_users') || '[]');
+    localArr.forEach(localUser => {
+      if(localUser.login === 'AYOUB') return;
+      if(!arr.find(u => u.login.toLowerCase() === localUser.login.toLowerCase())){
+        arr.push(localUser);
+      }
+    });
     lsSet('nyx_users', JSON.stringify(arr));
+    // Repousser la liste fusionnée vers Firestore
+    if(db) db.collection('nyx_config').doc('users').set({ users: JSON.stringify(arr), updated: Date.now() }).catch(()=>{});
   } catch(e) {
     // Firestore indisponible — continuer avec localStorage
   }
@@ -1172,9 +1183,9 @@ async function doLogin(){
   const login = document.getElementById('loginUser').value.trim();
   const pwd   = document.getElementById('loginPass').value;
 
-  // Sync Firestore en arrière-plan (non bloquant)
-  syncUsersFromFirestore().catch(()=>{});
-  // Toujours inclure ADMIN_DEFAULT même si localStorage vide
+  // Sync Firestore AVANT de lire les users — corrige la race condition
+  // où Firestore écrasait le localStorage pendant hashPassword()
+  await syncUsersFromFirestore().catch(()=>{});
   const users = getUsers();
 
   // Hash du mot de passe saisi avant comparaison
