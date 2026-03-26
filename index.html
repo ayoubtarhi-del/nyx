@@ -960,7 +960,10 @@ body::after{
 <div class="tab-content" id="tab-users">
   <!-- Stats -->
   <div class="card">
-    <div class="card-title">👥 Gestion des utilisateurs</div>
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+      👥 Gestion des utilisateurs
+      <button onclick="syncUsersFromFirestore().then(()=>refreshUsers())" style="background:none;border:1px solid rgba(16,185,129,0.3);border-radius:6px;color:var(--green);font-size:11px;padding:4px 12px;cursor:pointer;">🔄 Sync</button>
+    </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
       <div class="invest-box"><div class="invest-val" id="u_total">0</div><div class="invest-lbl">Utilisateurs total</div></div>
       <div class="invest-box"><div class="invest-val" id="u_actifs">0</div><div class="invest-lbl">Actifs</div></div>
@@ -1261,6 +1264,8 @@ async function creerUtilisateur(){
   if(!login || !pwd){ alert('Identifiant et mot de passe obligatoires.'); return; }
   if(pwd.length < 4){ alert('Mot de passe trop court (4 caractères minimum).'); return; }
 
+  // Sync depuis Firestore pour avoir la liste complète et à jour
+  await syncUsersFromFirestore();
   const users = getUsers();
   if(users.find(u => u.login.toLowerCase() === login.toLowerCase())){
     alert('Cet identifiant existe déjà.');
@@ -1312,10 +1317,11 @@ function toggleUserActif(id){
 
 function deleteUser(id){
   if(!confirm('Supprimer cet utilisateur ?')) return;
-  let users=getUsers().filter(u=>u.id!==id&&u.login!=='AYOUB');
+  const users = getUsers().filter(u => u.id !== id);
   // Toujours garder l'admin
-  const users2=getUsers().filter(u=>u.id!==id);
-  saveUsers(users2);
+  const adminInList = users.find(u => u.login === 'AYOUB');
+  if(!adminInList) users.unshift(ADMIN_DEFAULT);
+  saveUsers(users); // saveUsers pousse aussi vers Firestore
   refreshUsers();
 }
 
@@ -5880,6 +5886,31 @@ async function genererPDF(){
 /* ── INIT ── */
 document.getElementById('d_date').value=new Date().toISOString().split('T')[0];
 
+/* ══════════════════════════════════════════════════════
+   FIREBASE — Initialisé EN PREMIER pour être disponible
+   lors de la restauration de session
+══════════════════════════════════════════════════════ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCDIluwhCeV1_5BzeKhaQsziNR3v5IF9nA",
+  authDomain: "nyx-plateforme.firebaseapp.com",
+  projectId: "nyx-plateforme",
+  storageBucket: "nyx-plateforme.firebasestorage.app",
+  messagingSenderId: "915541903062",
+  appId: "1:915541903062:web:4ee414ea2f33afbd99eb77"
+};
+
+let db   = null;
+let auth = null;
+const isFileProtocol = window.location.protocol === 'file:';
+
+try {
+  if(!isFileProtocol){
+    firebase.initializeApp(firebaseConfig);
+    db   = firebase.firestore();
+    auth = firebase.auth();
+  }
+} catch(e) {}
+
 // Restaurer la session si existante
 (function restoreSession(){
   try {
@@ -5908,21 +5939,6 @@ document.getElementById('d_date').value=new Date().toISOString().split('T')[0];
   }
 })();
 refreshCRM();
-/* ══════════════════════════════════════════════════════
-   FIREBASE — Configuration & Initialisation
-   ⚠️ SÉCURITÉ : Restreignez cette clé dans la console
-   Firebase > Project Settings > API restrictions
-   et configurez les règles Firestore pour n'autoriser
-   que les utilisateurs authentifiés.
-══════════════════════════════════════════════════════ */
-const firebaseConfig = {
-  apiKey: "AIzaSyCDIluwhCeV1_5BzeKhaQsziNR3v5IF9nA",
-  authDomain: "nyx-plateforme.firebaseapp.com",
-  projectId: "nyx-plateforme",
-  storageBucket: "nyx-plateforme.firebasestorage.app",
-  messagingSenderId: "915541903062",
-  appId: "1:915541903062:web:4ee414ea2f33afbd99eb77"
-};
 
 // 🔒 Protection basique contre l'inspection (ne remplace pas une vraie sécurité backend)
 document.addEventListener('contextmenu', e => e.preventDefault());
@@ -5931,33 +5947,6 @@ document.addEventListener('keydown', e => {
     e.preventDefault();
   }
 });
-
-let db   = null;
-let auth = null;
-// Détection protocole file:// (ouverture locale sans serveur)
-const isFileProtocol = window.location.protocol === 'file:';
-if(isFileProtocol){
-  console.warn('[NYX] Ouverture locale (file://) — Firebase désactivé, mode hors-ligne');
-  // Afficher un avertissement discret dans l'UI après chargement
-  setTimeout(()=>{
-    const warn = document.createElement('div');
-    warn.style.cssText='position:fixed;bottom:12px;right:12px;background:rgba(255,215,64,0.12);border:1px solid rgba(255,215,64,0.3);color:#FFD740;font-size:11px;padding:8px 14px;border-radius:8px;z-index:9999;font-family:monospace;max-width:320px;';
-    warn.innerHTML='⚠️ <b>Mode local</b> — Firebase désactivé.<br>Les données sont sauvegardées en mémoire uniquement.<br><span style="color:#aaa;">Pour activer Firebase, hébergez sur un serveur.</span>';
-    document.body.appendChild(warn);
-    setTimeout(()=>warn.remove(), 8000);
-  }, 1500);
-}
-
-try {
-  if(!isFileProtocol){
-    firebase.initializeApp(firebaseConfig);
-    db   = firebase.firestore();
-    auth = firebase.auth();
-    // Firebase connecté
-  }
-} catch(e) {
-  console.warn("Firebase non disponible:", e);
-}
 
 /* ── Sauvegarde VT dans Firebase ── */
 async function saveVT_Firebase(data){
