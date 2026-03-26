@@ -3010,7 +3010,7 @@ const R_PAROI={
     'Non détecté':0.30,
   },
   fenetres:{
-    'Triple vitrage':0.80,'Double vitrage récent':1.20,
+    'Triple vitrage':0.80,'Double vitrage récent':1.40,
     'Double vitrage ancien':2.50,'Simple vitrage':4.50,'Non détecté':3.00,
   },
   plancher:{
@@ -3036,9 +3036,11 @@ const DJU_ZONE = {
   'H2':  2100,
 };
 const DJU_REF = 2300;
-/* COP / η_sais : PAC air/eau=3.40 | PAC air/air=2.80 | Géothermie=4.50 */
+/* COP / η_sais — valeurs conventionnelles DPE (Annexe 1, Tableau 9, arrêté 31/03/2021)
+   PAC air/eau=2.54 | PAC air/air=2.20 | Géothermie=3.20
+   (SCOP fabricant ≠ SCOP conventionnel 3CL — l'arrêté impose les valeurs ci-dessous) */
 const ETA_CHAUFFAGE = {
-  'PAC air/eau':3.40,'PAC air/air':2.80,'PAC':3.40,'Géothermie':4.50,
+  'PAC air/eau':2.54,'PAC air/air':2.20,'PAC':2.54,'Géothermie':3.20,
   'Gaz condensation':1.05,'Bois/granulés':0.78,'Gaz ancien':0.82,
   'Fioul':0.80,'Électrique':1.00,'Non détecté':0.85,
 };
@@ -3417,7 +3419,7 @@ function coefficientB(equip) {
 }
 
 
-const ETA_SAIS_THCEX={'PAC':3.40,'Gaz condensation':1.09,'Bois/granulés':0.78,'Gaz ancien':0.78,'Fioul':0.76,'Électrique':1.00,'Non détecté':0.80};
+const ETA_SAIS_THCEX={'PAC':2.54,'PAC air/eau':2.54,'PAC air/air':2.20,'Géothermie':3.20,'Gaz condensation':1.09,'Bois/granulés':0.78,'Gaz ancien':0.78,'Fioul':0.76,'Électrique':1.00,'Non détecté':0.80};
 const PSI_THCEX={'ITE':0.05,'ITI':0.35,'Isolés':0.50,'Non isolés':0.75,'Non détecté':0.60};
 const N50_THCEX={'VMC double flux':0.6,'VMC simple flux':1.5,'Naturelle':4.0,'Non détecté':3.5};
 
@@ -3819,7 +3821,7 @@ function genererScenario(equip,classeActuelle){
   return travaux;
 }
 
-function renderScenario(travaux,classeActuelle,prefix='',surfaceRef){
+function renderScenario(travaux,classeActuelle,prefix='',surfaceRef,epReel){
   const oblig=travaux.filter(t=>t.priorite==='OBLIGATOIRE');
   const reco=travaux.filter(t=>t.priorite==='RECOMMANDÉ');
   const idx=ORDER.indexOf(classeActuelle);
@@ -3829,9 +3831,11 @@ function renderScenario(travaux,classeActuelle,prefix='',surfaceRef){
   // Surface pour modulation seuils petites surfaces (arrêté 25/03/2024)
   const _sref = surfaceRef || null;
 
-  // Classe visée via gain combiné
-  const epEstime = classeActuelle==='?'?300:
-    ({A:50,B:90,C:145,D:215,E:290,F:375,G:500}[classeActuelle]||300);
+  // Classe visée via gain combiné — utiliser EP réel si disponible, sinon médiane de classe
+  const EP_MEDIANE = {A:50,B:90,C:145,D:215,E:290,F:375,G:500};
+  const epEstime = (epReel && epReel > 0) ? epReel
+    : classeActuelle==='?' ? 300
+    : (EP_MEDIANE[classeActuelle] || 300);
   const epApres = Math.round(epEstime*(1-gainTotal/100));
   // Utiliser classeEP avec modulation petites surfaces au lieu de seuils codés en dur
   function epToClasse(ep){return classeEP(ep, _sref);}
@@ -3933,7 +3937,7 @@ function renderScenario(travaux,classeActuelle,prefix='',surfaceRef){
 
   // ── Scénario unique optimal vers meilleure classe possible ──
   const EP_BASE = {A:50,B:90,C:145,D:215,E:290,F:375,G:500};
-  const epBase  = EP_BASE[classeActuelle] || 300;
+  const epBase  = (epReel && epReel > 0) ? epReel : (EP_BASE[classeActuelle] || 300);
   const gainOpt = gainCombine(travaux.map(t=>t.impact));
   const epOpt   = Math.round(epBase*(1-gainOpt/100));
   function epToClasseLocal(ep){return classeEP(ep, _sref);}
@@ -4358,7 +4362,7 @@ function _appliquerResultat(ben, eq, num, fullText){
   // Scénario rénovation
   if(typeof genererScenario === 'function' && typeof renderScenario === 'function'){
     const travaux = genererScenario(eq, classe);
-    renderScenario(travaux, classe, '', surfVal);
+    renderScenario(travaux, classe, '', surfVal, ep);
   } else if(typeof renderTravaux === 'function'){
     const surfForScen = surfVal||100;
     renderTravaux(classe,eq,surfForScen,'travauxContainer','scenarioIntro','investSummary');
@@ -4566,7 +4570,7 @@ function analyserManuel(){
   document.getElementById('m_resultCard').classList.remove('hidden');
   const travaux=genererScenario(e,classe);
   const equM=e;
-  renderScenario(travaux,classe,'m_',surface);
+  renderScenario(travaux,classe,'m_',surface,ep);
   document.getElementById('m_scenarioCard').classList.remove('hidden');
   renderSauts(classe,e,'m_');
   document.getElementById('m_sautsCard').classList.remove('hidden');
