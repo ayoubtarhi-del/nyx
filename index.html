@@ -1074,27 +1074,39 @@ function lsRemove(k){ try{ localStorage.removeItem(k); }catch(e){ delete _memSto
 function getUsers(){
   try { JSON.parse(lsGet('nyx_users')||'[]'); } catch(e) { lsRemove('nyx_users'); }
   const u = lsGet('nyx_users');
-  if(!u) return [ADMIN_DEFAULT];
+  if(!u){
+    // Pas de localStorage → initialiser avec admin par défaut
+    lsSet('nyx_users', JSON.stringify([ADMIN_DEFAULT]));
+    return [ADMIN_DEFAULT];
+  }
   try {
     const arr = JSON.parse(u);
+    if(!Array.isArray(arr) || arr.length === 0){
+      lsSet('nyx_users', JSON.stringify([ADMIN_DEFAULT]));
+      return [ADMIN_DEFAULT];
+    }
     const adminIdx = arr.findIndex(x=>x.login==='AYOUB');
-    if(adminIdx >= 0){ arr[adminIdx].actif = true; }
+    if(adminIdx >= 0){ arr[adminIdx].actif = true; arr[adminIdx].hashed = true; }
     else { arr.unshift(ADMIN_DEFAULT); }
     lsSet('nyx_users', JSON.stringify(arr));
     return arr;
   } catch(e) {
     lsRemove('nyx_users');
+    lsSet('nyx_users', JSON.stringify([ADMIN_DEFAULT]));
     return [ADMIN_DEFAULT];
   }
 }
 
 function saveUsers(arr){
+  // S'assurer que l'admin est toujours dans la liste
+  const adminIdx = arr.findIndex(x=>x.login==='AYOUB');
+  if(adminIdx < 0) arr.unshift(ADMIN_DEFAULT);
   // 1. Sauvegarde locale immédiate
   lsSet('nyx_users', JSON.stringify(arr));
   // 2. Sauvegarde Firestore (sync multi-navigateur)
   if(db){
     db.collection('nyx_config').doc('users').set({ users: JSON.stringify(arr), updated: Date.now() })
-      .catch(e => console.warn('Firestore saveUsers:', e));
+      .catch(()=>{});
   }
 }
 
@@ -1103,7 +1115,14 @@ async function syncUsersFromFirestore(){
   if(!db) return;
   try {
     const doc = await db.collection('nyx_config').doc('users').get();
-    if(!doc.exists) return;
+    if(!doc.exists){
+      // Firestore vide → pousser les users locaux (premier déploiement)
+      const localUsers = getUsers();
+      db.collection('nyx_config').doc('users').set({
+        users: JSON.stringify(localUsers), updated: Date.now()
+      }).catch(()=>{});
+      return;
+    }
     const data = doc.data();
     if(!data || !data.users) return;
     const arr = JSON.parse(data.users);
@@ -1111,10 +1130,10 @@ async function syncUsersFromFirestore(){
     // S'assurer que l'admin existe toujours
     const adminIdx = arr.findIndex(x=>x.login==='AYOUB');
     if(adminIdx < 0) arr.unshift(ADMIN_DEFAULT);
-    else arr[adminIdx].actif = true;
+    else { arr[adminIdx].actif = true; arr[adminIdx].hashed = true; }
     lsSet('nyx_users', JSON.stringify(arr));
   } catch(e) {
-    console.warn('Firestore syncUsers:', e);
+    // Firestore indisponible — continuer avec localStorage
   }
 }
 
@@ -1130,8 +1149,9 @@ async function doLogin(){
   const login = document.getElementById('loginUser').value.trim();
   const pwd   = document.getElementById('loginPass').value;
 
-  // Synchroniser les users depuis Firestore avant de vérifier (multi-navigateur)
-  await syncUsersFromFirestore();
+  // Sync Firestore en arrière-plan (non bloquant)
+  syncUsersFromFirestore().catch(()=>{});
+  // Toujours inclure ADMIN_DEFAULT même si localStorage vide
   const users = getUsers();
 
   // Hash du mot de passe saisi avant comparaison
