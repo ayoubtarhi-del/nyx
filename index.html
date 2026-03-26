@@ -1049,6 +1049,10 @@ body::after{
 // Le mot de passe en clair n'est jamais stocké ni visible dans le code.
 const ADMIN_DEFAULT = {id:'admin-ayoub', login:'AYOUB', pwd:'f59cd130a4816f12fafd9f9196ebba9463e38f6454334261a069fe6f0d36bb1e', nom:'Ayoub Tarhi', role:'admin', actif:true, created:'2026', hashed:true};
 
+// Déclarés avec var pour être disponibles partout dès le début
+var db   = null;
+var auth = null;
+
 function resetLocalStorage(){
   if(!confirm('Reinitialiser NYX ?\n\nCela supprime les utilisateurs locaux et remet l\'admin par defaut.\nLes donnees Firebase (VT, dossiers) ne sont pas affectees.\n\nContinuer ?')) return;
   lsRemove('nyx_users');
@@ -1144,8 +1148,20 @@ let currentUser = null;
 
 // 🔒 Hash SHA-256 d'un mot de passe (Web Crypto API native)
 async function hashPassword(pwd){
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pwd));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  // Utiliser crypto.subtle si disponible, sinon fallback simple
+  try {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pwd));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  } catch(e) {
+    // Fallback : hash simple si crypto.subtle indisponible
+    let hash = 0;
+    for(let i = 0; i < pwd.length; i++){
+      const char = pwd.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return 'fallback_' + Math.abs(hash).toString(16) + '_' + pwd.length;
+  }
 }
 
 async function doLogin(){
@@ -1161,11 +1177,15 @@ async function doLogin(){
   const pwdHash = await hashPassword(pwd);
 
   // Recherche insensible à la casse — comparaison par hash
-  const found = users.find(u =>
-    u.login.toLowerCase() === login.toLowerCase() &&
-    (u.hashed ? u.pwd === pwdHash : u.pwd === pwd) &&
-    u.actif !== false
-  );
+  const found = users.find(u => {
+    if(u.login.toLowerCase() !== login.toLowerCase()) return false;
+    if(u.actif === false) return false;
+    if(!u.hashed) return u.pwd === pwd;
+    // Vérifier hash normal OU fallback plain
+    if(u.pwd === pwdHash) return true;
+    if(u.pwd === 'plain_' + pwd) return true;
+    return false;
+  });
 
   if(!found){
     document.getElementById('loginError').style.display='block';
@@ -1271,8 +1291,10 @@ async function creerUtilisateur(){
     return;
   }
 
-  // 🔒 Hasher le mot de passe avant stockage
-  const pwdHash = await hashPassword(pwd);
+  // 🔒 Hasher le mot de passe
+  let pwdHash;
+  try { pwdHash = await hashPassword(pwd); }
+  catch(e) { pwdHash = 'plain_' + pwd; } // fallback ultime
 
   // Sauvegarde locale IMMÉDIATE
   users.push({
@@ -5884,8 +5906,7 @@ const firebaseConfig = {
   appId: "1:915541903062:web:4ee414ea2f33afbd99eb77"
 };
 
-let db   = null;
-let auth = null;
+// db et auth déclarés en haut du fichier (voir début du script)
 const isFileProtocol = window.location.protocol === 'file:';
 
 try {
