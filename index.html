@@ -1264,8 +1264,7 @@ async function creerUtilisateur(){
   if(!login || !pwd){ alert('Identifiant et mot de passe obligatoires.'); return; }
   if(pwd.length < 4){ alert('Mot de passe trop court (4 caractères minimum).'); return; }
 
-  // Sync depuis Firestore pour avoir la liste complète et à jour
-  await syncUsersFromFirestore();
+  // Vérifier doublon dans localStorage uniquement (pas d'await bloquant)
   const users = getUsers();
   if(users.find(u => u.login.toLowerCase() === login.toLowerCase())){
     alert('Cet identifiant existe déjà.');
@@ -1273,30 +1272,16 @@ async function creerUtilisateur(){
   }
 
   // 🔒 Hasher le mot de passe avant stockage
-  let pwdHash;
-  try {
-    pwdHash = await hashPassword(pwd);
-  } catch(e) {
-    alert('Erreur lors du hashage du mot de passe. Réessayez.');
-    return;
-  }
+  const pwdHash = await hashPassword(pwd);
 
-  // Sauvegarde locale (toujours effectuée, indépendante de Firebase)
+  // Sauvegarde locale IMMÉDIATE
   users.push({
     id: 'u-' + Date.now(),
     login, pwd: pwdHash, nom,
     role: 'user', actif: true, hashed: true,
     created: new Date().toLocaleDateString('fr-FR')
   });
-  saveUsers(users);
-
-  // Firebase Auth — optionnel, non bloquant
-  try {
-    if(auth && pwd.length >= 6){
-      const emailFirebase = login.toLowerCase().replace(/[^a-z0-9]/g,'') + '@nyx-plateforme.app';
-      await auth.createUserWithEmailAndPassword(emailFirebase, pwd).catch(()=>{});
-    }
-  } catch(e){ /* Firebase optionnel — pas bloquant */ }
+  saveUsers(users); // saveUsers pousse aussi vers Firestore en arrière-plan
 
   // Réinitialiser le formulaire
   document.getElementById('nu_login').value = '';
