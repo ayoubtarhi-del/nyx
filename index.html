@@ -462,12 +462,12 @@ body::after{
     <div class="login-error" id="loginError">Identifiants incorrects. Veuillez réessayer.</div>
     <div class="form-group" style="margin-bottom:14px;">
       <div class="login-label">Identifiant</div>
-      <input class="form-input" id="loginUser" placeholder="Votre identifiant" autocomplete="username">
+      <input class="form-input" id="loginUser" placeholder="Votre identifiant" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')">
     </div>
     <div class="form-group" style="margin-bottom:24px;">
       <div class="login-label">Mot de passe</div>
       <div style="position:relative;">
-        <input class="form-input" type="password" id="loginPass" placeholder="Votre mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+        <input class="form-input" type="password" id="loginPass" placeholder="Votre mot de passe" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly')" onkeydown="if(event.key==='Enter')doLogin()">
         <span onclick="togglePwd()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;color:#555;font-size:16px;" id="eyeIcon">👁️</span>
       </div>
     </div>
@@ -1174,61 +1174,86 @@ function applyRole(role){
   const userBadge = document.createElement('div');
   userBadge.id = 'userBadgeEl';
   userBadge.style.cssText='font-size:12px;color:var(--muted);font-family:"Space Mono",monospace;display:flex;align-items:center;gap:8px;';
-  userBadge.innerHTML = `<span style="color:${role==='admin'?'var(--green)':'#60A5FA'};">●</span> ${currentUser.nom||currentUser.login} <span style="font-size:10px;padding:2px 8px;border-radius:100px;background:${role==='admin'?'rgba(16,185,129,0.12)':'rgba(96,165,250,0.1)'};color:${role==='admin'?'var(--green)':'#60A5FA'};">${role.toUpperCase()}</span> <button onclick="doLogout()" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:4px 10px;cursor:pointer;margin-left:4px;">⏏ Déconnexion</button>`;
+
+  const dot = document.createElement('span');
+  dot.style.color = role==='admin' ? 'var(--green)' : '#60A5FA';
+  dot.textContent = '●';
+
+  const nameSpan = document.createTextNode(' ' + (currentUser.nom||currentUser.login) + ' ');
+
+  const roleBadge = document.createElement('span');
+  roleBadge.style.cssText = `font-size:10px;padding:2px 8px;border-radius:100px;background:${role==='admin'?'rgba(16,185,129,0.12)':'rgba(96,165,250,0.1)'};color:${role==='admin'?'var(--green)':'#60A5FA'};`;
+  roleBadge.textContent = role.toUpperCase();
+
+  const logoutBtn = document.createElement('button');
+  logoutBtn.textContent = '⏏ Déconnexion';
+  logoutBtn.style.cssText = 'background:none;border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#888;font-size:11px;padding:4px 10px;cursor:pointer;margin-left:4px;';
+  logoutBtn.addEventListener('click', doLogout);
+
+  userBadge.appendChild(dot);
+  userBadge.appendChild(nameSpan);
+  userBadge.appendChild(roleBadge);
+  userBadge.appendChild(logoutBtn);
   navRight.insertBefore(userBadge, navRight.firstChild);
 }
 
 function doLogout(){
   currentUser = null;
-  // Déconnexion Firebase
-  if(auth) auth.signOut().catch(()=>{});
-  // Supprimer la session sauvegardée
+  try { if(auth) auth.signOut().catch(()=>{}); } catch(e){}
+  // Supprimer toutes les données de session
   lsRemove('nyx_session');
-  // Réafficher l'écran de login sans recharger la page
-  document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('loginUser').value = '';
-  document.getElementById('loginPass').value = '';
-  document.getElementById('loginError').style.display = 'none';
-  // Retirer le badge utilisateur du header
-  const badge = document.getElementById('userBadgeEl');
-  if(badge) badge.remove();
-  // Recacher l'onglet users et le CRM
-  document.querySelectorAll('.admin-only').forEach(el=>el.style.display='none');
-  document.getElementById('btnCRM').style.display='none';
-  // Fermer le CRM si ouvert
-  if(crmOpen){ crmOpen=false; document.getElementById('crmOverlay').classList.remove('open'); }
+  try { localStorage.removeItem('nyx_session'); } catch(e){}
+  // Redirection avec paramètre pour forcer l'affichage du login
+  const base = window.location.pathname;
+  window.location.href = base + '?logout=' + Date.now();
 }
 
 async function creerUtilisateur(){
   const login = document.getElementById('nu_login').value.trim();
   const pwd   = document.getElementById('nu_pwd').value.trim();
   const nom   = document.getElementById('nu_nom').value.trim();
-  const email = document.getElementById('nu_email')?.value.trim() || '';
-  if(!login||!pwd){alert('Identifiant et mot de passe obligatoires.');return;}
-  const users = getUsers();
-  if(users.find(u=>u.login===login)){alert('Cet identifiant existe déjà.');return;}
+  if(!login || !pwd){ alert('Identifiant et mot de passe obligatoires.'); return; }
+  if(pwd.length < 4){ alert('Mot de passe trop court (4 caractères minimum).'); return; }
 
-  // Créer dans Firebase Auth
-  const emailFirebase = email || (login.toLowerCase().replace(/[^a-z0-9]/g,'') + '@nyx-plateforme.app');
-  if(auth){
-    try {
-      await auth.createUserWithEmailAndPassword(emailFirebase, pwd);
-      // Compte Firebase créé
-    } catch(e){
-      if(e.code !== 'auth/email-already-in-use'){
-        console.warn("Firebase user create:", e.message);
-      }
-    }
+  const users = getUsers();
+  if(users.find(u => u.login.toLowerCase() === login.toLowerCase())){
+    alert('Cet identifiant existe déjà.');
+    return;
   }
 
-  users.push({id:'u-'+Date.now(), login, pwd, nom, email:emailFirebase, role:'user', actif:true, created:new Date().toLocaleDateString('fr-FR')});
+  // 🔒 Hasher le mot de passe avant stockage
+  let pwdHash;
+  try {
+    pwdHash = await hashPassword(pwd);
+  } catch(e) {
+    alert('Erreur lors du hashage du mot de passe. Réessayez.');
+    return;
+  }
+
+  // Sauvegarde locale (toujours effectuée, indépendante de Firebase)
+  users.push({
+    id: 'u-' + Date.now(),
+    login, pwd: pwdHash, nom,
+    role: 'user', actif: true, hashed: true,
+    created: new Date().toLocaleDateString('fr-FR')
+  });
   saveUsers(users);
-  document.getElementById('nu_login').value='';
-  document.getElementById('nu_pwd').value='';
-  document.getElementById('nu_nom').value='';
-  if(document.getElementById('nu_email')) document.getElementById('nu_email').value='';
+
+  // Firebase Auth — optionnel, non bloquant
+  try {
+    if(auth && pwd.length >= 6){
+      const emailFirebase = login.toLowerCase().replace(/[^a-z0-9]/g,'') + '@nyx-plateforme.app';
+      await auth.createUserWithEmailAndPassword(emailFirebase, pwd).catch(()=>{});
+    }
+  } catch(e){ /* Firebase optionnel — pas bloquant */ }
+
+  // Réinitialiser le formulaire
+  document.getElementById('nu_login').value = '';
+  document.getElementById('nu_pwd').value   = '';
+  document.getElementById('nu_nom').value   = '';
+
   refreshUsers();
-  alert('✅ Utilisateur créé avec succès !');
+  alert('✅ Utilisateur "' + login + '" créé avec succès !');
 }
 
 function toggleUserActif(id){
@@ -1251,7 +1276,13 @@ function deleteUser(id){
 function showPwd(id){
   const el=document.getElementById('pwd-'+id);
   if(el.dataset.shown==='1'){el.textContent='••••••••';el.dataset.shown='0';}
-  else{const u=getUsers().find(x=>x.id===id);if(u){el.textContent=u.pwd;el.dataset.shown='1';}}
+  else{
+    const u=getUsers().find(x=>x.id===id);
+    if(u){
+      el.textContent = u.hashed ? '[mot de passe protégé]' : u.pwd;
+      el.dataset.shown='1';
+    }
+  }
 }
 
 /* ══ EMAILJS — Réinitialisation mot de passe ══ */
@@ -1295,13 +1326,15 @@ async function envoyerDemandeReset(){
   }
 }
 
-function resetUserPwd(id){
+async function resetUserPwd(id){
   const users = getUsers();
   const u = users.find(x=>x.id===id);
   if(!u){ alert('Utilisateur introuvable.'); return; }
   const newPwd = prompt(`Nouveau mot de passe pour "${u.login}" :`);
   if(!newPwd || newPwd.trim().length < 4){ alert('Mot de passe trop court (4 caractères minimum).'); return; }
-  u.pwd = newPwd.trim();
+  // 🔒 Hasher le nouveau mot de passe avant sauvegarde
+  u.pwd = await hashPassword(newPwd.trim());
+  u.hashed = true;
   saveUsers(users);
   refreshUsers();
   alert(`✅ Mot de passe de "${u.login}" réinitialisé avec succès !`);
@@ -5804,6 +5837,13 @@ document.getElementById('d_date').value=new Date().toISOString().split('T')[0];
 // Restaurer la session si existante
 (function restoreSession(){
   try {
+    // Si on arrive depuis une déconnexion → ne pas restaurer, nettoyer l'URL
+    if(window.location.search.includes('logout=')) {
+      lsRemove('nyx_session');
+      try { localStorage.removeItem('nyx_session'); } catch(e){}
+      history.replaceState(null, '', window.location.pathname);
+      return;
+    }
     const sess = lsGet('nyx_session');
     if(!sess) return;
     const {login, role} = JSON.parse(sess);
