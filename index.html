@@ -1111,10 +1111,14 @@ function saveUsers(arr){
   // 1. Sauvegarde locale immédiate
   lsSet('nyx_users', JSON.stringify(arr));
   // 2. Sauvegarde Firestore (sync multi-navigateur)
-  if(db){
-    db.collection('nyx_config').doc('users').set({ users: JSON.stringify(arr), updated: Date.now() })
-      .catch(()=>{});
-  }
+  // Utiliser setTimeout pour laisser Firebase s'initialiser si besoin
+  setTimeout(()=>{
+    if(db){
+      db.collection('nyx_config').doc('users').set({ users: JSON.stringify(arr), updated: Date.now() })
+        .then(()=>{ console.log('Users sauvegardés dans Firestore'); })
+        .catch(()=>{});
+    }
+  }, 500);
 }
 
 // Charge les users depuis Firestore et met à jour le cache local
@@ -5891,7 +5895,7 @@ async function genererPDF(){
 }
 
 /* ── INIT ── */
-document.getElementById('d_date').value=new Date().toISOString().split('T')[0];
+const _ddate=document.getElementById('d_date'); if(_ddate) _ddate.value=new Date().toISOString().split('T')[0];
 
 /* ══════════════════════════════════════════════════════
    FIREBASE — Initialisé EN PREMIER pour être disponible
